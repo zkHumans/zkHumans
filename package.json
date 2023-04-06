@@ -1,0 +1,14 @@
+{
+  "name": "zkhumans",
+  "version": "0.0.0",
+  "license": "",
+  "scripts": {
+  },
+  "private": true,
+  "dependencies": {
+  },
+  "devDependencies": {
+    "nx": "15.9.2",
+    "@nrwl/workspace": "15.9.2"
+  }
+}
