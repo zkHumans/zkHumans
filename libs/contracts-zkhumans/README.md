@@ -9,3 +9,7 @@ Run `nx build contracts-zkhumans` to build the library.
 ## Running unit tests
 
 Run `nx test contracts-zkhumans` to execute the unit tests via [Jest](https://jestjs.io).
+
+### Running unit tests with coverage
+
+`nx test contracts-zkhumans --coverage`

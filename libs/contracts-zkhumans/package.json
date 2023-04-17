@@ -1,5 +1,11 @@
 {
   "name": "@zkhumans/contracts",
   "version": "0.0.1",
-  "type": "commonjs"
+  "keywords": [
+    "mina-zkapp",
+    "mina-zk-app",
+    "mina-dapp",
+    "zkapp"
+  ],
+  "type": "module"
 }
