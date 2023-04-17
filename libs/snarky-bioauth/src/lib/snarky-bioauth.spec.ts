@@ -1,7 +1,7 @@
-import { snarkyBioauth } from "./snarky-bioauth";
+import { snarkyBioauth } from './snarky-bioauth';
 
-describe("snarkyBioauth", () => {
-  it("should work", () => {
-    expect(snarkyBioauth()).toEqual("snarky-bioauth");
+describe('snarkyBioauth', () => {
+  it('should work', () => {
+    expect(snarkyBioauth()).toEqual('snarky-bioauth');
   });
 });

@@ -1,3 +1,3 @@
 export function snarkyBioauth(): string {
-  return "snarky-bioauth";
+  return 'snarky-bioauth';
 }
