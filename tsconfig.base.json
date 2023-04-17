@@ -15,6 +15,7 @@
     "skipDefaultLibCheck": true,
     "baseUrl": ".",
     "paths": {
+      "@zkhumans/contracts": ["libs/contracts-zkhumans/src/index.ts"],
       "@zkhumans/snarky-bioauth": ["libs/snarky-bioauth/src/index.ts"]
     }
   },
