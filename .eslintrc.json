@@ -4,6 +4,10 @@
   "plugins": ["@nrwl/nx"],
   "overrides": [
     {
+      "files": ["*.*"],
+      "extends": ["plugin:prettier/recommended"]
+    },
+    {
       "files": ["*.ts", "*.tsx", "*.js", "*.jsx"],
       "rules": {
         "@nrwl/nx/enforce-module-boundaries": [
