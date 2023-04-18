@@ -15,7 +15,7 @@
     "skipDefaultLibCheck": true,
     "baseUrl": ".",
     "paths": {
-      "@zkhumans/contracts": ["libs/contracts-zkhumans/src/index.ts"],
+      "@zkhumans/contracts": ["dist/libs/contracts-zkhumans/src/"], // snarkyjs requires built package
       "@zkhumans/snarky-bioauth": ["libs/snarky-bioauth/src/index.ts"]
     }
   },

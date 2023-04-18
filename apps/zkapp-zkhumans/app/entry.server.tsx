@@ -7,6 +7,15 @@ import { renderToPipeableStream } from 'react-dom/server';
 
 const ABORT_DELAY = 5000;
 
+const headers: { [key: string]: string } = {
+  'Access-Control-Allow-Origin': '*', // CORS
+
+  // To enable SnarkyJS for the web, we must set the COOP and COEP headers.
+  // https://docs.minaprotocol.com/zkapps/how-to-write-a-zkapp-ui#enabling-coop-and-coep-headers
+  'Cross-Origin-Embedder-Policy': 'require-corp', // COEP
+  'Cross-Origin-Opener-Policy': 'same-origin', // COOP
+};
+
 export default function handleRequest(
   request: Request,
   responseStatusCode: number,
@@ -46,6 +55,8 @@ function handleBotRequest(
           const body = new PassThrough();
 
           responseHeaders.set('Content-Type', 'text/html');
+
+          for (const key in headers) responseHeaders.set(key, headers[key]);
 
           resolve(
             new Response(body, {
@@ -88,6 +99,8 @@ function handleBrowserRequest(
           const body = new PassThrough();
 
           responseHeaders.set('Content-Type', 'text/html');
+
+          for (const key in headers) responseHeaders.set(key, headers[key]);
 
           resolve(
             new Response(body, {
