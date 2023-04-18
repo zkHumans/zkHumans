@@ -4,7 +4,7 @@ import NodeCache from 'node-cache';
 let cache: NodeCache;
 
 declare global {
-  var __cache: NodeCache | undefined;
+  var __cache: NodeCache | undefined; // eslint-disable-line no-var
 }
 
 if (process.env.NODE_ENV === 'production') {
