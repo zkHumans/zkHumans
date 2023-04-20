@@ -1,6 +1,6 @@
 import { Field } from 'snarkyjs';
 
-import { payloadToBase58 } from './util.js';
+import { payloadToBase58 } from './util';
 
 export { BioAuthOracle };
 
