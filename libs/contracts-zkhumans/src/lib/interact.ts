@@ -1,5 +1,5 @@
 /**
- * This script can be used to interact with the Add contract, after deploying it.
+ * This script can be used to interact with the BioAuth contract, after deploying it.
  *
  * We call the update() method on the contract, create a proof and send it to the chain.
  * The endpoint that we interact with is read from your config.json.
@@ -14,7 +14,7 @@
  */
 import { Mina, PrivateKey, shutdown } from 'snarkyjs';
 import { promises as fs } from 'fs';
-import { Add } from './Add.js';
+import { BioAuth } from './BioAuth.js';
 
 // check command line arg
 const network = process.argv[2];
@@ -42,16 +42,16 @@ const zkAppKey = PrivateKey.fromBase58(key.privateKey);
 const Network = Mina.Network(config.url);
 Mina.setActiveInstance(Network);
 const zkAppAddress = zkAppKey.toPublicKey();
-const zkApp = new Add(zkAppAddress);
+const zkApp = new BioAuth(zkAppAddress);
 
 // compile the contract to create prover keys
 console.log('compile the contract...');
-await Add.compile();
+await BioAuth.compile();
 
 // call update() and send transaction
 console.log('build transaction and create proof...');
 const tx = await Mina.transaction({ sender: zkAppAddress, fee: 0.1e9 }, () => {
-  zkApp.update();
+  // zkApp.update();
 });
 await tx.prove();
 console.log('send transaction...');
