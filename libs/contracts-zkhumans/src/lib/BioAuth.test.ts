@@ -10,14 +10,7 @@ import {
   Poseidon,
 } from 'snarkyjs';
 import { jest } from '@jest/globals';
-import {
-  BioAuthorizedMessage,
-  payloadToBase58,
-} from '@zkhumans/snarky-bioauth';
-
-// The public key of our trusted data provider
-const ORACLE_PUBLIC_KEY =
-  'B62qmP2nC16TvK2LPeHuWq1Ec8C8J4b8qZe5mLoNWW25F1HRqtFTvP3';
+import { BioAuthOracle, BioAuthorizedMessage } from '@zkhumans/snarky-bioauth';
 
 const ORACLE_URL = 'http://localhost:3000';
 
@@ -32,6 +25,7 @@ describe('BioAuth', () => {
     zkAppAddress: PublicKey,
     zkAppPrivateKey: PrivateKey,
     zkApp: BioAuth;
+  let bioAuthOracle: BioAuthOracle;
 
   beforeAll(async () => {
     await isReady;
@@ -50,6 +44,8 @@ describe('BioAuth', () => {
     zkAppPrivateKey = PrivateKey.random();
     zkAppAddress = zkAppPrivateKey.toPublicKey();
     zkApp = new BioAuth(zkAppAddress);
+
+    bioAuthOracle = new BioAuthOracle(ORACLE_URL);
   });
 
   afterAll(() => {
@@ -69,10 +65,11 @@ describe('BioAuth', () => {
     await txn.sign([deployerKey, zkAppPrivateKey]).send();
   }
 
-  it('generates and deploys the `BioAuth` smart contract', async () => {
+  it('deploys the `BioAuth` smart contract and queries the Oracle', async () => {
     await localDeploy();
-    const oraclePublicKey = zkApp.oraclePublicKey.get();
-    expect(oraclePublicKey).toEqual(PublicKey.fromBase58(ORACLE_PUBLIC_KEY));
+    const opk = zkApp.oraclePublicKey.get();
+    const meta = await bioAuthOracle.fetchMeta();
+    expect(opk).toEqual(PublicKey.fromBase58(meta?.publicKey ?? ''));
   });
 
   describe('actual API requests', () => {
@@ -83,11 +80,11 @@ describe('BioAuth', () => {
       const userPublicKey = senderKey.toPublicKey();
       const userSig = Signature.create(senderKey, userPublicKey.toFields());
       const hash = Poseidon.hash(userSig.toFields());
-      const id = payloadToBase58(hash);
 
-      const response = await fetch(`${ORACLE_URL}/${id}`);
-      const data = await response.json();
-      const message = BioAuthorizedMessage.fromJSON(data);
+      // fetch the bio-authorized message signed by the oracle
+      const opts = { test: true }; // non-interactive test mode
+      const [, data] = await bioAuthOracle.fetchBioAuth(hash, opts);
+      const message = BioAuthorizedMessage.fromJSON(JSON.parse(data ?? ''));
 
       // !! set the local blockchain time to be current
       // TODO#3: Local.setTimestamp(UInt64.from(Date.now()));
