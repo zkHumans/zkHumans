@@ -45,4 +45,8 @@ Thumbs.db
 apps/**/build
 apps/**/.cache
 
+# Mina zkApp files
+libs/contracts-*/build
+libs/contracts-*/keys
+
 _/
