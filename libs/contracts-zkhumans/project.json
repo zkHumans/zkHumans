@@ -8,7 +8,7 @@
       "executor": "@nrwl/js:tsc",
       "outputs": ["{options.outputPath}"],
       "options": {
-        "outputPath": "dist/libs/contracts-zkhumans",
+        "outputPath": "libs/contracts-zkhumans/build",
         "main": "libs/contracts-zkhumans/src/index.ts",
         "tsConfig": "libs/contracts-zkhumans/tsconfig.lib.json",
         "assets": ["libs/contracts-zkhumans/*.md"]

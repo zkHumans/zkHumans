@@ -1,1 +1,1 @@
-export * from './lib/BioAuth';
+export * from './BioAuth';

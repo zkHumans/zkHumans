@@ -1,0 +1,11 @@
+{
+  "version": 1,
+  "deployAliases": {
+    "berkeley-bioauth": {
+      "url": "https://proxy.berkeley.minaexplorer.com/graphql",
+      "keyPath": "keys/berkeley-bioauth.json",
+      "fee": "0.1",
+      "smartContract": "BioAuth"
+    }
+  }
+}
