@@ -21,7 +21,7 @@ app.get('/', (_req, res) => {
 // The private key of our account. When running locally the hardcoded key will
 // be used. In production the key will be loaded from environment variable.
 const privateKeyBase58 =
-  process.env.PRIVATE_KEY ??
+  process.env.AUTH_TEST_MINA_PRIVATE_KEY ??
   'EKEVnkBTQRD7uYWwA6EedQbLAmCFgGfnSja1Z9Q5YvGVw4C2cu7s';
 
 // simulate authenticated biometric identifiers
