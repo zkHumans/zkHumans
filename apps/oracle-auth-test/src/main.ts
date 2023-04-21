@@ -81,7 +81,7 @@ async function getSignedBioAuthId(id: string) {
 }
 
 // for non-interactive tests
-app.get('/:id', async (req, res) => {
+app.get('/mina/test/:id', async (req, res) => {
   const id = req.params.id;
   const body = await getSignedBioAuthId(id);
   res.json(body);
