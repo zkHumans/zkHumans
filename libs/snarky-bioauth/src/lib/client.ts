@@ -36,13 +36,21 @@ class BioAuthOracle {
    * The BioAuth id is always returned so an auth link may be requested for it
    * using {@link getBioAuthLink}.
    *
+   * Stringified JSON is returned so that the caller (having called snarkyjs
+   * isReady) may construct the BioAuthorizedMessage Object.
+   *
    * @param {} payload The data to have bio-authorized.
+   * @param {} options { test: if non-interactive test }
    * @returns {} A BioAuthorizedMessage (as JSON) or null if the payload has
    * not yet been bio-authorized.
    */
-  public async fetchBioAuth(payload: Field): Promise<[string, null | string]> {
+  public async fetchBioAuth(
+    payload: Field,
+    options = { test: false }
+  ): Promise<[string, null | string]> {
     const id = payloadToBase58(payload);
-    const response = await fetch(`${this.url}/${id}`);
+    const q = options.test ? 'test/' : '';
+    const response = await fetch(`${this.url}/mina/${q}${id}`);
 
     if (response.status == 404) return [id, null];
 
@@ -56,7 +64,7 @@ class BioAuthOracle {
    * @returns {} The BioAuthoracle's meta info or null upon error.
    */
   public async fetchMeta(): Promise<null | BioAuthOracleMeta> {
-    const response = await fetch(`${this.url}/meta`);
+    const response = await fetch(`${this.url}/mina/meta`);
     if (response.status !== 200) return null;
     const data = (await response.json()) as BioAuthOracleMeta;
     return data;
@@ -71,6 +79,6 @@ class BioAuthOracle {
    * @returns {} URL Link a human can follow to bio-authenticate
    */
   public getBioAuthLink(id: string): string {
-    return `${this.url}/auth/${id}`;
+    return `${this.url}/mina/auth/${id}`;
   }
 }
