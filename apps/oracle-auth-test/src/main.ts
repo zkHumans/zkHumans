@@ -97,14 +97,18 @@ app.get('/mina/test/:id', async (req, res) => {
 const signedBioAuths = {};
 
 app.get('/mina/meta', async (_req, res) => {
-  await isReady;
-  const privateKey = PrivateKey.fromBase58(privateKeyBase58);
-  const publicKey = privateKey.toPublicKey();
-  const meta = {
-    publicKey,
-  };
-  res.json(meta);
-  console.log('[200] /mina/meta');
+  try {
+    await isReady;
+    const privateKey = PrivateKey.fromBase58(privateKeyBase58);
+    const publicKey = privateKey.toPublicKey();
+    const meta = {
+      publicKey,
+    };
+    res.json(meta);
+    console.log('[200] /mina/meta');
+  } catch (e) {
+    console.log('ERROR', JSON.stringify(e));
+  }
 });
 
 app.get('/mina/:id', async (req, res) => {
