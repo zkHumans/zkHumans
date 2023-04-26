@@ -4,5 +4,10 @@ module.exports = {
   theme: {
     extend: {},
   },
-  plugins: [],
+  plugins: [require('daisyui')],
+  daisyui: {
+    themes: ['light', 'dark'],
+    // prevent comments from entering prettier output
+    logs: false,
+  },
 };
