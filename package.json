@@ -44,6 +44,7 @@
     "zkapp-cli": "^0.7.5"
   },
   "dependencies": {
+    "@aurowallet/mina-provider": "^0.1.7",
     "@heroicons/react": "^2.0.17",
     "@remix-run/node": "^1.14.3",
     "@remix-run/react": "^1.14.3",
