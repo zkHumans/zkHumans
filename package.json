@@ -3,7 +3,14 @@
   "version": "0.0.0",
   "license": "",
   "scripts": {
-    "commit": "cz"
+    "commit": "cz",
+    "dev-run--build": "nx run-many --targets=lint,typecheck,build --configuration=development",
+    "dev-run--test": "nx run-many --targets=test --configuration=development",
+    "dev-serve-oracle-auth-test": "nx run oracle-auth-test:serve:development --inspect=false --watch=false",
+    "dev-serve-zkapp-zkhumans": "nx run zkapp-zkhumans:dev",
+    "dev-watch--build": "nx watch --all --verbose -- nx run-many --targets=lint,typecheck,build --configuration=development",
+    "dev-watch--lint": "nx watch --all --verbose -- nx run-many --targets=lint,typecheck --configuration=development",
+    "dev-watch--test": "nx watch --all --verbose -- nx affected --target=test --files=\\$NX_FILE_CHANGES"
   },
   "private": true,
   "devDependencies": {
