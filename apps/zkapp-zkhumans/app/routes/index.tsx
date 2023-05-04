@@ -3,6 +3,7 @@ import { Link } from '@remix-run/react';
 import { useEffect, useState } from 'react';
 import Modal from '../components/modal';
 import Navbar from '../components/navbar';
+import Console from '../components/console';
 
 // 'Mainnet', 'Devnet', 'Berkeley', or 'Unknown'
 const supportedNetworks = ['Berkeley'];
@@ -22,8 +23,6 @@ const ZKAPP_ADDRESS_BIOAUTH =
  * How often to (re)check the MINA network for presence of account.
  */
 const CYCLE_CHECK_ACCOUNT_NETWORK = 5_000;
-
-const VERBOSE = true;
 
 // Show first 6 and last 4 characters of user's Mina account.
 const displayAccount = (account: string) =>
@@ -45,31 +44,44 @@ export default function Index() {
     counterAccountNetwork: 0,
   });
 
+  const [consoleLog, setConsoleLog] = useState([] as string[]);
+  const [lastLog, setLastLog] = useState('');
   const log = (
+    logType: 'info' | 'success' | 'error' | 'time',
     ...args: any[] /* eslint-disable-line @typescript-eslint/no-explicit-any */
   ) => {
-    if (VERBOSE) console.log(...args);
+    const logTypes = {
+      info: '',
+      success: '✅',
+      error: '❌',
+      time: '⏱️',
+    };
+    const msg = logTypes[logType] + ' ' + args.join(' ');
+    if (msg === lastLog) {
+      consoleLog[0] += ' •';
+      setConsoleLog(() => consoleLog);
+    } else {
+      setLastLog(() => msg);
+      setConsoleLog((s) => [msg, ...s]);
+    }
   };
 
   // watch for MINA wallet changes
   useEffect(() => {
-    (async () => {
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const wallet = (window as any).mina as MinaProvider;
-      if (wallet) {
-        wallet.on('chainChanged', (network) => checkNetwork(network));
-        wallet.on('accountsChanged', (accounts) => {
-          setState((s) => ({
-            ...s,
-            account: null,
-            hasAccount: null,
-            hasAccountNetwork: null,
-          }));
-          checkAccount(accounts);
-        });
-      }
-      setState((s) => ({ ...s, initWalletWatcher: true }));
-    })();
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const wallet = (window as any).mina as MinaProvider;
+    if (wallet) {
+      wallet.on('chainChanged', (network) => checkNetwork(network));
+      wallet.on('accountsChanged', (accounts) => {
+        setState((s) => ({
+          ...s,
+          account: null,
+          hasAccount: null,
+          hasAccountNetwork: null,
+        }));
+        checkAccount(accounts);
+      });
+    }
   }, []);
 
   // wait for account to exist on network, if it did not
@@ -105,7 +117,7 @@ export default function Index() {
   const checkWallet = (wallet?: MinaProvider) => {
     const hasWallet = wallet !== undefined;
     setState((s) => ({ ...s, hasWallet }));
-    log('wallet?:', hasWallet ? '✅' : '❌');
+    log(hasWallet ? 'success' : 'error', 'has MINA-compatible wallet');
     return hasWallet;
   };
 
@@ -114,7 +126,7 @@ export default function Index() {
     let hasNetwork = false;
     if (isNetworkSupported(network)) hasNetwork = true;
     setState((s) => ({ ...s, hasNetwork, network }));
-    log('network?:', network, hasNetwork ? '✅' : '❌');
+    log(hasNetwork ? 'success' : 'error', 'supported network:', network);
     return hasNetwork;
   };
 
@@ -127,7 +139,7 @@ export default function Index() {
       account = accounts.at(0) ?? null;
     }
     setState((s) => ({ ...s, hasAccount, account }));
-    log('account?:', account, hasAccount ? '✅' : '❌');
+    log(hasAccount ? 'success' : 'error', 'connected account:', account);
     return hasAccount;
   };
 
@@ -143,8 +155,11 @@ export default function Index() {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     if (!(res as any).error) hasAccountNetwork = true;
     setState((s) => ({ ...s, hasAccountNetwork }));
-    log('fetchAccount', res);
-    log('account on network?:', account, hasAccountNetwork ? '✅' : '❌');
+    log(
+      hasAccountNetwork ? 'success' : 'error',
+      'account exists on network:',
+      account
+    );
     return hasAccountNetwork;
   };
 
@@ -153,7 +168,7 @@ export default function Index() {
     try {
       const wallet = getWallet();
       const accounts = await wallet?.requestAccounts();
-      log('requestAccount --> checkAccount');
+      // log('requestAccount --> checkAccount');
       return checkAccount(accounts);
     } catch (
       err: any // eslint-disable-line @typescript-eslint/no-explicit-any
@@ -164,14 +179,14 @@ export default function Index() {
 
       // https://docs.aurowallet.com/general/reference/api-reference/mina-provider/methods
       // If user reject, requestAccounts will throw an error with code and message filed
-      log('checkAccount Error:', err.message, err.code);
+      log('error', 'ERROR: checkAccount:', err.message, err.code);
       setState((s) => ({ ...s, hasAccount: false, account: null }));
       return false;
     }
   };
 
   function handleConnectWallet() {
-    log('connect!');
+    log('info', 'Connect wallet!');
 
     (async () => {
       const wallet = getWallet();
@@ -187,20 +202,27 @@ export default function Index() {
       // load snarky!
       ////////////////////////////////////////////////////////////////////////
 
-      log('Loading...');
+      log('time', '@T+0 ms | Loading...');
       const timeStart = window.performance.now();
       const snarkyjs = await import('snarkyjs');
-      log(`⌚ @T+${window.performance.now() - timeStart} ms | snarkyjs import`);
+      log(
+        'time',
+        `@T+${window.performance.now() - timeStart} ms | snarkyjs import`
+      );
       await snarkyjs.isReady;
       snarkyjs.Mina.setActiveInstance(snarkyjs.Mina.Network(MINA_NETWORK));
       setState((s) => ({ ...s, snarkyjs }));
       log(
-        `⌚ @T+${window.performance.now() - timeStart} ms | snarkyjs isReady`
+        'time',
+        `@T+${window.performance.now() - timeStart} ms | snarkyjs isReady`
       );
 
       const { BioAuth } = await import('@zkhumans/contracts');
       log(
-        `⌚ @T+${window.performance.now() - timeStart} ms | BioAuth imported`
+        'time',
+        `@T+${
+          window.performance.now() - timeStart
+        } ms | BioAuth contract imported`
       );
 
       // Update this to use the address (public key) for your zkApp account
@@ -208,6 +230,7 @@ export default function Index() {
         snarkyjs.PublicKey.fromBase58(ZKAPP_ADDRESS_BIOAUTH)
       );
       log(
+        'info',
         'zkApp loaded!',
         'isSecureContext:',
         isSecureContext,
@@ -215,7 +238,8 @@ export default function Index() {
         self.crossOriginIsolated
       );
       log(
-        `⌚ @T+${window.performance.now() - timeStart} ms | zkApp = new BioAuth`
+        'time',
+        `@T+${window.performance.now() - timeStart} ms | zkApp = new BioAuth`
       );
     })();
   }
@@ -266,7 +290,7 @@ export default function Index() {
       {state.hasNetwork === false && <ModalNeedNetwork />}
       {state.hasAccountNetwork === false && <ModalNeedAccountNetwork />}
 
-      <div className="my-10 flex flex-col items-center space-y-8">
+      <div className="my-10 flex flex-grow flex-col items-center space-y-8">
         <div className="flex flex-col items-center">
           <h1 className="text-2xl font-bold">zkHumans</h1>
           <h1 className="text-1xl font-bold">
@@ -274,6 +298,7 @@ export default function Index() {
           </h1>
         </div>
       </div>
+      <Console log={consoleLog} />
     </div>
   );
 }
