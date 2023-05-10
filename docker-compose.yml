@@ -1,0 +1,169 @@
+version: '3.9'
+
+networks:
+  zkhmn:
+    driver: bridge
+
+services:
+  # build base image
+  base-image:
+    profiles: ['build']
+    image: ${IMG_REPO}/${IMG_NAME}:${IMG_TAG}
+    build:
+      context: ./
+
+  # extend-only run-time base
+  base-service:
+    profiles: ['no-op']
+    image: ${IMG_REPO}/${IMG_NAME}:${IMG_TAG}
+    init: true
+    restart: unless-stopped
+    networks:
+      - zkhmn
+    environment:
+      - API_AUTH
+      - API_URL
+      - DATABASE_URL
+      - IPFS_GATEWAY_URL
+      - IPFS_GATEWAY_URL_PUBLIC
+      - NODE_ENV
+
+  api:
+    profiles: ['run']
+    extends:
+      service: base-service
+    container_name: api
+    depends_on:
+      ipfs:
+        condition: service_started
+      postgres:
+        condition: service_healthy
+    ports:
+      - 127.0.0.1:3000:3000
+    environment:
+      - VIRTUAL_HOST=${HOSTNAME}
+      - LETSENCRYPT_HOST=${HOSTNAME}
+      - LETSENCRYPT_EMAIL=${LETSENCRYPT_EMAIL}
+    volumes:
+      - ${HOST_DIR}:/app/srv
+    healthcheck:
+      test: curl -f http://api:3333/trpc/health.healthz || exit 1
+      interval: 10s
+      timeout: 10s
+      retries: 3
+      start_period: 30s
+    command: >
+      npx nx run api:serve:production
+
+  # backend:
+  #   profiles: ['run']
+  #   extends:
+  #     service: base-service
+  #   container_name: backend
+  #   depends_on:
+  #     api:
+  #       condition: service_healthy
+  #   command: >
+  #     npx nx run backend:serve:production
+
+  prisma-studio:
+    profiles: ['run', 'maintenance']
+    extends:
+      service: base-service
+    container_name: prisma-studio
+    depends_on:
+      postgres:
+        condition: service_healthy
+    ports:
+      - 127.0.0.1:5555:5555
+    command: >
+      npx prisma studio
+
+  postgres:
+    profiles: ['run', 'dev', 'maintenance']
+    image: postgres:latest
+    container_name: postgres
+    restart: unless-stopped
+    networks:
+      - zkhmn
+    environment:
+      - POSTGRES_USER
+      - POSTGRES_PASSWORD
+      - POSTGRES_DB
+    ports:
+      - 127.0.0.1:5432:5432
+    volumes:
+      - ${HOST_DIR}/postgres-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U ${POSTGRES_USER}']
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  # https://github.com/ipfs/kubo/blob/master/docker-compose.yaml
+  ipfs:
+    profiles: ['run', 'dev']
+    image: ipfs/kubo:latest
+    container_name: ipfs
+    restart: unless-stopped
+    networks:
+      - zkhmn
+    environment:
+      - IPFS_PATH=/data/ipfs
+      # http://docs.ipfs.io/how-to/default-profile/#available-profiles
+      - IPFS_PROFILE=server
+    volumes:
+      - ${HOST_DIR}/ipfs/export:/export
+      - ${HOST_DIR}/ipfs/data:/data/ipfs
+    ports:
+      # Swarm listens on all interfaces, so is remotely reachable.
+      - 4001:4001/tcp
+      - 4001:4001/udp
+
+      # The following ports only listen on the loopback interface, so are not remotely reachable by default.
+      # If you want to override these or add more ports, see https://docs.docker.com/compose/extends/ .
+
+      # API port, which includes admin operations, so you probably don't want this remotely accessible.
+      - 127.0.0.1:5001:5001
+
+      # HTTP Gateway
+      - 127.0.0.1:${IPFS_GATEWAY_PORT}:8080
+
+  nginx-proxy:
+    profiles: ['proxy']
+    container_name: nginx-proxy
+    image: nginxproxy/nginx-proxy:alpine
+    init: true
+    restart: unless-stopped
+    network_mode: bridge
+    ports:
+      - '80:80'
+      - '443:443'
+    volumes:
+      - ${HOST_DIR}/nginx/certs:/etc/nginx/certs:ro
+      - ${HOST_DIR}/nginx/dhparam:/etc/nginx/dhparam
+      - ${HOST_DIR}/nginx/html:/usr/share/nginx/html
+      - ${HOST_DIR}/nginx/vhost.d:/etc/nginx/vhost.d
+      - /var/run/docker.sock:/tmp/docker.sock:ro
+      # - ./conf.d/my_proxy.conf:/etc/nginx/conf.d/my_proxy.conf:ro
+    environment:
+      - ENABLE_IPV6=true
+      - RESOLVERS=1.1.1.1
+
+  nginx-proxy-acme:
+    profiles: ['proxy']
+    container_name: nginx-proxy-acme
+    image: nginxproxy/acme-companion
+    restart: unless-stopped
+    network_mode: bridge
+    volumes:
+      - ${HOST_DIR}/nginx/acme.sh:/etc/acme.sh:rw
+      - ${HOST_DIR}/nginx/certs:/etc/nginx/certs:rw
+      - ${HOST_DIR}/nginx/dhparam:/etc/nginx/dhparam
+      - ${HOST_DIR}/nginx/html:/usr/share/nginx/html
+      - ${HOST_DIR}/nginx/vhost.d:/etc/nginx/vhost.d
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+      # - ./conf.d/my_proxy.conf:/etc/nginx/conf.d/my_proxy.conf:ro
+    environment:
+      - DEFAULT_EMAIL
+      - NGINX_PROXY_CONTAINER=nginx-proxy

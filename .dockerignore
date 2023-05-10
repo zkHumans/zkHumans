@@ -1,0 +1,18 @@
+.dockerignore
+.env
+.env-example
+.git
+_/
+dist
+docker-compose.yml
+node_modules
+tmp
+
+# Remix files
+apps/**/build
+apps/**/.cache
+apps/**/tsconfig.tsbuildinfo
+
+# Mina zkApp files
+libs/contracts-*/build
+libs/contracts-*/keys
