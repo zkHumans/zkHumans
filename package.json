@@ -13,7 +13,9 @@
     "dev-watch--test": "nx watch --all --verbose -- nx affected --target=test --files=\\$NX_FILE_CHANGES",
     "postinstall": "prisma generate",
     "production-build": "nx run-many --targets=build --configuration=production",
-    "setup": "prisma migrate deploy && echo TODO prisma db seed"
+    "setup": "prisma migrate deploy && echo TODO prisma db seed",
+    "test:snarky-smt:merkle": "./bin/snarky-run.sh libs/contracts-example/src/ex/snarky-smt/merkle_zkapp.ts",
+    "test:snarkyjs:merkle": "./bin/snarky-run.sh libs/contracts-example/src/ex/snarkyjs/merkle_zkapp.ts"
   },
   "private": true,
   "devDependencies": {
@@ -73,7 +75,8 @@
     "react-dom": "^18.2.0",
     "remix-auth": "^3.4.0",
     "remix-auth-oauth2": "^1.6.0",
-    "snarkyjs": "^0.9.8",
+    "snarky-smt": "github:zkhumans/snarky-smt",
+    "snarkyjs": "^0.10.1",
     "superjson": "^1.12.3",
     "theme-change": "^2.5.0",
     "tiny-invariant": "^1.3.1",
