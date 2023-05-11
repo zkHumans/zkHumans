@@ -14,7 +14,12 @@
     "esModuleInterop": true,
     "allowJs": true,
     "declaration": true,
-    "allowSyntheticDefaultImports": true
+    "allowSyntheticDefaultImports": true,
+
+    // required by snarky-run (tsconfig extends does not work)
+    "target": "es2020",
+    "experimentalDecorators": true,
+    "emitDecoratorMetadata": true
   },
   "files": [],
   "include": [],
