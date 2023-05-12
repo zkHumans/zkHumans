@@ -9,6 +9,6 @@
   ],
   "type": "module",
   "scripts": {
-    "build": "ln -sf ../../node_modules . && mkdir -p node_modules/@zkhumans && ln -sf ../../dist/libs/snarky-bioauth ./node_modules/@zkhumans/ && cd ../../ && nx run build --project=contracts-zkhumans --configuration=production --skip-nx-cache --clean=false"
+    "build": "../../bin/zkapp-nx.sh && cd ../../ && nx run build --project=contracts-zkhumans --configuration=production --skip-nx-cache --clean=false"
   }
 }
