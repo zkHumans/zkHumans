@@ -9,8 +9,10 @@ import {
   isReady,
 } from 'snarkyjs';
 
-const host = process.env.HOST ?? 'localhost';
-const port = process.env.PORT ? Number(process.env.PORT) : 3000;
+const host = process.env.AUTH_TEST_HOST ?? 'localhost';
+const port = process.env.AUTH_TEST_PORT
+  ? Number(process.env.AUTH_TEST_PORT)
+  : 3002;
 
 const app = express();
 
