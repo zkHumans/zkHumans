@@ -1,9 +1,5 @@
 version: '3.9'
 
-networks:
-  zkhmn:
-    driver: bridge
-
 services:
   # build base image
   base-image:
@@ -18,14 +14,7 @@ services:
     image: ${IMG_REPO}/${IMG_NAME}:${IMG_TAG}
     init: true
     restart: unless-stopped
-    networks:
-      - zkhmn
     environment:
-      - API_AUTH
-      - API_URL
-      - DATABASE_URL
-      - IPFS_GATEWAY_URL
-      - IPFS_GATEWAY_URL_PUBLIC
       - NODE_ENV
 
   api:
@@ -34,40 +23,70 @@ services:
       service: base-service
     container_name: api
     depends_on:
-      ipfs:
-        condition: service_started
       postgres:
         condition: service_healthy
-    ports:
-      - 127.0.0.1:3000:3000
+    expose:
+      - ${API_PORT}
     environment:
-      - VIRTUAL_HOST=${HOSTNAME}
-      - LETSENCRYPT_HOST=${HOSTNAME}
-      - LETSENCRYPT_EMAIL=${LETSENCRYPT_EMAIL}
-    volumes:
-      - ${HOST_DIR}:/app/srv
+      - API_HOST
+      - API_PORT
     healthcheck:
-      test: curl -f http://api:3333/trpc/health.healthz || exit 1
+      test: ./bin/fetch-json.js ${API_URL}/health.check || exit 1
       interval: 10s
       timeout: 10s
       retries: 3
       start_period: 30s
+    labels:
+      - traefik.enable=true
+      - traefik.http.routers.api.entrypoints=websecure
+      - traefik.http.routers.api.rule=Host(`api.${HOSTNAME}`)
+      - traefik.http.routers.api.tls.certresolver=myresolver
     command: >
       npx nx run api:serve:production
+        --inspect=false
+        --watch=false
 
-  # backend:
-  #   profiles: ['run']
-  #   extends:
-  #     service: base-service
-  #   container_name: backend
-  #   depends_on:
-  #     api:
-  #       condition: service_healthy
-  #   command: >
-  #     npx nx run backend:serve:production
+  app:
+    profiles: ['run']
+    extends:
+      service: base-service
+    container_name: app
+    expose:
+      - 3000
+    labels:
+      - traefik.enable=true
+      - traefik.http.routers.app.entrypoints=websecure
+      - traefik.http.routers.app.rule=Host(`app.${HOSTNAME}`)
+      - traefik.http.routers.app.tls.certresolver=myresolver
+    command: >
+      npx nx run zkapp-zkhumans:start
+
+  auth:
+    profiles: ['run']
+    extends:
+      service: base-service
+    container_name: auth
+    expose:
+      - 3000
+    environment:
+      - AUTH_HUMANODE_CLIENT_ID
+      - AUTH_HUMANODE_CLIENT_SECRET
+      - AUTH_HUMANODE_URI_CALLBACK
+      - AUTH_HUMANODE_URI_ISSUER
+      - AUTH_HUMANODE_URI_JWKS
+      - AUTH_MINA_PRIVATE_KEY
+      - AUTH_BIOAUTH_TTL
+      - AUTH_SESSION_SECRET
+    labels:
+      - traefik.enable=true
+      - traefik.http.routers.auth.entrypoints=websecure
+      - traefik.http.routers.auth.rule=Host(`${AUTH_HOSTNAME}`)
+      - traefik.http.routers.auth.tls.certresolver=myresolver
+    command: >
+      npx nx run oracle-auth:start
 
   prisma-studio:
-    profiles: ['run', 'maintenance']
+    profiles: ['maintenance']
     extends:
       service: base-service
     container_name: prisma-studio
@@ -84,8 +103,6 @@ services:
     image: postgres:latest
     container_name: postgres
     restart: unless-stopped
-    networks:
-      - zkhmn
     environment:
       - POSTGRES_USER
       - POSTGRES_PASSWORD
@@ -100,70 +117,28 @@ services:
       timeout: 5s
       retries: 5
 
-  # https://github.com/ipfs/kubo/blob/master/docker-compose.yaml
-  ipfs:
-    profiles: ['run', 'dev']
-    image: ipfs/kubo:latest
-    container_name: ipfs
+  traefik:
+    profiles: ['run', 'proxy']
+    image: traefik:v2.10
+    container_name: traefik
     restart: unless-stopped
-    networks:
-      - zkhmn
-    environment:
-      - IPFS_PATH=/data/ipfs
-      # http://docs.ipfs.io/how-to/default-profile/#available-profiles
-      - IPFS_PROFILE=server
-    volumes:
-      - ${HOST_DIR}/ipfs/export:/export
-      - ${HOST_DIR}/ipfs/data:/data/ipfs
     ports:
-      # Swarm listens on all interfaces, so is remotely reachable.
-      - 4001:4001/tcp
-      - 4001:4001/udp
-
-      # The following ports only listen on the loopback interface, so are not remotely reachable by default.
-      # If you want to override these or add more ports, see https://docs.docker.com/compose/extends/ .
-
-      # API port, which includes admin operations, so you probably don't want this remotely accessible.
-      - 127.0.0.1:5001:5001
-
-      # HTTP Gateway
-      - 127.0.0.1:${IPFS_GATEWAY_PORT}:8080
-
-  nginx-proxy:
-    profiles: ['proxy']
-    container_name: nginx-proxy
-    image: nginxproxy/nginx-proxy:alpine
-    init: true
-    restart: unless-stopped
-    network_mode: bridge
-    ports:
-      - '80:80'
-      - '443:443'
+      - 443:443
+      - 127.0.0.1:8080:8080
     volumes:
-      - ${HOST_DIR}/nginx/certs:/etc/nginx/certs:ro
-      - ${HOST_DIR}/nginx/dhparam:/etc/nginx/dhparam
-      - ${HOST_DIR}/nginx/html:/usr/share/nginx/html
-      - ${HOST_DIR}/nginx/vhost.d:/etc/nginx/vhost.d
-      - /var/run/docker.sock:/tmp/docker.sock:ro
-      # - ./conf.d/my_proxy.conf:/etc/nginx/conf.d/my_proxy.conf:ro
-    environment:
-      - ENABLE_IPV6=true
-      - RESOLVERS=1.1.1.1
+      - /var/run/docker.sock:/var/run/docker.sock
+      - ${HOST_DIR}/letsencrypt:/letsencrypt
+    command:
+      - --api.insecure=true
+      - --certificatesresolvers.myresolver.acme.email=${LETSENCRYPT_EMAIL}
+      - --certificatesresolvers.myresolver.acme.storage=/letsencrypt/acme.json
+      - --certificatesresolvers.myresolver.acme.tlschallenge=true
+      - --entrypoints.websecure.address=:443
+      - --providers.docker.exposedbydefault=false
+      - --providers.docker=true
 
-  nginx-proxy-acme:
-    profiles: ['proxy']
-    container_name: nginx-proxy-acme
-    image: nginxproxy/acme-companion
-    restart: unless-stopped
-    network_mode: bridge
-    volumes:
-      - ${HOST_DIR}/nginx/acme.sh:/etc/acme.sh:rw
-      - ${HOST_DIR}/nginx/certs:/etc/nginx/certs:rw
-      - ${HOST_DIR}/nginx/dhparam:/etc/nginx/dhparam
-      - ${HOST_DIR}/nginx/html:/usr/share/nginx/html
-      - ${HOST_DIR}/nginx/vhost.d:/etc/nginx/vhost.d
-      - /var/run/docker.sock:/var/run/docker.sock:ro
-      # - ./conf.d/my_proxy.conf:/etc/nginx/conf.d/my_proxy.conf:ro
-    environment:
-      - DEFAULT_EMAIL
-      - NGINX_PROXY_CONTAINER=nginx-proxy
+      # for testing SSL
+      # - --certificatesresolvers.myresolver.acme.caserver=https://acme-staging-v02.api.letsencrypt.org/directory
+      # - --certificatesresolvers.myresolver.acme.storage=/letsencrypt/test-acme.json
+
+      # - --log.level=DEBUG
