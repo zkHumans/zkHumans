@@ -1,9 +1,6 @@
 import { Link } from '@remix-run/react';
-import Modal from '../components/modal';
-import Navbar from '../components/navbar';
-import Console from '../components/console';
-import { useConsole } from '../hooks/useConsole';
-import { useZKApp, supportedNetworks } from '../hooks/useZKApp';
+import { Console, Modal, Navbar } from '../components';
+import { useConsole, useZKApp, supportedNetworks } from '../hooks';
 
 // Show first 6 and last 4 characters of user's Mina account.
 const displayAccount = (account: string) =>

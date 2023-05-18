@@ -5,7 +5,7 @@ interface ModalProps {
   children: React.ReactNode;
 }
 
-export default function Modal({ title, children }: ModalProps) {
+export function Modal({ title, children }: ModalProps) {
   const id = React.useId();
   return (
     <>

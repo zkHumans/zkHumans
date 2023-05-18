@@ -24,7 +24,7 @@ interface NavbarProps {
   handleConnectWallet: () => void;
 }
 
-export default function Navbar({
+export function Navbar({
   account,
   authenticated,
   handleConnectWallet,

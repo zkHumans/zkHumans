@@ -4,7 +4,7 @@ interface ConsoleProps {
   log: string[]; // log entries in reverse order
 }
 
-export default function Console({ log }: ConsoleProps) {
+export function Console({ log }: ConsoleProps) {
   return (
     <div
       tabIndex={0}
