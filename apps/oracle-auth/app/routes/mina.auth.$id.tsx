@@ -1,6 +1,10 @@
 import type { LoaderArgs } from '@remix-run/node';
 import { json } from '@remix-run/node';
-import { useCatch, useLoaderData } from '@remix-run/react';
+import {
+  isRouteErrorResponse,
+  useLoaderData,
+  useRouteError,
+} from '@remix-run/react';
 import invariant from 'tiny-invariant';
 
 import { isAuthenticated, requireAuthenticatedUser } from '~/auth.server';
@@ -72,18 +76,22 @@ export default function MinaHumanodeAuth() {
   );
 }
 
-export function ErrorBoundary({ error }: { error: Error }) {
+export function ErrorBoundary() {
+  const error = useRouteError();
   console.error(error);
 
-  return <div>An unexpected error occurred: {error.message}</div>;
-}
-
-export function CatchBoundary() {
-  const caught = useCatch();
-
-  // if (caught.status === 404) {
-  //   return <div>BioAuth not found</div>;
-  // }
-
-  throw new Error(`Unexpected caught response with status: ${caught.status}`);
+  if (isRouteErrorResponse(error)) {
+    return (
+      <div>
+        <h1>
+          {error.status} {error.statusText}
+        </h1>
+        <p>{error.data}</p>
+      </div>
+    );
+  } else if (error instanceof Error) {
+    return <div>An unexpected error occurred: {error.message}</div>;
+  } else {
+    return <h1>Unknown Error</h1>;
+  }
 }
