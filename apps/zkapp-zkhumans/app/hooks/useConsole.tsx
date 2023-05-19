@@ -6,7 +6,7 @@ export type LogFunction = (
 ) => void;
 
 export function useConsole() {
-  const [consoleLog, setConsoleLog] = useState([] as string[]);
+  const [output, setOutput] = useState([] as string[]);
 
   const [lastLog, setLastLog] = useState('');
 
@@ -19,13 +19,13 @@ export function useConsole() {
     };
     const msg = logTypes[logType] + ' ' + args.join(' ');
     if (msg === lastLog) {
-      consoleLog[0] += ' •';
-      setConsoleLog(() => consoleLog);
+      output[0] += ' •';
+      setOutput(() => output);
     } else {
       setLastLog(() => msg);
-      setConsoleLog((s) => [msg, ...s]);
+      setOutput((s) => [msg, ...s]);
     }
   };
 
-  return { consoleLog, log };
+  return { output, log };
 }

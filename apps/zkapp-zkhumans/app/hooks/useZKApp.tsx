@@ -25,19 +25,23 @@ const delay = (ms: number) => new Promise((r) => setTimeout(r, ms));
  */
 const CYCLE_CHECK_ACCOUNT_NETWORK = 5_000;
 
+const stateInit = {
+  hasAccount: null as null | boolean, // has a MINA account been wallet-connected to the site
+  hasAccountNetwork: null as null | boolean, // does the MINA account exist on-chain
+  hasNetwork: null as null | boolean, // is the wallet configured to supported network
+  hasWallet: null as null | boolean, // is MINA-compatible wallet installed
+  account: null as null | string,
+  network: null as null | string,
+  snarkyjs: null as null | Snarkyjs,
+  counterAccountNetwork: 0,
+};
+
+export type ZKAppState = typeof stateInit;
+
 export function useZKApp(log: LogFunction) {
   let zkApp;
 
-  const [state, setState] = useState({
-    hasAccount: null as null | boolean, // has a MINA account been wallet-connected to the site
-    hasAccountNetwork: null as null | boolean, // does the MINA account exist on-chain
-    hasNetwork: null as null | boolean, // is the wallet configured to supported network
-    hasWallet: null as null | boolean, // is MINA-compatible wallet installed
-    account: null as null | string,
-    network: null as null | string,
-    snarkyjs: null as null | Snarkyjs,
-    counterAccountNetwork: 0,
-  });
+  const [state, setState] = useState(stateInit);
 
   // watch for MINA wallet changes
   useEffect(() => {

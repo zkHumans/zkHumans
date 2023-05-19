@@ -1,10 +1,10 @@
 import { CommandLineIcon } from '@heroicons/react/24/outline';
 
 interface ConsoleProps {
-  log: string[]; // log entries in reverse order
+  output: string[]; // output log entries in reverse order
 }
 
-export function Console({ log }: ConsoleProps) {
+export function Console({ output }: ConsoleProps) {
   return (
     <div
       tabIndex={0}
@@ -15,7 +15,7 @@ export function Console({ log }: ConsoleProps) {
         <CommandLineIcon className="mr-2 h-5 w-5" strokeWidth="2" /> Console
       </div>
       <div className="collapse-content flex h-28 flex-col-reverse overflow-y-scroll">
-        {log.map((v, i) => (
+        {output.map((v, i) => (
           <div key={i}>{v}</div>
         ))}
       </div>
