@@ -181,7 +181,7 @@ async function addAuthnFactorToIdentityKeyring(
   console.log(`@T+${t()} | - smtIDManager.prove()`);
 
   // create new authn factor
-  const authnFactor = AuthnFactor.new(authnFactorPublic);
+  const authnFactor = AuthnFactor.init(authnFactorPublic);
   const authnFactorHash = authnFactor.hash(authnFactorPrivate);
   console.log(`@T+${t()} | - authnFactor.hash()`);
 

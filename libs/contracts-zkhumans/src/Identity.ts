@@ -84,7 +84,7 @@ export class AuthnFactor extends Struct({
   // TODO: createdAt: Field,
   // TODO: updatedAt: Field,
 }) {
-  static new(publicInput: AuthnFactorPublic): AuthnFactor {
+  static init(publicInput: AuthnFactorPublic): AuthnFactor {
     const { type: _type, provider, revision } = publicInput;
     return new AuthnFactor({
       type: Field(_type),
