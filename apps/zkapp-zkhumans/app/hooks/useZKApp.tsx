@@ -3,7 +3,7 @@ import { delay } from '@zkhumans/utils';
 import { useEffect, useState } from 'react';
 import type { LogFunction } from './useConsole';
 
-type Snarkyjs = typeof import('snarkyjs');
+export type Snarkyjs = typeof import('snarkyjs');
 
 // 'Mainnet', 'Devnet', 'Berkeley', or 'Unknown'
 export const supportedNetworks = ['Berkeley'];
@@ -14,12 +14,6 @@ const isNetworkSupported = (network: string) =>
 const MINA_NETWORK = 'https://proxy.berkeley.minaexplorer.com/graphql';
 
 /**
- * the address (public key) of the zkApp account
- */
-const ZKAPP_ADDRESS_BIOAUTH =
-  'B62qifx6gjn7Zy9MYvt8YKVPhxqdqnWesyj1otKpn95ZyL6eTnBUJaU';
-
-/**
  * How often to (re)check the MINA network for presence of account.
  */
 const CYCLE_CHECK_ACCOUNT_NETWORK = 5_000;
@@ -27,20 +21,25 @@ const CYCLE_CHECK_ACCOUNT_NETWORK = 5_000;
 const stateInit = {
   hasAccount: null as null | boolean, // has a MINA account been wallet-connected to the site
   hasAccountNetwork: null as null | boolean, // does the MINA account exist on-chain
+  hasError: null as null | boolean, // has a fatal error occurred
   hasNetwork: null as null | boolean, // is the wallet configured to supported network
   hasWallet: null as null | boolean, // is MINA-compatible wallet installed
   account: null as null | string,
   network: null as null | string,
   snarkyjs: null as null | Snarkyjs,
+  zkApp: null as null | any, // eslint-disable-line @typescript-eslint/no-explicit-any
   counterAccountNetwork: 0,
 };
 
-export type ZKAppState = typeof stateInit;
+export type ZKAppState<T> = Omit<typeof stateInit, 'zkApp'> & {
+  zkApp: T | null;
+};
 
-export function useZKApp(log: LogFunction) {
-  let zkApp;
-
-  const [state, setState] = useState(stateInit);
+export function useZKApp<T>(
+  log: LogFunction,
+  zkAppInit: (snarkyjs: Snarkyjs) => Promise<T>
+) {
+  const [state, setState] = useState<ZKAppState<T>>(stateInit);
 
   // watch for MINA wallet changes
   useEffect(() => {
@@ -162,7 +161,7 @@ export function useZKApp(log: LogFunction) {
   };
 
   function handleConnectWallet() {
-    log('info', 'Connect wallet!');
+    log('info', 'Connectng wallet...');
 
     (async () => {
       const wallet = getWallet();
@@ -190,33 +189,36 @@ export function useZKApp(log: LogFunction) {
       setState((s) => ({ ...s, snarkyjs }));
       log(
         'time',
-        `@T+${window.performance.now() - timeStart} ms | snarkyjs isReady`
+        `@T+${window.performance.now() - timeStart} ms | snarkyjs ready`
       );
 
-      const { BioAuth } = await import('@zkhumans/contracts');
-      log(
-        'time',
-        `@T+${
-          window.performance.now() - timeStart
-        } ms | BioAuth contract imported`
-      );
+      ////////////////////////////////////////////////////////////////////////
+      // load zkApp!
+      ////////////////////////////////////////////////////////////////////////
 
-      // Update this to use the address (public key) for your zkApp account
-      zkApp = new BioAuth(snarkyjs.PublicKey.fromBase58(ZKAPP_ADDRESS_BIOAUTH));
-      log(
-        'info',
-        'zkApp loaded!',
-        'isSecureContext:',
-        isSecureContext,
-        'self.crossOriginIsolated:',
-        self.crossOriginIsolated
-      );
-      log(
-        'time',
-        `@T+${window.performance.now() - timeStart} ms | zkApp = new BioAuth`
-      );
+      try {
+        const zkApp = await zkAppInit(snarkyjs);
+        setState((s) => ({ ...s, hasError: false, zkApp }));
+        log(
+          'info',
+          'zkApp loaded!',
+          'isSecureContext:',
+          isSecureContext,
+          'self.crossOriginIsolated:',
+          self.crossOriginIsolated
+        );
+        log(
+          'time',
+          `@T+${window.performance.now() - timeStart} ms | zkApp ready`
+        );
+      } catch (
+        err: any // eslint-disable-line @typescript-eslint/no-explicit-any
+      ) {
+        log('error', 'ERROR: zkAppInit:', err.message, err.code);
+        setState((s) => ({ ...s, hasError: true }));
+      }
     })();
   }
 
-  return { state, handleConnectWallet, zkApp };
+  return { state, handleConnectWallet };
 }
