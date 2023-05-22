@@ -10,4 +10,5 @@ ln -sf ../../node_modules . \
   && mkdir -p node_modules/@zkhumans \
   && ln -sf \
     ../../dist/libs/snarky-bioauth \
+    ../../dist/libs/utils \
     ./node_modules/@zkhumans/
