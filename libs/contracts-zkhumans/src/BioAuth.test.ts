@@ -12,7 +12,7 @@ import {
 import { jest } from '@jest/globals';
 import { BioAuthOracle, BioAuthorizedMessage } from '@zkhumans/snarky-bioauth';
 
-const ORACLE_URL = 'http://localhost:3000';
+const ORACLE_URL = `http://${process.env['AUTH_TEST_HOST']}:${process.env['AUTH_TEST_PORT']}`;
 
 const proofsEnabled = false;
 
