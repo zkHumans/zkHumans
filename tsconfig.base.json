@@ -17,7 +17,8 @@
     "paths": {
       "@zkhumans/contracts": ["libs/contracts-zkhumans/build/src/"],
       "@zkhumans/snarky-bioauth": ["libs/snarky-bioauth/src/index.ts"],
-      "@zkhumans/trpc": ["libs/trpc/src/index.ts"]
+      "@zkhumans/trpc": ["libs/trpc/src/index.ts"],
+      "@zkhumans/utils": ["libs/utils/src/index.ts"]
     }
   },
   "exclude": ["node_modules", "tmp"]
