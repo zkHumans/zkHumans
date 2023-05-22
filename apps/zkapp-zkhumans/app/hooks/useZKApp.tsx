@@ -1,4 +1,5 @@
 import MinaProvider from '@aurowallet/mina-provider';
+import { delay } from '@zkhumans/utils';
 import { useEffect, useState } from 'react';
 import type { LogFunction } from './useConsole';
 
@@ -17,8 +18,6 @@ const MINA_NETWORK = 'https://proxy.berkeley.minaexplorer.com/graphql';
  */
 const ZKAPP_ADDRESS_BIOAUTH =
   'B62qifx6gjn7Zy9MYvt8YKVPhxqdqnWesyj1otKpn95ZyL6eTnBUJaU';
-
-const delay = (ms: number) => new Promise((r) => setTimeout(r, ms));
 
 /**
  * How often to (re)check the MINA network for presence of account.
