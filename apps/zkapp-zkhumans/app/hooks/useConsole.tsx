@@ -18,11 +18,11 @@ export function useConsole() {
       time: '⏱️',
     };
     const msg = logTypes[logType] + ' ' + args.join(' ');
+    setLastLog(() => msg);
     if (msg === lastLog) {
       output[0] += ' •';
       setOutput(() => output);
     } else {
-      setLastLog(() => msg);
       setOutput((s) => [msg, ...s]);
     }
   };
