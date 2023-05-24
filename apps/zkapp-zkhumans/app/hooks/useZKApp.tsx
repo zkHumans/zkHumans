@@ -27,6 +27,7 @@ const stateInit = {
   account: null as null | string,
   network: null as null | string,
   snarkyjs: null as null | Snarkyjs,
+  wallet: undefined as undefined | MinaProvider,
   zkApp: null as null | any, // eslint-disable-line @typescript-eslint/no-explicit-any
   counterAccountNetwork: 0,
 };
@@ -91,7 +92,7 @@ export function useZKApp<T>(
   // check if user device has mina-compatible wallet
   const checkWallet = (wallet?: MinaProvider) => {
     const hasWallet = wallet !== undefined;
-    setState((s) => ({ ...s, hasWallet }));
+    setState((s) => ({ ...s, hasWallet, wallet }));
     log(hasWallet ? 'success' : 'error', 'has MINA-compatible wallet');
     return hasWallet;
   };
