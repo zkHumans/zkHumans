@@ -1,7 +1,7 @@
-import { Field } from 'snarkyjs';
+import { Field, Provable } from 'snarkyjs';
 import { Store } from 'snarky-smt';
 
-export { MemoryStore };
+export { TrpcStore };
 
 const enum SetType {
   nodes = 0,
@@ -16,35 +16,43 @@ const enum OperationType {
 /**
  * Store based on memory
  *
- * @class MemoryStore
+ * @class TrpcStore
  * @implements {Store<V>}
  * @template V
  */
-class MemoryStore<V> implements Store<V> {
+class TrpcStore<V> implements Store<V> {
   protected nodesMap: Map<string, Field[]>;
   protected valuesMap: Map<string, V>;
+  protected eltTyp: Provable<V>;
+  protected smtName: string;
+  protected trpc: any;
 
   protected operationCache: {
     opType: OperationType;
     setType: SetType;
     k: string;
-    v: any;
+    v: any; // eslint-disable-line @typescript-eslint/no-explicit-any
   }[];
 
   /**
-   * Creates an instance of MemoryStore.
-   * @memberof MemoryStore
+   * Creates an instance of TrpcStore.
+   * @param {Provable<V>} eltTyp
+   * @param {string} smtName
+   * @memberof TrpcStore
    */
-  constructor() {
+  constructor(trpc: any, eltTyp: Provable<V>, smtName: string) {
     this.nodesMap = new Map<string, Field[]>();
     this.valuesMap = new Map<string, V>();
     this.operationCache = [];
+    this.eltTyp = eltTyp;
+    this.smtName = smtName;
+    this.trpc = trpc;
   }
 
   /**
    * Clear all prepare operation cache.
    *
-   * @memberof MemoryStore
+   * @memberof TrpcStore
    */
   public clearPrepareOperationCache(): void {
     this.operationCache = [];
@@ -54,7 +62,7 @@ class MemoryStore<V> implements Store<V> {
    * Get the tree root. Error is thrown when the root does not exist.
    *
    * @return {*}  {Promise<Field>}
-   * @memberof MemoryStore
+   * @memberof TrpcStore
    */
   public async getRoot(): Promise<Field> {
     const fs = this.nodesMap.get('root');
@@ -69,7 +77,7 @@ class MemoryStore<V> implements Store<V> {
    * Prepare update the root. Use the commit() method to actually submit changes.
    *
    * @param {Field} root
-   * @memberof MemoryStore
+   * @memberof TrpcStore
    */
   public prepareUpdateRoot(root: Field): void {
     this.operationCache.push({
@@ -85,11 +93,11 @@ class MemoryStore<V> implements Store<V> {
    *
    * @param {Field} key
    * @return {*}  {Promise<Field[]>}
-   * @memberof MemoryStore
+   * @memberof TrpcStore
    */
   public async getNodes(key: Field): Promise<Field[]> {
-    let keyStr = key.toString();
-    let nodes = this.nodesMap.get(keyStr);
+    const keyStr = key.toString();
+    const nodes = this.nodesMap.get(keyStr);
     if (nodes) {
       return nodes;
     } else {
@@ -102,7 +110,7 @@ class MemoryStore<V> implements Store<V> {
    *
    * @param {Field} key
    * @param {Field[]} value
-   * @memberof MemoryStore
+   * @memberof TrpcStore
    */
   public preparePutNodes(key: Field, value: Field[]): void {
     this.operationCache.push({
@@ -117,7 +125,7 @@ class MemoryStore<V> implements Store<V> {
    * Prepare delete nodes for a key. Use the commit() method to actually submit changes.
    *
    * @param {Field} key
-   * @memberof MemoryStore
+   * @memberof TrpcStore
    */
   public prepareDelNodes(key: Field): void {
     this.operationCache.push({
@@ -133,7 +141,7 @@ class MemoryStore<V> implements Store<V> {
    *
    * @param {Field} path
    * @return {*}  {Promise<V>}
-   * @memberof MemoryStore
+   * @memberof TrpcStore
    */
   public async getValue(path: Field): Promise<V> {
     const pathStr = path.toString();
@@ -151,7 +159,7 @@ class MemoryStore<V> implements Store<V> {
    *
    * @param {Field} path
    * @param {V} value
-   * @memberof MemoryStore
+   * @memberof TrpcStore
    */
   public preparePutValue(path: Field, value: V): void {
     this.operationCache.push({
@@ -166,7 +174,7 @@ class MemoryStore<V> implements Store<V> {
    * Prepare delete the value for a key. Use the commit() method to actually submit changes.
    *
    * @param {Field} path
-   * @memberof MemoryStore
+   * @memberof TrpcStore
    */
   public prepareDelValue(path: Field): void {
     this.operationCache.push({
@@ -181,7 +189,7 @@ class MemoryStore<V> implements Store<V> {
    * Use the commit() method to actually submit all prepare changes.
    *
    * @return {*}  {Promise<void>}
-   * @memberof MemoryStore
+   * @memberof TrpcStore
    */
   public async commit(): Promise<void> {
     for (let i = 0, len = this.operationCache.length; i < len; i++) {
@@ -215,7 +223,7 @@ class MemoryStore<V> implements Store<V> {
    * Clear the store.
    *
    * @return {*}  {Promise<void>}
-   * @memberof MemoryStore
+   * @memberof TrpcStore
    */
   public async clear(): Promise<void> {
     this.nodesMap.clear();
@@ -226,7 +234,7 @@ class MemoryStore<V> implements Store<V> {
    * Get values map, key is Field.toString().
    *
    * @return {*}  {Promise<Map<string, V>>}
-   * @memberof MemoryStore
+   * @memberof TrpcStore
    */
   public async getValuesMap(): Promise<Map<string, V>> {
     return this.valuesMap;
