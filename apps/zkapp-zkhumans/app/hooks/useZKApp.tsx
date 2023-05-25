@@ -38,7 +38,7 @@ export type ZKAppState<T> = Omit<typeof stateInit, 'zkApp'> & {
 
 export function useZKApp<T>(
   log: LogFunction,
-  zkAppInit: (snarkyjs: Snarkyjs) => Promise<T>
+  zkAppInit: (snarkyjs: Snarkyjs, log: LogFunction) => Promise<T>
 ) {
   const [state, setState] = useState<ZKAppState<T>>(stateInit);
 
@@ -198,14 +198,14 @@ export function useZKApp<T>(
       ////////////////////////////////////////////////////////////////////////
 
       try {
-        const zkApp = await zkAppInit(snarkyjs);
+        const zkApp = await zkAppInit(snarkyjs, log);
         setState((s) => ({ ...s, hasError: false, zkApp }));
         log(
-          'info',
-          'zkApp loaded!',
+          'success',
+          'zkApp(s) loaded!',
           'isSecureContext:',
           isSecureContext,
-          'self.crossOriginIsolated:',
+          'crossOriginIsolated:',
           self.crossOriginIsolated
         );
         log(

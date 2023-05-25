@@ -8,16 +8,11 @@ import {
   ScrollRestoration,
   useOutletContext,
 } from '@remix-run/react';
+import { trpc } from '@zkhumans/trpc-client';
 import styles from './tailwind.css';
 import { UI } from './components';
 import { useConsole, useZKApp } from './hooks';
 import type { LogFunction, Snarkyjs, ZKAppState } from './hooks';
-
-/**
- * the address (public key) of the zkApp account
- */
-const ZKAPP_ADDRESS_BIOAUTH =
-  'B62qifx6gjn7Zy9MYvt8YKVPhxqdqnWesyj1otKpn95ZyL6eTnBUJaU';
 
 export const links: LinksFunction = () => [{ rel: 'stylesheet', href: styles }];
 
@@ -28,9 +23,19 @@ export const meta: V2_MetaFunction = () => [
 ];
 
 // zkApp init function, called in-browser by useZKApp after wallet is connected
-async function zkAppInit(snarkyjs: Snarkyjs) {
-  const { BioAuth } = await import('@zkhumans/contracts');
-  return new BioAuth(snarkyjs.PublicKey.fromBase58(ZKAPP_ADDRESS_BIOAUTH));
+async function zkAppInit(snarkyjs: Snarkyjs, log: LogFunction) {
+  const { BioAuth, IdentityManager } = await import('@zkhumans/contracts');
+
+  const pubKey = (x: string) => snarkyjs.PublicKey.fromBase58(x);
+  const meta = await trpc.meta.query();
+
+  const bioAuth = new BioAuth(pubKey(meta.address.BioAuth));
+  const identityManager = new IdentityManager(
+    pubKey(meta.address.IdentityManager)
+  );
+  log('success', 'zkApp BioAuth @', meta.address.BioAuth);
+  log('success', 'zkApp IdentityManager @', meta.address.IdentityManager);
+  return { bioAuth, identityManager };
 }
 
 // our zkApp's type, deduced from the init function
