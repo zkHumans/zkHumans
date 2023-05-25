@@ -1,3 +1,4 @@
+export * from './alert';
 export * from './console';
 export * from './icon-mina';
 export * from './modal';
