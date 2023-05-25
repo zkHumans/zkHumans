@@ -47,88 +47,109 @@ export function Navbar({
     }
   };
 
+  const buttonThemeToggle = (
+    <div className="tooltip tooltip-bottom" data-tip="theme toggle">
+      <button
+        className={`swap btn-ghost swap-rotate btn-circle btn ${
+          themeDark ? 'swap-active' : ''
+        }`}
+        onClick={() => setThemeDark(!themeDark)}
+      >
+        <div className="swap-on" data-set-theme="dark">
+          <SunIcon className="h-6 w-6" strokeWidth="2" />
+        </div>
+        <div className="swap-off" data-set-theme="light">
+          <MoonIcon className="h-6 w-6" strokeWidth="2" />
+        </div>
+      </button>
+    </div>
+  );
+
+  const buttonWalletConnect = (
+    <button
+      className="btn btn-primary gap-2 normal-case"
+      onClick={handleConnectWallet}
+    >
+      {account ? account : 'Connect'}
+      <IconMina />
+    </button>
+  );
+
+  const links = (
+    <div>
+      <Link to={'./identities'}>
+        <button className="btn btn-ghost normal-case">IDs</button>
+      </Link>
+    </div>
+  );
+
+  const menu = (
+    <div className="dropdown">
+      <label tabIndex={0} className="btn-ghost btn-circle btn">
+        <Bars3Icon className="h-6 w-6" strokeWidth="2" />
+      </label>
+      <ul
+        tabIndex={0}
+        className="dropdown-content menu rounded-box menu-compact bg-base-200 mt-3 w-52 p-2 shadow"
+      >
+        <li className="hover-bordered" onClick={closeMenu}>
+          <Link to="/">Home</Link>
+        </li>
+        <li className="hover-bordered" onClick={closeMenu}>
+          <Link to="/identities">Identities</Link>
+        </li>
+        <li className="hover-bordered" onClick={closeMenu}>
+          <Link to="/collectives">Collectives</Link>
+        </li>
+        <li className="menu-title">
+          <span>Settings</span>
+        </li>
+        <li className="hover-bordered ml-2">
+          <label tabIndex={0}>Theme</label>
+          <ul className="rounded-box bg-base-300 p-2">
+            {themes.map((theme: string) => (
+              <li key={theme}>
+                <span data-set-theme={theme}>{theme}</span>
+              </li>
+            ))}
+          </ul>
+        </li>
+        <li className="menu-title">
+          <span>Account</span>
+        </li>
+        <li className="hover-bordered" onClick={closeMenu}>
+          {authenticated ? (
+            <Link to="/logout">
+              <ArrowRightOnRectangleIcon
+                className="h-6 w-6 rotate-180"
+                strokeWidth="2"
+              />
+              Logout
+            </Link>
+          ) : (
+            <Link to="/login">
+              <ArrowLeftOnRectangleIcon
+                className="h-6 w-6 rotate-180"
+                strokeWidth="2"
+              />
+              Login
+            </Link>
+          )}
+        </li>
+      </ul>
+    </div>
+  );
+
   return (
     <div className="navbar bg-base-100">
       <div className="navbar-start">
-        <div className="dropdown">
-          <label tabIndex={0} className="btn-ghost btn-circle btn">
-            <Bars3Icon className="h-6 w-6" strokeWidth="2" />
-          </label>
-          <ul
-            tabIndex={0}
-            className="dropdown-content menu rounded-box menu-compact bg-base-200 mt-3 w-52 p-2 shadow"
-          >
-            <li className="hover-bordered" onClick={closeMenu}>
-              <Link to="/">Home</Link>
-            </li>
-            <li className="hover-bordered" onClick={closeMenu}>
-              <Link to="/identifiers">Identifiers</Link>
-            </li>
-            <li className="hover-bordered" onClick={closeMenu}>
-              <Link to="/collectives">Collectives</Link>
-            </li>
-            <li className="menu-title">
-              <span>Settings</span>
-            </li>
-            <li className="hover-bordered ml-2">
-              <label tabIndex={0}>Theme</label>
-              <ul className="rounded-box bg-base-300 p-2">
-                {themes.map((theme: string) => (
-                  <li key={theme}>
-                    <span data-set-theme={theme}>{theme}</span>
-                  </li>
-                ))}
-              </ul>
-            </li>
-            <li className="menu-title">
-              <span>Account</span>
-            </li>
-            <li className="hover-bordered" onClick={closeMenu}>
-              {authenticated ? (
-                <Link to="/logout">
-                  <ArrowRightOnRectangleIcon
-                    className="h-6 w-6 rotate-180"
-                    strokeWidth="2"
-                  />
-                  Logout
-                </Link>
-              ) : (
-                <Link to="/login">
-                  <ArrowLeftOnRectangleIcon
-                    className="h-6 w-6 rotate-180"
-                    strokeWidth="2"
-                  />
-                  Login
-                </Link>
-              )}
-            </li>
-          </ul>
-        </div>
-        <div className="tooltip tooltip-bottom" data-tip="theme toggle">
-          <button
-            className={`swap btn-ghost swap-rotate btn-circle btn ${
-              themeDark ? 'swap-active' : ''
-            }`}
-            onClick={() => setThemeDark(!themeDark)}
-          >
-            <div className="swap-on" data-set-theme="dark">
-              <SunIcon className="h-6 w-6" strokeWidth="2" />
-            </div>
-            <div className="swap-off" data-set-theme="light">
-              <MoonIcon className="h-6 w-6" strokeWidth="2" />
-            </div>
-          </button>
-        </div>
+        {menu}
+        {buttonThemeToggle}
+        {links}
       </div>
       <div className="navbar-center"></div>
       <div className="navbar-end">
-        <button
-          className="btn btn-primary gap-2 normal-case"
-          onClick={handleConnectWallet}
-        >
-          {account ? account : 'Connect'}
-          <IconMina />
-        </button>
+        {buttonWalletConnect}
         {/*
         <button className="btn-ghost btn-circle btn">
           <MagnifyingGlassIcon className="h-5 w-5" strokeWidth="2" />
