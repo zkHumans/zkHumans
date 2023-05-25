@@ -1,5 +1,5 @@
+import { trpc } from '@zkhumans/trpc-client';
 import { useAppContext } from '../root';
-import { trpc } from '../trpc';
 
 export default function NewIdentity() {
   const { cnsl, zk } = useAppContext();
