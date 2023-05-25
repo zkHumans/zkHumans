@@ -1,4 +1,4 @@
-import { prisma } from '../prisma';
+import { prisma } from '../middleware/prisma';
 import { t } from '../server';
 
 export const healthRouter = t.router({

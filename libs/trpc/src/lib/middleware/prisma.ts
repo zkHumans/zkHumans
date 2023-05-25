@@ -9,6 +9,7 @@ const prismaGlobal = global as typeof global & {
   prisma?: PrismaClient;
 };
 
+// export prisma client directly
 export const prisma: PrismaClient =
   prismaGlobal.prisma ||
   new PrismaClient({
@@ -23,6 +24,7 @@ if (process.env['NODE_ENV'] !== 'production') {
   prismaGlobal.prisma = prisma;
 }
 
+// export prisma client as trpc middleware
 export const prismaMiddleware = t.middleware(({ next, ctx }) => {
   return next({
     ctx: {
