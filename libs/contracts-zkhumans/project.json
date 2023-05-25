@@ -41,6 +41,15 @@
           "codeCoverage": true
         }
       }
+    },
+    "typecheck": {
+      "executor": "nx:run-commands",
+      "options": {
+        "commands": [
+          "tsc --noEmit -p libs/contracts-zkhumans/tsconfig.lib.json",
+          "tsc --noEmit -p libs/contracts-zkhumans/tsconfig.spec.json"
+        ]
+      }
     }
   },
   "tags": []

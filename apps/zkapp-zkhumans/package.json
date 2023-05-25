@@ -6,8 +6,7 @@
   "scripts": {
     "build": "nx exec -- remix build",
     "dev": "nx exec -- remix dev",
-    "start": "nx exec -- remix-serve build",
-    "typecheck": "nx exec -- tsc"
+    "start": "nx exec -- remix-serve build"
   },
   "dependencies": {
     "@remix-run/node": "^1.14.3",

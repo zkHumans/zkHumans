@@ -10,6 +10,12 @@
       "options": {
         "lintFilePatterns": ["apps/oracle-auth/app/**/*.*"]
       }
+    },
+    "typecheck": {
+      "executor": "nx:run-commands",
+      "options": {
+        "commands": ["tsc --noEmit -p apps/oracle-auth/tsconfig.json"]
+      }
     }
   },
   "tags": []

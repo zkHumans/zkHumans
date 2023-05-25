@@ -71,6 +71,15 @@
           "codeCoverage": true
         }
       }
+    },
+    "typecheck": {
+      "executor": "nx:run-commands",
+      "options": {
+        "commands": [
+          "tsc --noEmit -p apps/api/tsconfig.app.json",
+          "tsc --noEmit -p apps/api/tsconfig.spec.json"
+        ]
+      }
     }
   },
   "tags": []

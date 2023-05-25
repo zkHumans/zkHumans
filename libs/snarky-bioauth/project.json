@@ -41,6 +41,15 @@
           "codeCoverage": true
         }
       }
+    },
+    "typecheck": {
+      "executor": "nx:run-commands",
+      "options": {
+        "commands": [
+          "tsc --noEmit -p libs/snarky-bioauth/tsconfig.lib.json",
+          "tsc --noEmit -p libs/snarky-bioauth/tsconfig.spec.json"
+        ]
+      }
     }
   },
   "tags": []

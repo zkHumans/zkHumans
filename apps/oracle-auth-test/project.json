@@ -71,6 +71,15 @@
           "codeCoverage": true
         }
       }
+    },
+    "typecheck": {
+      "executor": "nx:run-commands",
+      "options": {
+        "commands": [
+          "tsc --noEmit -p apps/oracle-auth-test/tsconfig.app.json",
+          "tsc --noEmit -p apps/oracle-auth-test/tsconfig.spec.json"
+        ]
+      }
     }
   },
   "tags": []
