@@ -16,3 +16,22 @@ model log {
   message   Json
   createdAt DateTime @default(now())
 }
+
+model smt {
+  id   String @id
+  root String
+
+  // relations
+  txns smtTxn[]
+}
+
+model smtTxn {
+  id    Int     @id @default(autoincrement())
+  key   String
+  value String?
+  txn   String // [delete,update]
+
+  // relations
+  smt   smt?    @relation(fields: [smtId], references: [id], onDelete: Cascade, onUpdate: Cascade)
+  smtId String?
+}
