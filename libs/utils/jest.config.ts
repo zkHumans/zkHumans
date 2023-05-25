@@ -7,4 +7,7 @@ export default {
   },
   moduleFileExtensions: ['ts', 'js', 'html'],
   coverageDirectory: '../../coverage/libs/utils',
+
+  // from zk-generated contracts
+  testEnvironment: 'node',
 };
