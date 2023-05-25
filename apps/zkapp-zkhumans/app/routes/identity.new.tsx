@@ -1,11 +1,13 @@
 import { trpc } from '@zkhumans/trpc-client';
 import { useAppContext } from '../root';
 
+import type { AuthnFactor, Identity } from '@zkhumans/contracts';
+
 export default function NewIdentity() {
   const { cnsl, zk } = useAppContext();
 
   async function handleCreateIdentity() {
-    cnsl.log('info', 'TODO: Create ID!');
+    cnsl.log('info', 'Creating Identity...');
 
     const snarkyjs = zk.state.snarkyjs;
     if (!snarkyjs || !zk.state.account) {
@@ -13,55 +15,89 @@ export default function NewIdentity() {
       return;
     }
 
+    try {
+      const r = await trpc.health.check.query();
+      if (r !== 1) throw new Error('API not available');
+    } catch (
+      err: any // eslint-disable-line @typescript-eslint/no-explicit-any
+    ) {
+      cnsl.log('error', 'ERROR: API not available');
+      console.log('ERROR', err.message, err.code);
+      return;
+    }
+
     ////////////////////////////////////////////////////////////////////////
-    // dynamically load libs for in-browser only
+    // dynamically load libs for in-browser only, avoid ERR_REQUIRE_ESM
     ////////////////////////////////////////////////////////////////////////
 
-    const { Field, Poseidon, PublicKey, CircuitString } = snarkyjs;
-    const { AuthnFactor, Identity, AuthnType, AuthnProvider } = await import(
+    const { AuthnFactor, AuthnProvider, AuthnType, Identity } = await import(
       '@zkhumans/contracts'
     );
+    const { smtApplyTransactions, smtValueToString } = await import(
+      '@zkhumans/utils'
+    );
     const { MemoryStore, SparseMerkleTree } = await import('snarky-smt');
-    const r = await trpc.health.check.query();
-    console.log('trpc health.check', r);
-
-    const s = await trpc.smt.update.query();
-    console.log('trpc smt.update', s);
+    const { CircuitString, Field, Poseidon, PublicKey } = snarkyjs;
 
     ////////////////////////////////////////////////////////////////////////
     // Init or Create Identity Manager MT
     ////////////////////////////////////////////////////////////////////////
 
-    // TODO: check if Identity Manager MT exists
-
     // Create an Identity Manager MT
-    const store = new MemoryStore<typeof Identity>();
+    const store = new MemoryStore<Identity>();
     const smtIDManager = await SparseMerkleTree.build(
       store,
       CircuitString,
-      Identity as any // eslint-disable-line @typescript-eslint/no-explicit-any
+      Identity
     );
+
+    // get Identity Manager MT data from database, create if not exists
+    const idMgr = '_IdentityManager';
+    const dbSmt =
+      (await trpc.smt.get.query({ id: idMgr })) ??
+      (await trpc.smt.create.mutate({ id: idMgr, root: '' }));
+    console.log('dbSmt', JSON.stringify(dbSmt, null, 2));
+
+    try {
+      // apply db-stored SMT modification history to restore in-memory
+      await smtApplyTransactions(smtIDManager, CircuitString, Identity, dbSmt);
+    } catch (
+      err: any // eslint-disable-line @typescript-eslint/no-explicit-any
+    ) {
+      cnsl.log('error', 'ERROR: SMT import');
+      console.log('ERROR', err);
+      return;
+    }
 
     ////////////////////////////////////////////////////////////////////////
     // Create personal Identity Keyring
     ////////////////////////////////////////////////////////////////////////
 
+    // use MINA publicKey as identity identifier
+    const identifier: string = zk.state.account;
+
     // Create an Identity Keyring MT
-    const storeKeyring = new MemoryStore<typeof AuthnFactor>();
+    const storeKeyring = new MemoryStore<AuthnFactor>();
     const smtIDKeyring = await SparseMerkleTree.build(
       storeKeyring,
       Field,
-      AuthnFactor as any // eslint-disable-line @typescript-eslint/no-explicit-any
+      AuthnFactor
+      // AuthnFactor as any // eslint-disable-line @typescript-eslint/no-explicit-any
     );
 
+    // get Identity Keyring MT data from database, create if not exists
+    const dbSmtKeyring =
+      (await trpc.smt.get.query({ id: identifier })) ??
+      (await trpc.smt.create.mutate({ id: identifier, root: '' }));
+    console.log('dbSmtKeyring', JSON.stringify(dbSmtKeyring, null, 2));
+
+    // apply db-stored SMT modification history to restore in-memory
+    await smtApplyTransactions(smtIDKeyring, Field, AuthnFactor, dbSmtKeyring);
+
     let identity = new Identity({
-      publicKey: PublicKey.fromBase58(zk.state.account),
+      publicKey: PublicKey.fromBase58(identifier),
       commitment: smtIDKeyring.getRoot(),
     });
-
-    // use MINA publicKey as identity identifier
-    const identifier = CircuitString.fromString(identity.publicKey.toBase58());
-    console.log('identifier', identifier.toString());
 
     ////////////////////////////////////////////////////////////////////////
     // add Operator Key as AuthnFactor to Identity Keyring
@@ -72,7 +108,7 @@ export default function NewIdentity() {
     const getUserSignature = async () => {
       try {
         const data = await zk.state.wallet?.signMessage({
-          message: identifier.toString(),
+          message: identifier,
         });
         if (!data) throw new Error('signature empty');
         const hash = Poseidon.hash([
@@ -104,7 +140,17 @@ export default function NewIdentity() {
     const afHashOpKey = afOpKey.hash(afPrivateOpKey);
 
     await smtIDKeyring.update(afHashOpKey, afOpKey);
-    console.log('smt.update', afHashOpKey, afOpKey);
+    await trpc.smt.txn.mutate({
+      id: identifier,
+      txn: 'update',
+      key: smtValueToString(afHashOpKey, Field),
+      value: smtValueToString(afOpKey, AuthnFactor),
+    });
+    console.log(
+      'smt.update',
+      smtValueToString(afHashOpKey, Field),
+      smtValueToString(afOpKey, AuthnFactor)
+    );
     identity = identity.setCommitment(smtIDKeyring.getRoot());
 
     ////////////////////////////////////////////////////////////////////////
@@ -123,7 +169,17 @@ export default function NewIdentity() {
     const afHashBioAuth = afBioAuth.hash(afPrivateBioAuth);
 
     await smtIDKeyring.update(afHashBioAuth, afBioAuth);
-    console.log('smt.update', afHashBioAuth, afBioAuth);
+    await trpc.smt.txn.mutate({
+      id: identifier,
+      txn: 'update',
+      key: smtValueToString(afHashBioAuth, Field),
+      value: smtValueToString(afBioAuth, AuthnFactor),
+    });
+    console.log(
+      'smt.update',
+      smtValueToString(afHashBioAuth, Field),
+      smtValueToString(afBioAuth, AuthnFactor)
+    );
     identity = identity.setCommitment(smtIDKeyring.getRoot());
 
     ////////////////////////////////////////////////////////////////////////
@@ -131,7 +187,8 @@ export default function NewIdentity() {
     ////////////////////////////////////////////////////////////////////////
 
     // prove the identifier IS NOT in the Identity Manager MT
-    const merkleProof = await smtIDManager.prove(identifier);
+    const identifierCircuitString = CircuitString.fromString(identifier);
+    const merkleProof = await smtIDManager.prove(identifierCircuitString);
     console.log('merkleProof sidenodes', merkleProof.sideNodes);
     cnsl.log('success', 'made proofs, TODO: txn');
 
@@ -144,7 +201,18 @@ export default function NewIdentity() {
     // });
     // await tx.prove();
     // await tx.sign([feePayerKey]).send();
-    // await smtIDManager.update(identifier, identity);
+    await smtIDManager.update(identifierCircuitString, identity);
+    await trpc.smt.txn.mutate({
+      id: idMgr,
+      txn: 'update',
+      key: smtValueToString(identifierCircuitString, CircuitString),
+      value: smtValueToString(identity, Identity),
+    });
+    console.log(
+      'smt.update',
+      smtValueToString(identifierCircuitString, CircuitString),
+      smtValueToString(identity, Identity)
+    );
     // zkapp.commitment.get().assertEquals(smtIDManager.getRoot());
   }
 
