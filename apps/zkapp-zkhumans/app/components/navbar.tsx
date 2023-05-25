@@ -1,12 +1,10 @@
 import * as React from 'react';
-import { Form, Link } from '@remix-run/react';
+import { Link } from '@remix-run/react';
 import { themeChange } from 'theme-change';
 import {
   ArrowLeftOnRectangleIcon,
   ArrowRightOnRectangleIcon,
-  Bars3Icon,
-  BellIcon,
-  MagnifyingGlassIcon,
+  EllipsisHorizontalIcon,
   MoonIcon,
   SunIcon,
 } from '@heroicons/react/24/outline';
@@ -50,7 +48,7 @@ export function Navbar({
   const buttonThemeToggle = (
     <div className="tooltip tooltip-bottom" data-tip="theme toggle">
       <button
-        className={`swap btn-ghost swap-rotate btn-circle btn ${
+        className={`swap btn-ghost swap-rotate btn-square btn ${
           themeDark ? 'swap-active' : ''
         }`}
         onClick={() => setThemeDark(!themeDark)}
@@ -78,15 +76,24 @@ export function Navbar({
   const links = (
     <div>
       <Link to={'./identities'}>
-        <button className="btn btn-ghost normal-case">IDs</button>
+        <button className="btn btn-ghost btn-square normal-case">IDs</button>
+      </Link>
+    </div>
+  );
+
+  const logo = (
+    <div className="mr-4">
+      <Link to={'/'}>
+        <b>zkHumans</b>
       </Link>
     </div>
   );
 
   const menu = (
     <div className="dropdown">
-      <label tabIndex={0} className="btn-ghost btn-circle btn">
-        <Bars3Icon className="h-6 w-6" strokeWidth="2" />
+      <label tabIndex={0} className="btn-ghost btn-square btn">
+        {/* <Bars3Icon className="h-6 w-6" strokeWidth="2" /> */}
+        <EllipsisHorizontalIcon className="h-6 w-6" strokeWidth="2" />
       </label>
       <ul
         tabIndex={0}
@@ -143,18 +150,19 @@ export function Navbar({
   return (
     <div className="navbar bg-base-100">
       <div className="navbar-start">
-        {menu}
-        {buttonThemeToggle}
+        {logo}
         {links}
+        {menu}
       </div>
       <div className="navbar-center"></div>
       <div className="navbar-end">
+        {buttonThemeToggle}
         {buttonWalletConnect}
         {/*
-        <button className="btn-ghost btn-circle btn">
+        <button className="btn-ghost btn-square btn">
           <MagnifyingGlassIcon className="h-5 w-5" strokeWidth="2" />
         </button>
-        <button className="btn-ghost btn-circle btn">
+        <button className="btn-ghost btn-square btn">
           <div className="indicator">
             <BellIcon className="h-5 w-5" strokeWidth="2" />
             <span className="badge-primary badge badge-xs indicator-item"></span>
@@ -162,7 +170,7 @@ export function Navbar({
         </button>
         <Form action="/logout" method="post">
           <div className="tooltip tooltip-bottom" data-tip="logout">
-            <button type="submit" className="btn-ghost btn-circle btn">
+            <button type="submit" className="btn-ghost btn-square btn">
               <ArrowLeftOnRectangleIcon
                 className="h-6 w-6 rotate-180"
                 strokeWidth="2"
