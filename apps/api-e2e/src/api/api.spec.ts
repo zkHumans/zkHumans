@@ -1,5 +1,5 @@
 import axios from 'axios';
-import { trpc } from '@zkhumans/trpc';
+import { trpc } from '@zkhumans/trpc-client';
 
 describe('GET /', () => {
   it('should return a message', async () => {
@@ -14,10 +14,21 @@ describe('GET /', () => {
     expect(process.env.API_URL).toBeDefined();
   });
 
-  it('health.check should return a value', async () => {
+  it('/api/health.check', async () => {
     const r = await trpc.health.check.query();
     expect(r).toBe(1);
   });
 
-  // TODO: API return env, check it here
+  it('/api/meta', async () => {
+    const meta = await trpc.meta.query();
+    console.log('meta', meta);
+
+    expect(meta.env).toEqual(process.env['NODE_ENV']);
+    expect(meta.address.BioAuth).toEqual(
+      process.env['ZKAPP_ADDRESS_BIOAUTH'] ?? ''
+    );
+    expect(meta.address.IdentityManager).toEqual(
+      process.env['ZKAPP_ADDRESS_IDENTITY_MANAGER'] ?? ''
+    );
+  });
 });

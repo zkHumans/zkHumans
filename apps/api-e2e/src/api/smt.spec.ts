@@ -1,5 +1,5 @@
 import { jest } from '@jest/globals';
-import { trpc } from '@zkhumans/trpc';
+import { trpc } from '@zkhumans/trpc-client';
 
 import { smtApplyTransactions, smtValueToString } from '@zkhumans/utils';
 import { MemoryStore, SparseMerkleTree } from 'snarky-smt';
