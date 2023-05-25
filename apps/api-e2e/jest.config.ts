@@ -17,9 +17,4 @@ export default {
   },
   moduleFileExtensions: ['ts', 'js', 'html'],
   coverageDirectory: '../../coverage/api-e2e',
-  // From zk-generated contracts
-  // Fixes: snarky-smt | SyntaxError: Unexpected token 'export'
-  transformIgnorePatterns: [
-    '<rootDir>/node_modules/(?!(tslib|snarkyjs/node_modules/tslib))',
-  ],
 };
