@@ -1,5 +1,5 @@
 import { CircuitString, PrivateKey } from 'snarkyjs';
-import { smtStringToValue, smtValueToString } from './smt';
+import { smtStringToValue, smtValueToString } from '..';
 
 const acct = PrivateKey.random();
 

@@ -1,7 +1,11 @@
-import { SparseMerkleTree } from 'snarky-smt';
 import { Field } from 'snarkyjs';
-
+import { SparseMerkleTree } from 'snarky-smt';
 import type { Provable } from 'snarkyjs';
+import {
+  stringToFieldArray,
+  stringToValue,
+  valueToString,
+} from './3rdparty/snarky-smt';
 
 export type SmtDbData = {
   id: string;
@@ -12,6 +16,21 @@ export type SmtDbData = {
     txn: string;
   }[];
 };
+
+////////////////////////////////////////////////////////////////////////
+// smt key:value ⇄ string conversion utils, from snarky-smt store(s)
+// rename to give "namespace"
+////////////////////////////////////////////////////////////////////////
+
+export function smtStringToFieldArray(str: string): Field[] {
+  return stringToFieldArray(str);
+}
+export function smtStringToValue<V>(valueStr: string, eltTyp: Provable<V>): V {
+  return stringToValue(valueStr, eltTyp);
+}
+export function smtValueToString<V>(value: V, eltTyp: Provable<V>): string {
+  return valueToString(value, eltTyp);
+}
 
 /**
  * replay db-stored SMT transactions to restore in-memory SMT
@@ -36,49 +55,4 @@ export async function smtApplyTransactions<K, V>(
         break;
     }
   }
-}
-
-////////////////////////////////////////////////////////////////////////
-// smt key:value ⇄ string conversion utils, from snarky-smt store(s)
-////////////////////////////////////////////////////////////////////////
-
-/**
- * Convert a string to Field array.
- *
- * @param {string} str
- * @return {*} {Field[]}
- */
-export function smtStringToFieldArray(str: string): Field[] {
-  const sarr = str.split(',');
-  const fs: Field[] = [];
-
-  for (let i = 0, len = sarr.length; i < len; i++) {
-    const v = sarr[i];
-    fs.push(new Field(v));
-  }
-
-  return fs;
-}
-
-/**
- * Convert value string to a value of FieldElements type.
- *
- * @param {string} valueStr
- * @param {AsFieldElements<V>} eltTyp
- * @return {*} {V}
- */
-export function smtStringToValue<V>(valueStr: string, eltTyp: Provable<V>): V {
-  const fs = smtStringToFieldArray(valueStr);
-  return eltTyp.fromFields(fs, eltTyp.toAuxiliary());
-}
-
-/**
- * Serialize the value of the FieldElements type into a string
- *
- * @param {V} value
- * @return {*} {string}
- */
-export function smtValueToString<V>(value: V, eltTyp: Provable<V>): string {
-  const valueStr = eltTyp.toFields(value).toString();
-  return valueStr;
 }
