@@ -1,4 +1,4 @@
-import { strToBool } from './utils';
+import { displayAccount, strToBool } from './utils';
 
 describe('utils', () => {
   it('strToBool', () => {
@@ -8,5 +8,11 @@ describe('utils', () => {
     expect(strToBool('foo')).toEqual(false);
     expect(strToBool('true')).toEqual(true);
     expect(strToBool(undefined)).toEqual(undefined);
+  });
+
+  it('displayAccount', () => {
+    expect(
+      displayAccount('XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX')
+    ).toEqual('XXXXXX...XXXX');
   });
 });

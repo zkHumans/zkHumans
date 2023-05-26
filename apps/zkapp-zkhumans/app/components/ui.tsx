@@ -4,10 +4,6 @@ import { Console, Modal, Navbar } from '../components';
 import { supportedNetworks } from '../hooks';
 import { AppContextType } from '../root';
 
-// Show first 6 and last 4 characters of user's Mina account.
-const displayAccount = (account: string) =>
-  `${account.slice(0, 6)}...${account.slice(-4)}`;
-
 interface UIProps {
   children: React.ReactNode;
   context: AppContextType;
@@ -56,9 +52,7 @@ export function UI({ children, context }: UIProps) {
       <Navbar
         authenticated={false}
         handleConnectWallet={zk.handleConnectWallet}
-        account={
-          zk.state.account ? displayAccount(zk.state.account) : undefined
-        }
+        account={zk.state.account}
       />
       {zk.state.hasWallet === false && <ModalNeedWallet />}
       {zk.state.hasNetwork === false && <ModalNeedNetwork />}

@@ -8,6 +8,7 @@ import {
   MoonIcon,
   SunIcon,
 } from '@heroicons/react/24/outline';
+import { displayAccount } from '@zkhumans/utils';
 
 import tailwindConfig from '../../tailwind.config';
 import { IconMina } from './icon-mina';
@@ -17,7 +18,7 @@ const {
 } = tailwindConfig;
 
 interface NavbarProps {
-  account?: string;
+  account: string | null;
   authenticated: boolean;
   handleConnectWallet: () => void;
 }
@@ -68,7 +69,7 @@ export function Navbar({
       className="btn btn-primary gap-2 normal-case"
       onClick={handleConnectWallet}
     >
-      {account ? account : 'Connect'}
+      {account ? displayAccount(account) : 'Connect'}
       <IconMina />
     </button>
   );
