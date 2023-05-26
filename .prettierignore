@@ -2,3 +2,4 @@
 /coverage
 /dist
 /libs/contracts-*/build
+/libs/utils/src/lib/3rdparty/
