@@ -98,11 +98,8 @@ export function Navbar({
       </label>
       <ul
         tabIndex={0}
-        className="dropdown-content menu rounded-box menu-compact bg-base-200 mt-3 w-52 p-2 shadow"
+        className="dropdown-content menu rounded-box menu-compact bg-base-200 text-base-content mt-3 w-52 p-2 shadow"
       >
-        <li className="hover-bordered" onClick={closeMenu}>
-          <Link to="/">Home</Link>
-        </li>
         <li className="hover-bordered" onClick={closeMenu}>
           <Link to="/identities">Identities</Link>
         </li>
@@ -114,7 +111,7 @@ export function Navbar({
         </li>
         <li className="hover-bordered ml-2">
           <label tabIndex={0}>Theme</label>
-          <ul className="rounded-box bg-base-300 p-2">
+          <ul className="rounded-box bg-base-300 text-base-content p-2">
             {themes.map((theme: string) => (
               <li key={theme}>
                 <span data-set-theme={theme}>{theme}</span>
@@ -149,7 +146,7 @@ export function Navbar({
   );
 
   return (
-    <div className="navbar bg-base-100">
+    <div className="navbar bg-base-100 text-base-content">
       <div className="navbar-start">
         {logo}
         {links}
