@@ -4,7 +4,8 @@ import { useAppContext } from '../root';
 import type { AuthnFactor, Identity } from '@zkhumans/contracts';
 
 export default function NewIdentity() {
-  const { cnsl, zk } = useAppContext();
+  const appContext = useAppContext();
+  const { cnsl, zk } = appContext;
 
   async function handleCreateIdentity() {
     cnsl.log('info', 'Creating Identity...');
@@ -214,6 +215,8 @@ export default function NewIdentity() {
       smtValueToString(identity, Identity)
     );
     // zkapp.commitment.get().assertEquals(smtIDManager.getRoot());
+
+    appContext.data.refresh();
   }
 
   return (

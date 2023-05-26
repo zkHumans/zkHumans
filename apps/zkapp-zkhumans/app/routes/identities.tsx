@@ -1,29 +1,14 @@
-import { trpc } from '@zkhumans/trpc-client';
+import { Link, Outlet } from '@remix-run/react';
 import { Alert } from '../components';
 import { useAppContext } from '../root';
-import { useEffect, useState } from 'react';
-
-import type { ApiSmtGetOutput } from '@zkhumans/trpc-client';
-import { Link, Outlet } from '@remix-run/react';
 import { displayAccount } from '@zkhumans/utils';
 
 export default function Identities() {
   const appContext = useAppContext();
-  const { cnsl, zk } = appContext;
-
-  const [identities, setIdentities] = useState(
-    [] as NonNullable<ApiSmtGetOutput>[]
-  );
-
-  useEffect(() => {
-    (async () => {
-      if (zk.state.account) {
-        const id = await trpc.smt.get.query({ id: zk.state.account });
-        if (id) setIdentities(() => [id]);
-        else cnsl.log('info', 'No identities, create one!');
-      }
-    })();
-  }, [zk.state.account]);
+  const {
+    data: { identities },
+    zk,
+  } = appContext;
 
   const tableIdentities = (
     <div className="w-full overflow-x-auto ">
