@@ -13,7 +13,12 @@ import styles from './tailwind.css';
 import { UI } from './components';
 import { useConsole, useData, useZKApp } from './hooks';
 import type { ApiSmtGetOutput } from '@zkhumans/trpc-client';
-import type { LogFunction, Snarkyjs, ZKAppState } from './hooks';
+import type {
+  LogFunction,
+  Snarkyjs,
+  WalletSignedData,
+  ZKAppState,
+} from './hooks';
 
 export const links: LinksFunction = () => [{ rel: 'stylesheet', href: styles }];
 
@@ -53,6 +58,7 @@ export type AppContextType = {
   };
   zk: {
     state: ZKAppState<ZKApp>;
+    getSignedMessage: (message: string) => Promise<WalletSignedData | null>;
     handleConnectWallet: () => void;
   };
 };

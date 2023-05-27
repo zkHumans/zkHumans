@@ -3,7 +3,10 @@ import { delay } from '@zkhumans/utils';
 import { useEffect, useState } from 'react';
 import type { LogFunction } from './useConsole';
 
+import type { SignedData } from '@aurowallet/mina-provider/dist/TSTypes';
+
 export type Snarkyjs = typeof import('snarkyjs');
+export type WalletSignedData = SignedData;
 
 // 'Mainnet', 'Devnet', 'Berkeley', or 'Unknown'
 export const supportedNetworks = ['Berkeley'];
@@ -161,6 +164,28 @@ export function useZKApp<T>(
     }
   };
 
+  async function getSignedMessage(
+    message: string
+  ): Promise<WalletSignedData | null> {
+    log('info', 'Requesting signature from wallet...');
+    try {
+      if (!state.wallet) throw new Error('wallet not connected');
+      if (!state.hasAccountNetwork) throw new Error('account not found');
+      const data = await state.wallet?.signMessage({
+        message,
+      });
+      if (!data) throw new Error('signature empty');
+      log('success', 'Signature received!');
+      return data;
+    } catch (
+      err: any // eslint-disable-line @typescript-eslint/no-explicit-any
+    ) {
+      log('error', 'Signature failed:', err.message);
+      console.log('ERROR', err.message, err.code);
+      return null;
+    }
+  }
+
   function handleConnectWallet() {
     log('info', 'Connectng wallet...');
 
@@ -221,5 +246,5 @@ export function useZKApp<T>(
     })();
   }
 
-  return { state, handleConnectWallet };
+  return { state, getSignedMessage, handleConnectWallet };
 }
