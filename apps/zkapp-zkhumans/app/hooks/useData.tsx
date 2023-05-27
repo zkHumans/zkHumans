@@ -1,4 +1,3 @@
-import { trpc } from '@zkhumans/trpc-client';
 import { useEffect, useState } from 'react';
 
 import type { ApiSmtGetOutput } from '@zkhumans/trpc-client';
@@ -14,15 +13,11 @@ export function useData(log: LogFunction, zk: AppContextType['zk']) {
   // get identities upon account change or refresh trigger
   useEffect(() => {
     (async () => {
+      const { IdentityClientUtils } = await import('@zkhumans/utils-client');
       if (zk.state.account) {
-        const id = await trpc.smt.get.query({ id: zk.state.account });
-        if (id) {
-          setIdentities(() => [id]);
-          log('success', 'Identity:', id.id);
-        } else {
-          setIdentities(() => []);
-          log('info', 'No identities yet, create one! ⭐');
-        }
+        const ids = await IdentityClientUtils.getIdentities(zk.state.account);
+        setIdentities(() => ids);
+        if (!ids.length) log('info', 'No identities yet, create one! ⭐');
       } else {
         setIdentities(() => []);
       }

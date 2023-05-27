@@ -16,14 +16,14 @@ export default function Identities() {
         {/* head */}
         <thead>
           <tr>
-            <th>ID</th>
+            <th>#</th>
             <th className="">Identifier</th>
           </tr>
         </thead>
         <tbody>
           {identities.map((id, index) => (
             <tr key={index} className="hover">
-              <th>0</th>
+              <th>{index}</th>
               <td>
                 <Link to={`./${id.id}`}>{displayAccount(id.id)}</Link>
               </td>
