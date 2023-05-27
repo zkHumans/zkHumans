@@ -19,7 +19,8 @@
       "@zkhumans/snarky-bioauth": ["libs/snarky-bioauth/src/index.ts"],
       "@zkhumans/trpc": ["libs/trpc/src/index.ts"],
       "@zkhumans/trpc-client": ["libs/trpc-client/src/index.ts"],
-      "@zkhumans/utils": ["libs/utils/src/index.ts"]
+      "@zkhumans/utils": ["libs/utils/src/index.ts"],
+      "@zkhumans/utils-client": ["libs/utils-client/src/index.ts"]
     }
   },
   "exclude": ["node_modules", "tmp"]
