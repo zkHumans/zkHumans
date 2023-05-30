@@ -33,6 +33,7 @@ export enum AuthnType {
   facescan,
   fingerprint,
   retina,
+  proofOfPerson,
 }
 
 /**
@@ -40,7 +41,9 @@ export enum AuthnType {
  */
 export enum AuthnProvider {
   self = 1,
+  zkhumans,
   humanode,
+  webauthn,
 }
 
 /**
