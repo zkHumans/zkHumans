@@ -12,10 +12,14 @@ import {
   identifierFromBase58,
   smtApplyTransactions,
   smtValueToString,
+  smtStringToValue,
 } from '@zkhumans/utils';
 
 import type { ApiSmtGetOutput } from '@zkhumans/trpc-client';
-import type { SMTIdentityKeyring } from '@zkhumans/contracts';
+import type {
+  AuthnFactorPublic,
+  SMTIdentityKeyring,
+} from '@zkhumans/contracts';
 
 const IDENTITY_MGR_MAX_IDS_PER_ACCT = 10;
 const IDENTITY_MGR_SMT_NAME = '_IdentityManager_';
@@ -126,7 +130,7 @@ export class IdentityClientUtils {
   ) {
     const afPublicOpKey = {
       type: AuthnType.operator,
-      provider: AuthnProvider.self,
+      provider: AuthnProvider.zkhumans,
       revision: 0,
     };
     const afPrivateOpKey = { salt: IDENTITY_MGR_SALT, secret };
@@ -140,6 +144,23 @@ export class IdentityClientUtils {
       key: smtValueToString(afHashOpKey, Field),
       value: smtValueToString(afOpKey, AuthnFactor),
     });
+  }
+
+  static async getAuthnFactorsFromKeyring(identifier: string) {
+    const authnFactors = {} as { [key: string]: AuthnFactorPublic };
+    const dbSmtKeyring = await trpc.smt.get.query({ id: identifier });
+    if (!dbSmtKeyring) return authnFactors;
+    for (const txn of dbSmtKeyring.txns) {
+      if (txn.value) {
+        const af = smtStringToValue(txn.value, AuthnFactor);
+        authnFactors[txn.key] = {
+          type: Number(af.type.toString()),
+          provider: Number(af.provider.toString()),
+          revision: Number(af.revision.toString()),
+        };
+      }
+    }
+    return authnFactors;
   }
 
   static async prepareAddNewIdentity(
@@ -175,6 +196,48 @@ export class IdentityClientUtils {
     });
 
     return smtIDManager;
+  }
+
+  static humanReadableAuthnFactor(afp: AuthnFactorPublic) {
+    const x = { type: '', provider: '', revision: Number(afp.revision) };
+
+    switch (afp.type) {
+      case AuthnType.operator:
+        x.type = 'zkHumans ID Operator Key';
+        break;
+      case AuthnType.password:
+        x.type = 'Password';
+        break;
+      case AuthnType.facescan:
+        x.type = 'Facescan';
+        break;
+      case AuthnType.fingerprint:
+        x.type = 'Fingerprint';
+        break;
+      case AuthnType.retina:
+        x.type = 'Retina';
+        break;
+      case AuthnType.proofOfPerson:
+        x.type = 'Proof of Unique Living Human';
+        break;
+    }
+
+    switch (afp.provider) {
+      case AuthnProvider.self:
+        x.provider = 'Self';
+        break;
+      case AuthnProvider.zkhumans:
+        x.provider = 'zkHumans';
+        break;
+      case AuthnProvider.humanode:
+        x.provider = 'Humanode';
+        break;
+      case AuthnProvider.webauthn:
+        x.type = 'WebAuthn';
+        break;
+    }
+
+    return x;
   }
 }
 
