@@ -13,7 +13,6 @@ export default function Identities() {
   const tableIdentities = (
     <div className="w-full overflow-x-auto ">
       <table className="table w-full">
-        {/* head */}
         <thead>
           <tr>
             <th>#</th>
