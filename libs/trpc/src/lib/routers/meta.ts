@@ -8,5 +8,8 @@ export const metaProcedure = t.procedure.query(async () => {
       BioAuth: process.env['ZKAPP_ADDRESS_BIOAUTH'] ?? '',
       IdentityManager: process.env['ZKAPP_ADDRESS_IDENTITY_MANAGER'] ?? '',
     },
+    url: {
+      auth: process.env['AUTH_URL'] ?? '',
+    },
   };
 });
