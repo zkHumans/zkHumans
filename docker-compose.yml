@@ -15,7 +15,10 @@ services:
     init: true
     restart: unless-stopped
     environment:
+      - AUTH_URL
       - NODE_ENV
+      - ZKAPP_ADDRESS_BIOAUTH
+      - ZKAPP_ADDRESS_IDENTITY_MANAGER
 
   api:
     profiles: ['run']
