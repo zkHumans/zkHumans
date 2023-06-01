@@ -1,13 +1,6 @@
 import express from 'express';
 import { payloadFromBase58 } from '@zkhumans/snarky-bioauth';
-import {
-  Encoding,
-  Field,
-  Poseidon,
-  PrivateKey,
-  Signature,
-  isReady,
-} from 'snarkyjs';
+import { Encoding, Field, Poseidon, PrivateKey, Signature } from 'snarkyjs';
 
 const host = process.env.AUTH_TEST_HOST ?? 'localhost';
 const port = process.env.AUTH_TEST_PORT
@@ -15,6 +8,14 @@ const port = process.env.AUTH_TEST_PORT
   : 3002;
 
 const app = express();
+
+// CORS
+app.use((_req, res, next) => {
+  res.header('Access-Control-Allow-Origin', '*');
+  res.header('Access-Control-Allow-Methods', 'GET,PUT,POST,DELETE');
+  res.header('Access-Control-Allow-Headers', 'Content-Type');
+  next();
+});
 
 app.get('/', (_req, res) => {
   res.send({ message: 'Hello API' });
@@ -47,9 +48,6 @@ const getBioAuthId = (x: Field) =>
   bioAuthIds[+x.toString() % bioAuthIds.length];
 
 async function getSignedBioAuthId(id: string) {
-  // We need to wait for SnarkyJS to finish loading before we can do anything
-  await isReady;
-
   const _payload = payloadFromBase58(id);
 
   const privateKey = PrivateKey.fromBase58(privateKeyBase58);
@@ -100,7 +98,6 @@ const signedBioAuths = {};
 
 app.get('/mina/meta', async (_req, res) => {
   try {
-    await isReady;
     const privateKey = PrivateKey.fromBase58(privateKeyBase58);
     const publicKey = privateKey.toPublicKey();
     const meta = {
