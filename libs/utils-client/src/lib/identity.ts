@@ -1,10 +1,12 @@
 import { trpc } from '@zkhumans/trpc-client';
 import {
   AuthnFactor,
-  AuthnType,
+  AuthnFactorParams,
   AuthnProvider,
+  AuthnType,
   Identity,
 } from '@zkhumans/contracts';
+import { BioAuthOracle, BioAuthorizedMessage } from '@zkhumans/snarky-bioauth';
 import { CircuitString, Field, Poseidon, PublicKey } from 'snarkyjs';
 import { MemoryStore, SparseMerkleTree } from 'snarky-smt';
 import {
@@ -20,6 +22,8 @@ import type {
   AuthnFactorPublic,
   SMTIdentityKeyring,
 } from '@zkhumans/contracts';
+import type { SignedData } from '@aurowallet/mina-provider/dist/TSTypes';
+type WalletSignedData = SignedData;
 
 const IDENTITY_MGR_MAX_IDS_PER_ACCT = 10;
 const IDENTITY_MGR_SMT_NAME = '_IdentityManager_';
@@ -48,6 +52,7 @@ export class IdentityClientUtils {
 
     return identities;
   }
+
   /**
    * Get SparseMerkleTree for an Identity Keyring by the given identifier.
    * Create in database if doesn't exist, restore from database if it does.
@@ -123,26 +128,92 @@ export class IdentityClientUtils {
     }
   }
 
-  static async addAuthnFactorToKeyring(
+  static async getBioAuth(identifier: string) {
+    const meta = await trpc.meta.query();
+    const bioAuthOracle = new BioAuthOracle(meta.url.auth);
+    const fIdentifier = identifierFromBase58(identifier);
+    return await bioAuthOracle.fetchBioAuth(fIdentifier);
+  }
+
+  static async getBioAuthLink(bioAuthId: string) {
+    const meta = await trpc.meta.query();
+    const bioAuthOracle = new BioAuthOracle(meta.url.auth);
+    return bioAuthOracle.getBioAuthLink(bioAuthId);
+  }
+
+  static async addAuthnFactorOperatorKey(
     smtIDKeyring: SMTIdentityKeyring,
     identifier: string,
-    secret: string
+    signature: WalletSignedData
   ) {
-    const afPublicOpKey = {
+    // get operator key secret from identifier signed by operator key (wallet)
+    const secret = IdentityClientUtils.getOperatorKeySecret(
+      identifier,
+      signature
+    );
+    if (!secret || secret === '') return false;
+
+    const afPublic = {
       type: AuthnType.operator,
       provider: AuthnProvider.zkhumans,
       revision: 0,
     };
-    const afPrivateOpKey = { salt: IDENTITY_MGR_SALT, secret };
-    const afOpKey = AuthnFactor.init(afPublicOpKey);
-    const afHashOpKey = afOpKey.hash(afPrivateOpKey);
 
-    await smtIDKeyring.update(afHashOpKey, afOpKey);
+    await IdentityClientUtils.addAuthnFactorToKeyring(
+      smtIDKeyring,
+      identifier,
+      afPublic,
+      secret
+    );
+    return true;
+  }
+
+  static async addAuthnFactorBioAuth(
+    smtIDKeyring: SMTIdentityKeyring,
+    identifier: string,
+    bioAuth: string
+  ) {
+    const afPublic = {
+      type: AuthnType.proofOfPerson,
+      provider: AuthnProvider.humanode,
+      revision: 0,
+    };
+
+    try {
+      const data = JSON.parse(bioAuth);
+      const bioAuthMsg = BioAuthorizedMessage.fromJSON(data);
+      const secret = bioAuthMsg.bioAuthId.toString();
+      await IdentityClientUtils.addAuthnFactorToKeyring(
+        smtIDKeyring,
+        identifier,
+        afPublic,
+        secret
+      );
+      return true;
+    } catch (
+      err: any // eslint-disable-line @typescript-eslint/no-explicit-any
+    ) {
+      console.log('addAuthnFactorBioAuth ERROR', err);
+      return false;
+    }
+  }
+
+  static async addAuthnFactorToKeyring(
+    smtIDKeyring: SMTIdentityKeyring,
+    identifier: string,
+    afPublic: AuthnFactorPublic,
+    secret: string
+  ) {
+    const af = AuthnFactor.init(afPublic);
+    const afPrivate = { salt: IDENTITY_MGR_SALT, secret };
+    const afHash = af.hash(afPrivate);
+
+    await smtIDKeyring.update(afHash, af);
     await trpc.smt.txn.mutate({
       id: identifier,
       txn: 'update',
-      key: smtValueToString(afHashOpKey, Field),
-      value: smtValueToString(afOpKey, AuthnFactor),
+      key: smtValueToString(afHash, Field),
+      value: smtValueToString(af, AuthnFactor),
     });
   }
 
@@ -152,7 +223,7 @@ export class IdentityClientUtils {
     if (!dbSmtKeyring) return authnFactors;
     for (const txn of dbSmtKeyring.txns) {
       if (txn.value) {
-        const af = smtStringToValue(txn.value, AuthnFactor);
+        const af: AuthnFactorParams = smtStringToValue(txn.value, AuthnFactor);
         authnFactors[txn.key] = {
           type: Number(af.type.toString()),
           provider: Number(af.provider.toString()),
@@ -203,7 +274,7 @@ export class IdentityClientUtils {
 
     switch (afp.type) {
       case AuthnType.operator:
-        x.type = 'zkHumans ID Operator Key';
+        x.type = 'Operator Key';
         break;
       case AuthnType.password:
         x.type = 'Password';
@@ -239,14 +310,4 @@ export class IdentityClientUtils {
 
     return x;
   }
-}
-
-// https://docs.aurowallet.com/general/reference/api-reference/mina-provider/methods#signmessage
-interface WalletSignedData {
-  publicKey: string;
-  payload: string;
-  signature: {
-    field: string;
-    scalar: string;
-  };
 }
