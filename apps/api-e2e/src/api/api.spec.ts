@@ -30,5 +30,6 @@ describe('GET /', () => {
     expect(meta.address.IdentityManager).toEqual(
       process.env['ZKAPP_ADDRESS_IDENTITY_MANAGER'] ?? ''
     );
+    expect(meta.url.auth).toEqual(process.env['AUTH_URL'] ?? '');
   });
 });
