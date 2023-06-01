@@ -108,10 +108,9 @@ export class AuthnFactor extends Struct({
   }
 }
 
-export type SMTIdentityKeyring = SparseMerkleTree<
-  Field,
-  ConstructorParameters<typeof AuthnFactor>[0]
->;
+export type AuthnFactorParams = ConstructorParameters<typeof AuthnFactor>[0];
+
+export type SMTIdentityKeyring = SparseMerkleTree<Field, AuthnFactorParams>;
 
 /**
  * An individual identity. This is stored as the value element of
