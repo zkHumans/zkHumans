@@ -3,6 +3,7 @@
   "$schema": "../../node_modules/nx/schemas/project-schema.json",
   "sourceRoot": "libs/utils-client/src",
   "projectType": "library",
+  "implicitDependencies": ["contracts-zkhumans"],
   "targets": {
     "build": {
       "executor": "@nx/js:tsc",
