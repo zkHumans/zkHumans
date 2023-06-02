@@ -16,6 +16,7 @@ services:
     restart: unless-stopped
     environment:
       - AUTH_URL
+      - DATABASE_URL
       - NODE_ENV
       - ZKAPP_ADDRESS_BIOAUTH
       - ZKAPP_ADDRESS_IDENTITY_MANAGER
@@ -54,6 +55,9 @@ services:
     extends:
       service: base-service
     container_name: app
+    depends_on:
+      prisma-migrate:
+        condition: service_completed_successfully
     expose:
       - 3000
     labels:
@@ -87,6 +91,18 @@ services:
       - traefik.http.routers.auth.tls.certresolver=myresolver
     command: >
       npx nx run oracle-auth:start
+
+  prisma-migrate:
+    profiles: ['run']
+    extends:
+      service: base-service
+    container_name: prisma-migrate
+    depends_on:
+      postgres:
+        condition: service_healthy
+    restart: "no"
+    command: >
+      npx prisma migrate deploy
 
   prisma-studio:
     profiles: ['maintenance']
