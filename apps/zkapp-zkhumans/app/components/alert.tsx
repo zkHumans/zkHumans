@@ -38,10 +38,8 @@ export function Alert({ type, children }: AlertProps) {
 
   return (
     <div className={`alert shadow-lg ${classMap[type]}`}>
-      <div>
-        <Icon className="h-6 w-6" strokeWidth="2" />
-        <div>{children}</div>
-      </div>
+      <Icon className="h-6 w-6" strokeWidth="2" />
+      <div>{children}</div>
     </div>
   );
 }

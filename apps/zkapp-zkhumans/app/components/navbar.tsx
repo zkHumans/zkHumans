@@ -91,14 +91,14 @@ export function Navbar({
   );
 
   const menu = (
-    <div className="dropdown">
+    <div className="dropdown z-50">
       <label tabIndex={0} className="btn-ghost btn-square btn">
         {/* <Bars3Icon className="h-6 w-6" strokeWidth="2" /> */}
         <EllipsisHorizontalIcon className="h-6 w-6" strokeWidth="2" />
       </label>
       <ul
         tabIndex={0}
-        className="dropdown-content menu rounded-box menu-compact bg-base-200 text-base-content mt-3 w-52 p-2 shadow"
+        className="dropdown-content menu rounded-box menu-md bg-base-200 text-base-content mt-3 w-52 shadow"
       >
         <li className="hover-bordered" onClick={closeMenu}>
           <Link to="/identities">Identities</Link>

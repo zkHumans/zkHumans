@@ -79,8 +79,8 @@ export default function Identity() {
   if (!identity) return <Alert type="error">Identity not found.</Alert>;
 
   const tableAuthnFactors = (
-    <div className="w-full overflow-x-auto ">
-      <table className="table w-full">
+    <div className="overflow-x-auto">
+      <table className="table">
         <thead>
           <tr>
             <th className="grid justify-items-center">#</th>
@@ -91,7 +91,7 @@ export default function Identity() {
         </thead>
         <tbody>
           {authnFactors.map((af, index) => (
-            <tr key={af.key} className="hover">
+            <tr key={af.key} className="hover:bg-base-200">
               <th className="grid justify-items-center">
                 <Link to={`./authn/${af.key}/edit`}>{index}</Link>
               </th>

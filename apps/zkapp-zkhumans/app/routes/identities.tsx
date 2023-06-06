@@ -12,7 +12,7 @@ export default function Identities() {
 
   const tableIdentities = (
     <div className="w-full overflow-x-auto ">
-      <table className="table w-full">
+      <table className="table">
         <thead>
           <tr>
             <th>#</th>
@@ -21,7 +21,7 @@ export default function Identities() {
         </thead>
         <tbody>
           {identities.map((id, index) => (
-            <tr key={index} className="hover">
+            <tr key={index} className="hover:bg-base-200">
               <th>{index}</th>
               <td>
                 <Link to={`./${id.id}`}>{displayAccount(id.id)}</Link>
