@@ -14,14 +14,14 @@ import {
   Identity,
   IdentityManager,
   IdentityUtils,
-} from '../Identity';
+} from '../IdentityManager';
 
 import type {
   AuthnFactorPrivate,
   AuthnFactorPublic,
   SMTIdentityKeyring,
   SMTIdentityManager,
-} from '../Identity';
+} from '../IdentityManager';
 
 // NOTE:! this import breaks with:  TypeError: workersReadyResolve is not a function
 // import { strToBool } from '@zkhumans/utils';

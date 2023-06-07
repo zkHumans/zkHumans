@@ -1,6 +1,6 @@
 import { Field, PrivateKey } from 'snarkyjs';
 import { jest } from '@jest/globals';
-import { Identity } from './Identity';
+import { Identity } from './IdentityManager';
 import { smtStringToValue, smtValueToString } from '@zkhumans/utils';
 
 const verbose = false;

@@ -1,2 +1,2 @@
 export * from './BioAuth';
-export * from './Identity';
+export * from './IdentityManager';
