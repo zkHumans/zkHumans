@@ -1,7 +1,7 @@
 import { trpc } from '@zkhumans/trpc-client';
 import {
   AuthnFactor,
-  AuthnFactorParams,
+  AuthnFactorUtils,
   AuthnProvider,
   AuthnType,
   Identity,
@@ -204,9 +204,9 @@ export class IdentityClientUtils {
     afPublic: AuthnFactorPublic,
     secret: string
   ) {
-    const af = AuthnFactor.init(afPublic);
+    const af = AuthnFactorUtils.init(afPublic);
     const afPrivate = { salt: IDENTITY_MGR_SALT, secret };
-    const afHash = af.hash(afPrivate);
+    const afHash = AuthnFactorUtils.hash(af, afPrivate);
 
     await smtIDKeyring.update(afHash, af);
     await trpc.smt.txn.mutate({
@@ -223,7 +223,7 @@ export class IdentityClientUtils {
     if (!dbSmtKeyring) return authnFactors;
     for (const txn of dbSmtKeyring.txns) {
       if (txn.value) {
-        const af: AuthnFactorParams = smtStringToValue(txn.value, AuthnFactor);
+        const af: AuthnFactor = smtStringToValue(txn.value, AuthnFactor);
         authnFactors[txn.key] = {
           type: Number(af.type.toString()),
           provider: Number(af.provider.toString()),

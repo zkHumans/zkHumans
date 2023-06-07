@@ -8,10 +8,12 @@ import {
 import { MemoryStore, SparseMerkleTree } from 'snarky-smt';
 import {
   AuthnFactor,
+  AuthnFactorUtils,
   AuthnProvider,
   AuthnType,
   Identity,
   IdentityManager,
+  IdentityUtils,
 } from '../Identity';
 
 import type {
@@ -186,8 +188,11 @@ async function addAuthnFactorToIdentityKeyring(
   console.log(`@T+${t()} | - smtIDManager.prove()`);
 
   // create new authn factor
-  const authnFactor = AuthnFactor.init(authnFactorPublic);
-  const authnFactorHash = authnFactor.hash(authnFactorPrivate);
+  const authnFactor = AuthnFactorUtils.init(authnFactorPublic);
+  const authnFactorHash = AuthnFactorUtils.hash(
+    authnFactor,
+    authnFactorPrivate
+  );
   console.log(`@T+${t()} | - authnFactor.hash()`);
 
   // prove the authn factor IS NOT in the Identity Keyring MT
@@ -210,7 +215,10 @@ async function addAuthnFactorToIdentityKeyring(
 
   // if tx was successful, we can update our off-chain storage
   await smtKeyring_.update(authnFactorHash, authnFactor);
-  const newIdentity = identity.setCommitment(smtKeyring_.getRoot());
+  const newIdentity = IdentityUtils.setCommitment(
+    identity,
+    smtKeyring_.getRoot()
+  );
   await smtIDManager_.update(identifier, newIdentity);
   zkapp.commitment.get().assertEquals(smtIDManager_.getRoot());
 }

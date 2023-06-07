@@ -86,7 +86,13 @@ export class AuthnFactor extends Struct({
   revision: Field,
   // TODO: createdAt: Field,
   // TODO: updatedAt: Field,
-}) {
+}) {}
+
+/**
+ * Note: This utility class provides methods separate from AuthnFactor for
+ * simpler typing with SparseMerkleTree
+ */
+export class AuthnFactorUtils {
   static init(publicInput: AuthnFactorPublic): AuthnFactor {
     const { type: _type, provider, revision } = publicInput;
     return new AuthnFactor({
@@ -96,21 +102,19 @@ export class AuthnFactor extends Struct({
     });
   }
 
-  hash(privateInput: AuthnFactorPrivate): Field {
+  static hash(af: AuthnFactor, privateInput: AuthnFactorPrivate): Field {
     const { salt, secret } = privateInput;
     return Poseidon.hash([
-      this.type,
-      this.provider,
-      this.revision,
+      af.type,
+      af.provider,
+      af.revision,
       ...CircuitString.fromString(salt).toFields(),
       ...CircuitString.fromString(secret).toFields(),
     ]);
   }
 }
 
-export type AuthnFactorParams = ConstructorParameters<typeof AuthnFactor>[0];
-
-export type SMTIdentityKeyring = SparseMerkleTree<Field, AuthnFactorParams>;
+export type SMTIdentityKeyring = SparseMerkleTree<Field, AuthnFactor>;
 
 /**
  * An individual identity. This is stored as the value element of
@@ -121,11 +125,13 @@ export type SMTIdentityKeyring = SparseMerkleTree<Field, AuthnFactorParams>;
 export class Identity extends Struct({
   publicKey: PublicKey,
   commitment: Field,
-}) {
-  setCommitment(c: Field): Identity {
+}) {}
+
+export class IdentityUtils {
+  static setCommitment(identity: Identity, commitment: Field): Identity {
     return new Identity({
-      publicKey: this.publicKey,
-      commitment: c,
+      publicKey: identity.publicKey,
+      commitment,
     });
   }
 }
@@ -217,7 +223,11 @@ export class IdentityManager extends SmartContract {
     );
 
     // update the Identity Keyring commitment
-    const newIdentity = identity.setCommitment(newAuthnFactorCommitment);
+    // const newIdentity = identity.setCommitment(newAuthnFactorCommitment);
+    const newIdentity = IdentityUtils.setCommitment(
+      identity,
+      newAuthnFactorCommitment
+    );
 
     const newCommitment = ProvableSMTUtils.computeRoot(
       merkleProofManager.sideNodes,
