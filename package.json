@@ -16,7 +16,8 @@
     "setup": "prisma migrate deploy && echo TODO prisma db seed",
     "test:snarky-smt:merkle": "./bin/snarky-run.sh libs/contracts-example/src/examples/snarky-smt/merkle_zkapp.ts",
     "test:snarky-smt:smt": "./bin/snarky-run.sh libs/contracts-example/src/examples/snarky-smt/smt_zkapp.ts",
-    "test:snarkyjs:merkle": "./bin/snarky-run.sh libs/contracts-example/src/examples/snarkyjs/merkle_zkapp.ts"
+    "test:snarkyjs:merkle": "./bin/snarky-run.sh libs/contracts-example/src/examples/snarkyjs/merkle_zkapp.ts",
+    "test:zkhumans:identity": "./bin/snarky-run.sh libs/contracts-zkhumans/src/examples/identity.ts"
   },
   "private": true,
   "devDependencies": {
