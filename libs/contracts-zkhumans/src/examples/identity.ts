@@ -6,7 +6,6 @@ import {
   PrivateKey,
 } from 'snarkyjs';
 import { MemoryStore, SparseMerkleTree } from 'snarky-smt';
-import { strToBool } from '@zkhumans/utils';
 import {
   AuthnFactor,
   AuthnProvider,
@@ -21,6 +20,12 @@ import type {
   SMTIdentityKeyring,
   SMTIdentityManager,
 } from '../Identity';
+
+// NOTE:! this import breaks with:  TypeError: workersReadyResolve is not a function
+// import { strToBool } from '@zkhumans/utils';
+
+const strToBool = (s: string | undefined) =>
+  s === undefined ? undefined : RegExp(/^\s*(true|1|on)\s*$/i).test(s);
 
 const proofsEnabled = strToBool(process.env['ZK_PROOFS_ENABLED']) ?? true;
 console.log('ZK_PROOFS_ENABLED:', proofsEnabled);
