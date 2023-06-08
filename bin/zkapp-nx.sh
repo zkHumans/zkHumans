@@ -9,8 +9,8 @@ test ! -f ../../nx.json \
 
 # "zk deploy" expects compiled output in ./build
 build_dir=$(basename $(pwd))
-test ! -d ./build \
-  && ln -sf ../../dist/libs/${build_dir} ./build
+rm -rf ./build
+ln -sf ../../dist/libs/${build_dir} ./build
 
 # "zk deploy" expects ./node_modules exists
 # - custom tsconfig paths are found there
