@@ -9,6 +9,8 @@
   ],
   "type": "module",
   "scripts": {
-    "build": "../../bin/zkapp-nx.sh && cd ../../ && nx run build --project=contracts-zkhumans --configuration=production --skip-nx-cache --clean=false"
+    "build": "../../bin/zkapp-nx.sh && cd ../../ && nx run build --project=contracts-zkhumans --configuration=production --skip-nx-cache --clean=false",
+    "clean": "rm -rf build node_modules",
+    "deploy": "NODE_OPTIONS='--es-module-specifier-resolution=node --no-warnings' npx zk deploy"
   }
 }
