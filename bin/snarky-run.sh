@@ -7,7 +7,7 @@ test ! -f nx.json && echo "ERROR: ${0}: run from project root" && exit 1
 
 node_options=(
   # fixes ERR_MODULE_NOT_FOUND
-  --experimental-specifier-resolution=node
+  --es-module-specifier-resolution=node
 
   # inspiration from https://github.com/o1-labs/snarkyjs/blob/main/run
   --enable-source-maps
