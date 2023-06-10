@@ -3,6 +3,7 @@
   "version": "0.0.0",
   "license": "",
   "scripts": {
+    "clean": "rm -rf ./dist && nx reset && nx run-many --targets=clean",
     "commit": "cz",
     "dev-run--build": "nx run-many --targets=lint,build,typecheck --configuration=development",
     "dev-run--test": "nx run-many --targets=test --configuration=development",
