@@ -6,6 +6,12 @@
       "keyPath": "keys/berkeley-bioauth.json",
       "fee": "0.1",
       "smartContract": "BioAuth"
+    },
+    "berkeley-identity": {
+      "url": "https://proxy.berkeley.minaexplorer.com/graphql",
+      "keyPath": "keys/berkeley-identity.json",
+      "fee": "0.1",
+      "smartContract": "IdentityManager"
     }
   }
 }
