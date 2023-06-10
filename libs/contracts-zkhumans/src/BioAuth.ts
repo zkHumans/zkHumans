@@ -8,21 +8,10 @@ import {
   UInt64,
 } from 'snarkyjs';
 
-////////////////////////////////////////////////////////////////////////
-// 2022-12-13 workaround: Because of snarky w0nk with some imports...
-// AND eslint b0rk on symlinks, use this to deploy:
-// $ ln -s ../lib/snarky-bioauth/src lib/snarky-bioauth
-// import {
-//   BioAuthorizedMessage,
-//   ProvableBioAuth,
-// } from '../lib/snarky-bioauth/bioauth.js';
-
-// OR use this to test
 import {
   BioAuthorizedMessage,
   ProvableBioAuth,
 } from '@zkhumans/snarky-bioauth';
-////////////////////////////////////////////////////////////////////////
 
 // The public key of our trusted data provider
 const ORACLE_PUBLIC_KEY =
