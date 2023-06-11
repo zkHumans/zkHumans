@@ -35,20 +35,22 @@ services:
       - API_HOST
       - API_PORT
     healthcheck:
-      test: ./bin/fetch-json.js ${API_URL}/health.check || exit 1
+      test: ./bin/fetch-json.js http://${API_HOST}:${API_PORT}/api/health.check || exit 1
       interval: 10s
       timeout: 10s
       retries: 3
-      start_period: 30s
+      start_period: 20s
     labels:
       - traefik.enable=true
       - traefik.http.routers.api.entrypoints=websecure
       - traefik.http.routers.api.rule=Host(`api.${HOSTNAME}`)
       - traefik.http.routers.api.tls.certresolver=myresolver
-    command: >
-      npx nx run api:serve:production
+    command: sh -cx "
+      npx prisma migrate deploy
+      && npx nx run api:serve:production
         --inspect=false
         --watch=false
+      "
 
   app:
     profiles: ['run']
@@ -56,8 +58,8 @@ services:
       service: base-service
     container_name: app
     depends_on:
-      prisma-migrate:
-        condition: service_completed_successfully
+      api:
+        condition: service_healthy
     expose:
       - 3000
     labels:
@@ -91,18 +93,6 @@ services:
       - traefik.http.routers.auth.tls.certresolver=myresolver
     command: >
       npx nx run oracle-auth:start
-
-  prisma-migrate:
-    profiles: ['run']
-    extends:
-      service: base-service
-    container_name: prisma-migrate
-    depends_on:
-      postgres:
-        condition: service_healthy
-    restart: "no"
-    command: >
-      npx prisma migrate deploy
 
   prisma-studio:
     profiles: ['maintenance']
