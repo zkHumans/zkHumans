@@ -95,7 +95,7 @@ services:
       npx nx run oracle-auth:start
 
   prisma-studio:
-    profiles: ['maintenance']
+    profiles: ['run', 'maintenance']
     extends:
       service: base-service
     container_name: prisma-studio
@@ -106,6 +106,7 @@ services:
       - 127.0.0.1:5555:5555
     command: >
       npx prisma studio
+        --browser none
 
   postgres:
     profiles: ['run', 'dev', 'maintenance']
