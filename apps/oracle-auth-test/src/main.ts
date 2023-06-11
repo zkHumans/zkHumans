@@ -1,6 +1,6 @@
 import express from 'express';
-import { payloadFromBase58 } from '@zkhumans/snarky-bioauth';
 import { Encoding, Field, Poseidon, PrivateKey, Signature } from 'snarkyjs';
+import { payloadFromBase58 } from '@zkhumans/snarky-bioauth';
 
 const host = process.env.AUTH_TEST_HOST ?? 'localhost';
 const port = process.env.AUTH_TEST_PORT
