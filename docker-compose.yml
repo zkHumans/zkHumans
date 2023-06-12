@@ -15,6 +15,7 @@ services:
     init: true
     restart: unless-stopped
     environment:
+      - API_URL
       - AUTH_URL
       - DATABASE_URL
       - NODE_ENV
