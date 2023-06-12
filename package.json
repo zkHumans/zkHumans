@@ -13,7 +13,7 @@
     "dev-watch--lint": "nx watch --all --verbose -- nx run-many --targets=lint,typecheck --configuration=development",
     "dev-watch--test": "nx watch --all --verbose -- nx affected --target=test --files=\\$NX_FILE_CHANGES",
     "postinstall": "prisma generate",
-    "production-build": "nx run-many --targets=build --configuration=production",
+    "production-build": "NODE_ENV=production nx run-many --targets=build --configuration=production",
     "setup": "prisma migrate deploy && echo TODO prisma db seed",
     "test:snarky-smt:merkle": "./bin/snarky-run.sh libs/contracts-example/src/examples/snarky-smt/merkle_zkapp.ts",
     "test:snarky-smt:smt": "./bin/snarky-run.sh libs/contracts-example/src/examples/snarky-smt/smt_zkapp.ts",
