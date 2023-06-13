@@ -1,5 +1,11 @@
 FROM node:lts-slim
 
+RUN apt-get update -y \
+  && apt-get install -y --no-install-recommends \
+    # prisma dep
+    openssl \
+  && rm -rf /var/lib/apt/lists/*
+
 WORKDIR /app
 
 COPY package*.json ./
