@@ -15,5 +15,5 @@ module.exports = {
   // publicPath: "/build/",
   serverModuleFormat: 'cjs', // TODO esm
   tailwind: true,
-  watchPaths: ['../../libs'],
+  watchPaths: ['../../libs/*/src'],
 };

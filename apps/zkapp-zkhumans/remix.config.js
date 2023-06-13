@@ -16,7 +16,7 @@ module.exports = {
   // publicPath: "/build/",
   serverModuleFormat: 'cjs', // TODO esm
   tailwind: true,
-  watchPaths: ['../../libs'],
+  watchPaths: ['../../libs/*/src'],
 
   // https://remix.run/docs/en/1.15.0/pages/v2
 
