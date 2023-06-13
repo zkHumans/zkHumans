@@ -4,6 +4,7 @@
     "dist",
     "tmp",
     "apps/**/.cache",
-    "apps/**/build"
+    "apps/**/build",
+    "libs/**/build"
     ]
 }
