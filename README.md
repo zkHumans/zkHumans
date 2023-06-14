@@ -6,46 +6,12 @@
 
 - [Nx](https://nx.dev/): Next generation build system with first class monorepo
   support and powerful integrations
-- [remix](https://github.com/remix-run/remix): Create modern, resilient user
-  experiences with web fundamentals
 - [snarkyjs](https://github.com/o1-labs/snarkyjs): TypeScript framework for
   zk-SNARKs and zkApps
+- [remix](https://github.com/remix-run/remix): Create modern, resilient user
+  experiences with web fundamentals
 - [tRPC](https://trpc.io/): End-to-end typesafe APIs made easy
 - [Prisma](https://www.prisma.io/): Next-generation Node.js and TypeScript ORM
-
-## Development
-
-```sh
-# copy example then edit environment
-cp .env-example .env
-
-# install dependencies
-npm install
-
-# start containers: postgres
-docker compose --profile dev up
-
-# setup and seed database
-npm run setup
-```
-
-See `dev-*` scripts in `package.json`.
-
-## Production
-
-```sh
-# copy example then edit environment
-cp .env-example .env
-
-# build docker image
-docker compose --profile build build
-
-# optional: start proxy
-docker compose --profile proxy up -d
-
-# start services
-docker compose --profile run up -d
-```
 
 ## Contributing
 
