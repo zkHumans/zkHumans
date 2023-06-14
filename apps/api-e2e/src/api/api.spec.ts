@@ -1,4 +1,6 @@
-import { trpc } from '@zkhumans/trpc-client';
+import { createTRPCClient } from '@zkhumans/trpc-client';
+
+const trpc = createTRPCClient(process.env['API_URL']);
 
 describe('GET /', () => {
   it('has process.env.API_URL', async () => {

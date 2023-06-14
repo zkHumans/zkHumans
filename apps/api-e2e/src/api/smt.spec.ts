@@ -1,9 +1,11 @@
 import { jest } from '@jest/globals';
-import { trpc } from '@zkhumans/trpc-client';
+import { createTRPCClient } from '@zkhumans/trpc-client';
 
 import { smtApplyTransactions, smtValueToString } from '@zkhumans/utils';
 import { MemoryStore, SparseMerkleTree } from 'snarky-smt';
 import { Field } from 'snarkyjs';
+
+const trpc = createTRPCClient(process.env['API_URL']);
 
 describe('SMT', () => {
   jest.setTimeout(1000 * 100);
