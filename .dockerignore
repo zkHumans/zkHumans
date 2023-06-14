@@ -1,6 +1,6 @@
 .dockerignore
 .env
-.env-example
+.env-*
 .git
 _/
 dist
