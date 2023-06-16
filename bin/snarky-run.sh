@@ -29,4 +29,4 @@ d=$(echo ${1} | cut -d'/' -f 1,2)
 f=$(echo ${1} | cut -d'/' -f 3- | sed -e 's/\.ts$/.js/')
 cd ${d} \
   && npm run build \
-  && node ${node_options[@]} build/${f}
+  && exec node ${node_options[@]} build/${f} "${@:2}"
