@@ -1,61 +1,58 @@
-// 2023-06-15
+// 2023-06-15 adapted from:
 // https://github.com/o1-labs/docs2/blob/main/examples/zkapps/interacting-with-zkApps-server-side/src/utils.ts
 
-import {
-  PublicKey,
-  fetchAccount,
-  PrivateKey,
-  Field,
-  Mina,
-  AccountUpdate,
-} from 'snarkyjs';
-import { Square } from './Square';
+import { PublicKey, fetchAccount, PrivateKey, Mina } from 'snarkyjs';
 
-export { loopUntilAccountExists, deploy };
-
-async function loopUntilAccountExists({
+export async function loopUntilAccountExists({
   account,
   eachTimeNotExist,
   isZkAppAccount,
+  network,
 }: {
   account: PublicKey;
   eachTimeNotExist: () => void;
   isZkAppAccount: boolean;
+  network: string;
 }) {
   for (;;) {
-    let response = await fetchAccount({ publicKey: account });
+    const response = await fetchAccount({ publicKey: account }, network);
     let accountExists = response.account !== undefined;
     if (isZkAppAccount) {
-      accountExists = response.account?.appState !== undefined;
+      accountExists = response.account?.zkapp?.appState !== undefined;
     }
     if (!accountExists) {
       eachTimeNotExist();
       await new Promise((resolve) => setTimeout(resolve, 5000));
     } else {
       // TODO add optional check that verification key is correct once this is available in SnarkyJS
-      return response.account!;
+      return response.account;
     }
   }
 }
 
 const deployTransactionFee = 100_000_000;
 
-async function deploy(
+export async function deploy(
   deployerPrivateKey: PrivateKey,
   zkAppPrivateKey: PrivateKey,
-  zkapp: Square,
-  verificationKey: { data: string; hash: string | Field }
+  // zkapp: SmartContract,
+  // verificationKey: { data: string; hash: string | Field },
+  network: string,
+  f: () => void
 ) {
-  let sender = deployerPrivateKey.toPublicKey();
-  let zkAppPublicKey = zkAppPrivateKey.toPublicKey();
+  const sender = deployerPrivateKey.toPublicKey();
+  const zkAppPublicKey = zkAppPrivateKey.toPublicKey();
   console.log('using deployer private key with public key', sender.toBase58());
   console.log(
     'using zkApp private key with public key',
     zkAppPublicKey.toBase58()
   );
 
-  let { account } = await fetchAccount({ publicKey: zkAppPublicKey });
-  let isDeployed = account?.verificationKey !== undefined;
+  const { account } = await fetchAccount(
+    { publicKey: zkAppPublicKey },
+    network
+  );
+  let isDeployed = account?.zkapp?.verificationKey !== undefined;
 
   if (isDeployed) {
     console.log(
@@ -65,13 +62,15 @@ async function deploy(
     );
   } else {
     console.log('Deploying zkapp for public key', zkAppPublicKey.toBase58());
-    let transaction = await Mina.transaction(
+    Mina.setActiveInstance(Mina.Network(network));
+    const transaction = await Mina.transaction(
       { sender, fee: deployTransactionFee },
-      () => {
-        AccountUpdate.fundNewAccount(sender);
-        // NOTE: this calls `init()` if this is the first deploy
-        zkapp.deploy({ verificationKey });
-      }
+      f
+      // () => {
+      //   AccountUpdate.fundNewAccount(sender);
+      //   // NOTE: this calls `init()` if this is the first deploy
+      //   zkapp.deploy({ verificationKey });
+      // }
     );
     await transaction.prove();
     transaction.sign([deployerPrivateKey, zkAppPrivateKey]);
