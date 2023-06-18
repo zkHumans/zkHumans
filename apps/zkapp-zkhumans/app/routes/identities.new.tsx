@@ -263,15 +263,15 @@ export default function NewIdentity() {
     </Modal>
   );
 
-  const hasBioAuth = bioAuthState.auth != null;
+  const hasBioAuth = bioAuthState.auth !== null;
   const hasSignature = signature !== null;
   const hasTransaction = transaction !== null;
   const hasZKApp = zk.state.zkApp !== null;
-  const needsBioAuth = bioAuthState.link && !bioAuthState.auth;
+  const needsBioAuth = bioAuthState.link && !hasBioAuth;
 
-  const btnClassNameDisabled = 'btn normal-case btn-disabled';
-  const btnClassNameSuccess = 'btn normal-case btn-success';
-  const btnClassNameTodo = 'btn normal-case btn-primary';
+  const btnDisabled = 'btn normal-case btn-disabled';
+  const btnSuccess = 'btn normal-case btn-success';
+  const btnTodo = 'btn normal-case btn-primary';
 
   const handleNothing = () => {
     return false;
@@ -299,19 +299,19 @@ export default function NewIdentity() {
       {/* Action Buttons */}
       <div className="flex flex-row justify-center space-x-4 p-4">
         <button
-          className={hasZKApp ? btnClassNameSuccess : btnClassNameTodo}
+          className={hasZKApp ? btnSuccess : btnTodo}
           onClick={hasZKApp ? handleNothing : handleCompileZkApp}
         >
           Compile zkApp
         </button>
         <button
-          className={hasBioAuth ? btnClassNameSuccess : btnClassNameTodo}
+          className={hasBioAuth ? btnSuccess : btnTodo}
           onClick={hasBioAuth ? handleNothing : handleBioAuth}
         >
           BioAuthorize
         </button>
         <button
-          className={hasSignature ? btnClassNameSuccess : btnClassNameTodo}
+          className={hasSignature ? btnSuccess : btnTodo}
           onClick={hasSignature ? handleNothing : handleSignature}
         >
           Sign with Operator Key
@@ -319,17 +319,17 @@ export default function NewIdentity() {
         <button
           className={
             hasTransaction
-              ? btnClassNameSuccess
+              ? btnSuccess
               : hasZKApp && hasBioAuth && hasSignature
-              ? btnClassNameTodo
-              : btnClassNameDisabled
+              ? btnTodo
+              : btnDisabled
           }
           onClick={handlePrepareCreateIdentityProof}
         >
           Prepare Proof
         </button>
         <button
-          className={hasTransaction ? btnClassNameTodo : btnClassNameDisabled}
+          className={hasTransaction ? btnTodo : btnDisabled}
           onClick={handleSendCreateIdentityProof}
         >
           Send Proof
