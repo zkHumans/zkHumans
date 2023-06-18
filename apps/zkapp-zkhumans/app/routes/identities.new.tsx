@@ -43,11 +43,9 @@ export default function NewIdentity() {
       );
 
       if (!idr) {
-        cnsl.log('error', 'MAX identities per account reached');
+        cnsl.log('error', 'MAX IDs per account reached');
         return;
       }
-
-      cnsl.log('success', 'Identifier:', identifier);
 
       setIdentifier(() => idr);
     })();
@@ -106,26 +104,26 @@ export default function NewIdentity() {
   }
 
   async function handlePrepareCreateIdentityProof() {
-    cnsl.log('info', 'Creating Identity...');
+    cnsl.tic('Preparing Create Identity Proof...');
 
     const snarkyjs = zk.state.snarkyjs;
     if (!snarkyjs || !zk.state.account) {
-      cnsl.log('error', 'ERROR: snarkyjs and/or account not ready!');
+      cnsl.toc('error', 'ERROR: snarkyjs and/or account not ready!');
       return;
     }
 
     if (!identifier) {
-      cnsl.log('error', 'ERROR: no available identifier');
+      cnsl.toc('error', 'ERROR: no available identifier');
       return;
     }
 
     if (!bioAuthState.auth) {
-      cnsl.log('error', 'ERROR: no bioauth');
+      cnsl.toc('error', 'ERROR: no bioauth');
       return;
     }
 
     if (!signature) {
-      cnsl.log('error', 'ERROR: no operator key signature');
+      cnsl.toc('error', 'ERROR: no operator key signature');
       return;
     }
 
@@ -135,7 +133,7 @@ export default function NewIdentity() {
     } catch (
       err: any // eslint-disable-line @typescript-eslint/no-explicit-any
     ) {
-      cnsl.log('error', 'ERROR: API not available');
+      cnsl.toc('error', 'ERROR: API not available');
       console.log('ERROR', err.message, err.code);
       return;
     }
@@ -149,39 +147,38 @@ export default function NewIdentity() {
     const smtIDKeyring = await IDUtils.getKeyringSMT(identifier);
 
     // add Operator Key as AuthnFactor to Identity Keyring
+    cnsl.tic('> Adding Operator Key as Authentication Factor...');
     const statusOpKey = await IDUtils.addAuthnFactorOperatorKey(
       smtIDKeyring,
       identifier,
       signature
     );
-    cnsl.log(
-      statusOpKey ? 'success' : 'error',
-      'Add Operator Key as AuthnFactor'
-    );
+    cnsl.toc(statusOpKey ? 'success' : 'error');
     if (!statusOpKey) return;
 
     // add BioAuth as AuthnFactor to Identity Keyring
+    cnsl.tic('> Adding BioAuth as Authentication Factor...');
     const statusBioAuth = await IDUtils.addAuthnFactorBioAuth(
       smtIDKeyring,
       identifier,
       bioAuthState.auth
     );
-    cnsl.log(statusBioAuth ? 'success' : 'error', 'Add BioAuth as AuthnFactor');
+    cnsl.toc(statusBioAuth ? 'success' : 'error');
     if (!statusBioAuth) return;
 
     // get proof that new Identity can be added to Identity Manager
-    cnsl.log('info', 'Preparing to add Identity...');
+    cnsl.tic('> Create New Identity Merkle proof...');
     const { identity, merkleProof } = await IDUtils.prepareAddNewIdentity(
       identifier,
       smtIDKeyring
     );
-    cnsl.log('success', 'merkle proof:', merkleProof.root);
+    cnsl.toc('success', `root=${merkleProof.root}`);
 
     try {
+      cnsl.tic('> Preparing transaction...');
       const zks = zk.getReadyState();
       if (!zks) throw new Error('zkApp not ready for transaction');
       const { zkApp, snarkyjs } = zks;
-      cnsl.log('info', 'Preparing transaction...');
       const tx = await snarkyjs.Mina.transaction(() => {
         zkApp.identityManager.addNewIdentity(
           snarkyjs.CircuitString.fromString(identifier),
@@ -189,16 +186,20 @@ export default function NewIdentity() {
           merkleProof
         );
       });
+      cnsl.toc('success');
 
-      cnsl.log('info', 'Generating transaction proof...');
+      cnsl.tic('> Generating transaction proof...');
       await tx.prove();
-      cnsl.log('success', 'Transaction proof');
+      cnsl.toc('success');
+
+      console.log('Transaction:', tx.toPretty());
 
       setTransaction(() => tx.toJSON());
     } catch (
       err: any // eslint-disable-line @typescript-eslint/no-explicit-any
     ) {
-      cnsl.log('error', 'ERROR: Prepare proof failed', err.message);
+      cnsl.toc('error', `ERROR: ${err.message}`);
+      cnsl.toc('error');
       console.log('ERROR', err.message, err.code);
       return;
     }
@@ -208,16 +209,11 @@ export default function NewIdentity() {
 
   async function handleSendCreateIdentityProof() {
     try {
-      /*
-      const { IdentityClientUtils: IDUtils } = await import(
-        '@zkhumans/utils-client'
-      );
-      */
-
-      cnsl.log('info', 'Sending transaction...');
+      cnsl.tic('Sending transaction...');
       const zks = zk.getReadyState();
       if (!zks) throw new Error('zkApp not ready for transaction');
       const { wallet } = zks;
+
       const { hash } = await wallet.sendTransaction({
         transaction,
         feePayer: {
@@ -225,21 +221,32 @@ export default function NewIdentity() {
           memo: '',
         },
       });
+      cnsl.toc('success', `sent with hash=${hash}`);
 
-      cnsl.log('success', `Transaction sent with hash=${hash}`);
+      cnsl.log(
+        'info',
+        `See transaction at https://berkeley.minaexplorer.com/transaction/${hash}`
+      );
 
-      cnsl.log('info', 'TODO: update db, check on-chain status');
       /*
+      // const commitment = await zkApp.identityManager.commitment.fetch();
       // TODO: update tx in db with pending state, then confirmed state
-      // update database
-      const smtIDManager = await IDUtils.addNewIdentity(identifier, identity);
+      cnsl.tic('Updating off-chain data...');
+      const { IdentityClientUtils } = await import('@zkhumans/utils-client');
+      const smtIDManager = await IdentityClientUtils.addNewIdentity(
+        identifier,
+        identity
+      );
       // zkapp.commitment.get().assertEquals(smtIDManager.getRoot());
-      cnsl.log('info', 'Identity Manager new root:', smtIDManager.getRoot());
-       */
+      cnsl.toc(
+        'success',
+        `Identity Manager new root: ${smtIDManager.getRoot()}`
+      );
+      */
     } catch (
       err: any // eslint-disable-line @typescript-eslint/no-explicit-any
     ) {
-      cnsl.log('error', 'ERROR: zkApp transaction failed', err.message);
+      cnsl.toc('error', `ERROR: ${err.message}`);
       return;
     }
 

@@ -16,7 +16,7 @@ export function Console({ output }: ConsoleProps) {
           <CommandLineIcon className="mr-2 h-5 w-5" strokeWidth="2" /> Console
         </div>
         <div className="collapse-content p-0">
-          <div className="flex h-32 flex-col-reverse overflow-y-scroll">
+          <div className="flex h-72 flex-col-reverse overflow-y-scroll">
             {output.map((v, i) => (
               <div key={i}>{v}</div>
             ))}

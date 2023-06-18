@@ -1,7 +1,7 @@
 import MinaProvider from '@aurowallet/mina-provider';
 import { delay } from '@zkhumans/utils';
 import { useEffect, useState } from 'react';
-import type { LogFunction } from './useConsole';
+import type { CNSL } from './useConsole';
 
 import type { SignedData } from '@aurowallet/mina-provider/dist/TSTypes';
 
@@ -89,8 +89,8 @@ export type ZKAppStateReady<T> = {
 };
 
 export function useZKApp<T>(
-  log: LogFunction,
-  zkAppInit: (snarkyjs: Snarkyjs, log: LogFunction) => Promise<T>
+  cnsl: CNSL,
+  zkAppInit: (snarkyjs: Snarkyjs, cnsl: CNSL) => Promise<T>
 ) {
   const [state, setState] = useState<ZKAppState<T>>(stateInit);
 
@@ -162,7 +162,7 @@ export function useZKApp<T>(
   const checkWallet = (wallet?: MinaProvider) => {
     const hasWallet = wallet !== undefined;
     setState((s) => ({ ...s, hasWallet, wallet }));
-    log(hasWallet ? 'success' : 'error', 'has MINA-compatible wallet');
+    cnsl.log(hasWallet ? 'success' : 'error', 'MINA-compatible wallet');
     return hasWallet;
   };
 
@@ -171,7 +171,6 @@ export function useZKApp<T>(
     let hasNetwork = false;
     if (isNetworkSupported(network)) hasNetwork = true;
     setState((s) => ({ ...s, hasNetwork, network }));
-    log(hasNetwork ? 'success' : 'error', 'supported network:', network);
     return hasNetwork;
   };
 
@@ -184,7 +183,6 @@ export function useZKApp<T>(
       account = accounts.at(0) ?? null;
     }
     setState((s) => ({ ...s, hasAccount, account }));
-    log(hasAccount ? 'success' : 'error', 'connected account:', account);
     return hasAccount;
   };
 
@@ -200,9 +198,9 @@ export function useZKApp<T>(
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     if (!(res as any).error) hasAccountNetwork = true;
     setState((s) => ({ ...s, hasAccountNetwork }));
-    log(
+    cnsl.log(
       hasAccountNetwork ? 'success' : 'error',
-      'account exists on network:',
+      'Connected account on network:',
       account
     );
     return hasAccountNetwork;
@@ -213,7 +211,6 @@ export function useZKApp<T>(
     try {
       const wallet = getWallet();
       const accounts = await wallet?.requestAccounts();
-      // log('requestAccount --> checkAccount');
       return checkAccount(accounts);
     } catch (
       err: any // eslint-disable-line @typescript-eslint/no-explicit-any
@@ -224,7 +221,7 @@ export function useZKApp<T>(
 
       // https://docs.aurowallet.com/general/reference/api-reference/mina-provider/methods
       // If user reject, requestAccounts will throw an error with code and message filed
-      log('error', 'ERROR: checkAccount:', err.message, err.code);
+      cnsl.log('error', 'ERROR: Wallet checkAccount:', err.message, err.code);
       setState((s) => ({ ...s, hasAccount: false, account: null }));
       return false;
     }
@@ -233,7 +230,7 @@ export function useZKApp<T>(
   async function getSignedMessage(
     message: string
   ): Promise<WalletSignedData | null> {
-    log('info', 'Requesting signature from wallet...');
+    cnsl.tic('Requesting signature from wallet...');
     try {
       if (!state.wallet) throw new Error('wallet not connected');
       if (!state.hasAccountNetwork) throw new Error('account not found');
@@ -241,20 +238,17 @@ export function useZKApp<T>(
         message,
       });
       if (!data) throw new Error('signature empty');
-      log('success', 'Signature received!');
+      cnsl.toc('success');
       return data;
     } catch (
       err: any // eslint-disable-line @typescript-eslint/no-explicit-any
     ) {
-      log('error', 'Signature failed:', err.message);
-      console.log('ERROR', err.message, err.code);
+      cnsl.toc('error', `Failed: ${err.message}`);
       return null;
     }
   }
 
   function handleConnectWallet() {
-    log('info', 'Connectng wallet...');
-
     (async () => {
       const wallet = getWallet();
       if (!checkWallet(wallet) || !wallet) return;
@@ -269,56 +263,42 @@ export function useZKApp<T>(
       // load snarky!
       ////////////////////////////////////////////////////////////////////////
 
-      log('time', '@T+0 ms | Loading...');
-      const timeStart = window.performance.now();
+      cnsl.tic('Loading snarkyjs...');
       const snarkyjs = await import('snarkyjs');
-      log(
-        'time',
-        `@T+${window.performance.now() - timeStart} ms | snarkyjs import`
-      );
-      await snarkyjs.isReady;
       snarkyjs.Mina.setActiveInstance(snarkyjs.Mina.Network(MINA_NETWORK));
       setState((s) => ({ ...s, snarkyjs }));
-      log(
-        'time',
-        `@T+${window.performance.now() - timeStart} ms | snarkyjs ready`
-      );
+      cnsl.toc();
     })();
   }
 
   async function compile() {
     // only init zkApp once
     if (state.zkApp !== null) {
-      log('success', 'zkApp ready');
+      cnsl.log('success', 'zkApp ready');
       return;
     }
 
     if (!state.snarkyjs) {
-      log('error', 'snarkyjs not ready');
+      cnsl.log('error', 'snarkyjs not ready');
       return;
     }
 
     try {
-      const timeStart = window.performance.now();
-      log('time', '@T+0 ms | Compiling zkApp... takes a long time!');
-      const zkApp = await zkAppInit(state.snarkyjs, log);
+      cnsl.tic('Compiling zkApp... takes a long time!');
+      const zkApp = await zkAppInit(state.snarkyjs, cnsl);
       setState((s) => ({ ...s, hasError: false, zkApp }));
-      log(
-        'success',
+      console.log(
         'zkApp(s) loaded!',
         'isSecureContext:',
         isSecureContext,
         'crossOriginIsolated:',
         self.crossOriginIsolated
       );
-      log(
-        'time',
-        `@T+${window.performance.now() - timeStart} ms | zkApp compiled`
-      );
+      cnsl.toc('success');
     } catch (
       err: any // eslint-disable-line @typescript-eslint/no-explicit-any
     ) {
-      log('error', 'ERROR: zkAppInit:', err.message, err.code);
+      cnsl.toc('error', `ERROR: ${err.message} ${err.code}`);
       setState((s) => ({ ...s, hasError: true }));
     }
   }
