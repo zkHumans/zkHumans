@@ -133,6 +133,23 @@ export function useZKApp<T>(
     state.snarkyjs,
   ]);
 
+  // keep MINA wallet connected
+  // 2023-06-17: wallet disconnects after 30s of idle time
+  // https://github.com/aurowallet/auro-wallet-browser-extension/issues/25
+  useEffect(() => {
+    (async () => {
+      if (state.wallet && state.hasAccountNetwork) {
+        const walletKeepAlive = async () => {
+          await delay(25_000);
+          if (!state.wallet || !state.hasAccountNetwork) return;
+          await state.wallet.requestAccounts();
+          walletKeepAlive();
+        };
+        await walletKeepAlive();
+      }
+    })();
+  }, [state.wallet, state.hasAccountNetwork]);
+
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const getWallet = () => (window as any).mina as MinaProvider | undefined;
 
