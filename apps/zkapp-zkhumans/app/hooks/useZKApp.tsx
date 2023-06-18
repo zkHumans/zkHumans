@@ -22,16 +22,60 @@ const MINA_NETWORK = 'https://proxy.berkeley.minaexplorer.com/graphql';
 const CYCLE_CHECK_ACCOUNT_NETWORK = 5_000;
 
 const stateInit = {
-  hasAccount: null as null | boolean, // has a MINA account been wallet-connected to the site
-  hasAccountNetwork: null as null | boolean, // does the MINA account exist on-chain
-  hasError: null as null | boolean, // has a fatal error occurred
-  hasNetwork: null as null | boolean, // is the wallet configured to supported network
-  hasWallet: null as null | boolean, // is MINA-compatible wallet installed
+  /**
+   * Has a MINA account been wallet-connected to the site?
+   */
+  hasAccount: null as null | boolean,
+
+  /**
+   * Does the MINA account exist on-chain?
+   */
+  hasAccountNetwork: null as null | boolean,
+
+  /**
+   * Has a fatal error occurred?
+   */
+  hasError: null as null | boolean,
+
+  /**
+   * Is the wallet configured to a supported network?
+   */
+  hasNetwork: null as null | boolean,
+
+  /**
+   * Is MINA-compatible wallet installed?
+   */
+  hasWallet: null as null | boolean,
+
+  /**
+   * The user's account; a PublicKey in Base58 string format.
+   */
   account: null as null | string,
+
+  /**
+   * Which network the user's wallet is configured for.
+   */
   network: null as null | string,
+
+  /**
+   * Dynamically imported snarkyjs ala `await import('snarkyjs')`.
+   * (in-browser only)
+   */
   snarkyjs: null as null | Snarkyjs,
+
+  /**
+   * aka "window.mina"
+   */
   wallet: undefined as undefined | MinaProvider,
+
+  /**
+   * Smart Contract(s) as returned by custom zkAppInit().
+   */
   zkApp: null as null | any, // eslint-disable-line @typescript-eslint/no-explicit-any
+
+  /**
+   * Used internally to recheck hasAccountNetwork.
+   */
   counterAccountNetwork: 0,
 };
 
