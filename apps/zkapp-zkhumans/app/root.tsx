@@ -12,13 +12,7 @@ import { trpc } from '@zkhumans/trpc-client';
 import styles from './tailwind.css';
 import { UI } from './components';
 import { useConsole, useData, useZKApp } from './hooks';
-import type { ApiSmtGetOutput } from '@zkhumans/trpc-client';
-import type {
-  LogFunction,
-  Snarkyjs,
-  WalletSignedData,
-  ZKAppState,
-} from './hooks';
+import type { LogFunction, Snarkyjs } from './hooks';
 
 export const links: LinksFunction = () => [{ rel: 'stylesheet', href: styles }];
 
@@ -48,19 +42,9 @@ async function zkAppInit(snarkyjs: Snarkyjs, log: LogFunction) {
 export type ZKApp = Awaited<ReturnType<typeof zkAppInit>>;
 
 export type AppContextType = {
-  cnsl: {
-    log: LogFunction;
-    output: string[];
-  };
-  data: {
-    refresh: () => void;
-    identities: NonNullable<ApiSmtGetOutput>[];
-  };
-  zk: {
-    state: ZKAppState<ZKApp>;
-    getSignedMessage: (message: string) => Promise<WalletSignedData | null>;
-    handleConnectWallet: () => void;
-  };
+  cnsl: ReturnType<typeof useConsole>;
+  data: ReturnType<typeof useData>;
+  zk: ReturnType<typeof useZKApp<ZKApp>>;
 };
 
 export default function App() {
