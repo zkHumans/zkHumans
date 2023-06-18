@@ -22,20 +22,20 @@ export const meta: V2_MetaFunction = () => [
   { viewport: 'width=device-width,initial-scale=1' },
 ];
 
-// zkApp init function, called in-browser by useZKApp after wallet is connected
+// zkApp init function, called in-browser through useZKApp
 async function zkAppInit(snarkyjs: Snarkyjs, log: LogFunction) {
-  const { BioAuth, IdentityManager } = await import('@zkhumans/contracts');
+  const { IdentityManager } = await import('@zkhumans/contracts');
 
-  const pubKey = (x: string) => snarkyjs.PublicKey.fromBase58(x);
+  // Note: takes a very long time!
+  await IdentityManager.compile();
+
   const meta = await trpc.meta.query();
-
-  const bioAuth = new BioAuth(pubKey(meta.address.BioAuth));
   const identityManager = new IdentityManager(
-    pubKey(meta.address.IdentityManager)
+    snarkyjs.PublicKey.fromBase58(meta.address.IdentityManager)
   );
-  log('success', 'zkApp BioAuth @', meta.address.BioAuth);
   log('success', 'zkApp IdentityManager @', meta.address.IdentityManager);
-  return { bioAuth, identityManager };
+
+  return { identityManager };
 }
 
 // our zkApp's type, deduced from the init function

@@ -83,6 +83,11 @@ export type ZKAppState<T> = Omit<typeof stateInit, 'zkApp'> & {
   zkApp: T | null;
 };
 
+// not null version of ZKAppState, ie when ZKApp is ready
+export type ZKAppStateReady<T> = {
+  [K in keyof ZKAppState<T>]: NonNullable<ZKAppState<T>[K]>;
+};
+
 export function useZKApp<T>(
   log: LogFunction,
   zkAppInit: (snarkyjs: Snarkyjs, log: LogFunction) => Promise<T>
@@ -278,34 +283,70 @@ export function useZKApp<T>(
         'time',
         `@T+${window.performance.now() - timeStart} ms | snarkyjs ready`
       );
-
-      ////////////////////////////////////////////////////////////////////////
-      // load zkApp!
-      ////////////////////////////////////////////////////////////////////////
-
-      try {
-        const zkApp = await zkAppInit(snarkyjs, log);
-        setState((s) => ({ ...s, hasError: false, zkApp }));
-        log(
-          'success',
-          'zkApp(s) loaded!',
-          'isSecureContext:',
-          isSecureContext,
-          'crossOriginIsolated:',
-          self.crossOriginIsolated
-        );
-        log(
-          'time',
-          `@T+${window.performance.now() - timeStart} ms | zkApp ready`
-        );
-      } catch (
-        err: any // eslint-disable-line @typescript-eslint/no-explicit-any
-      ) {
-        log('error', 'ERROR: zkAppInit:', err.message, err.code);
-        setState((s) => ({ ...s, hasError: true }));
-      }
     })();
   }
 
-  return { state, getSignedMessage, handleConnectWallet };
+  async function compile() {
+    // only init zkApp once
+    if (state.zkApp !== null) {
+      log('success', 'zkApp ready');
+      return;
+    }
+
+    if (!state.snarkyjs) {
+      log('error', 'snarkyjs not ready');
+      return;
+    }
+
+    try {
+      const timeStart = window.performance.now();
+      log('time', '@T+0 ms | Compiling zkApp... takes a long time!');
+      const zkApp = await zkAppInit(state.snarkyjs, log);
+      setState((s) => ({ ...s, hasError: false, zkApp }));
+      log(
+        'success',
+        'zkApp(s) loaded!',
+        'isSecureContext:',
+        isSecureContext,
+        'crossOriginIsolated:',
+        self.crossOriginIsolated
+      );
+      log(
+        'time',
+        `@T+${window.performance.now() - timeStart} ms | zkApp compiled`
+      );
+    } catch (
+      err: any // eslint-disable-line @typescript-eslint/no-explicit-any
+    ) {
+      log('error', 'ERROR: zkAppInit:', err.message, err.code);
+      setState((s) => ({ ...s, hasError: true }));
+    }
+  }
+
+  function isReady() {
+    const notReady =
+      !state.hasAccount ||
+      !state.hasAccountNetwork ||
+      !state.hasNetwork ||
+      !state.hasWallet ||
+      !state.account ||
+      !state.network ||
+      !state.snarkyjs ||
+      !state.wallet ||
+      !state.zkApp;
+    return !notReady;
+  }
+
+  function getReadyState() {
+    if (!isReady()) return null;
+    return state as ZKAppStateReady<T>;
+  }
+
+  return {
+    state,
+    getSignedMessage,
+    handleConnectWallet,
+    getReadyState,
+    compile,
+  };
 }

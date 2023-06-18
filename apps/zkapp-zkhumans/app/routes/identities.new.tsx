@@ -18,6 +18,7 @@ export default function NewIdentity() {
 
   const [identifier, setIdentifier] = useState(null as null | string);
   const [signature, setSignature] = useState(null as null | WalletSignedData);
+  const [transaction, setTransaction] = useState(null as null | string);
 
   const [bioAuthState, setBioAuthState] = useState({
     auth: null as null | string,
@@ -77,6 +78,10 @@ export default function NewIdentity() {
     bioAuthState.recheckCounter,
   ]);
 
+  async function handleCompileZkApp() {
+    await zk.compile(); // this takes forever!
+  }
+
   // get bioauth'd signature of identifier
   async function handleBioAuth() {
     if (!identifier) return;
@@ -100,7 +105,7 @@ export default function NewIdentity() {
     setSignature(() => signedData);
   }
 
-  async function handleCreateIdentity() {
+  async function handlePrepareCreateIdentityProof() {
     cnsl.log('info', 'Creating Identity...');
 
     const snarkyjs = zk.state.snarkyjs;
@@ -172,17 +177,71 @@ export default function NewIdentity() {
     );
     cnsl.log('success', 'merkle proof:', merkleProof.root);
 
-    // TODO: submit proof txn
-    // const tx = await Mina.transaction(feePayer, () => {
-    //   zkapp.addNewIdentity(identifier, identity, merkleProof);
-    // });
-    // await tx.prove();
-    // await tx.sign([feePayerKey]).send();
-    cnsl.log('info', 'TODO: send txn');
+    try {
+      const zks = zk.getReadyState();
+      if (!zks) throw new Error('zkApp not ready for transaction');
+      const { zkApp, snarkyjs } = zks;
+      cnsl.log('info', 'Preparing transaction...');
+      const tx = await snarkyjs.Mina.transaction(() => {
+        zkApp.identityManager.addNewIdentity(
+          snarkyjs.CircuitString.fromString(identifier),
+          identity,
+          merkleProof
+        );
+      });
 
-    const smtIDManager = await IDUtils.addNewIdentity(identifier, identity);
-    // zkapp.commitment.get().assertEquals(smtIDManager.getRoot());
-    cnsl.log('info', 'Identity Manager new root:', smtIDManager.getRoot());
+      cnsl.log('info', 'Generating transaction proof...');
+      await tx.prove();
+      cnsl.log('success', 'Transaction proof');
+
+      setTransaction(() => tx.toJSON());
+    } catch (
+      err: any // eslint-disable-line @typescript-eslint/no-explicit-any
+    ) {
+      cnsl.log('error', 'ERROR: Prepare proof failed', err.message);
+      console.log('ERROR', err.message, err.code);
+      return;
+    }
+
+    appContext.data.refresh();
+  }
+
+  async function handleSendCreateIdentityProof() {
+    try {
+      /*
+      const { IdentityClientUtils: IDUtils } = await import(
+        '@zkhumans/utils-client'
+      );
+      */
+
+      cnsl.log('info', 'Sending transaction...');
+      const zks = zk.getReadyState();
+      if (!zks) throw new Error('zkApp not ready for transaction');
+      const { wallet } = zks;
+      const { hash } = await wallet.sendTransaction({
+        transaction,
+        feePayer: {
+          fee: 0.1,
+          memo: '',
+        },
+      });
+
+      cnsl.log('success', `Transaction sent with hash=${hash}`);
+
+      cnsl.log('info', 'TODO: update db, check on-chain status');
+      /*
+      // TODO: update tx in db with pending state, then confirmed state
+      // update database
+      const smtIDManager = await IDUtils.addNewIdentity(identifier, identity);
+      // zkapp.commitment.get().assertEquals(smtIDManager.getRoot());
+      cnsl.log('info', 'Identity Manager new root:', smtIDManager.getRoot());
+       */
+    } catch (
+      err: any // eslint-disable-line @typescript-eslint/no-explicit-any
+    ) {
+      cnsl.log('error', 'ERROR: zkApp transaction failed', err.message);
+      return;
+    }
 
     appContext.data.refresh();
   }
@@ -204,9 +263,11 @@ export default function NewIdentity() {
     </Modal>
   );
 
+  const hasBioAuth = bioAuthState.auth != null;
+  const hasSignature = signature !== null;
+  const hasTransaction = transaction !== null;
+  const hasZKApp = zk.state.zkApp !== null;
   const needsBioAuth = bioAuthState.link && !bioAuthState.auth;
-  const hasBioAuth = bioAuthState.auth;
-  const hasSignature = signature;
 
   const btnClassNameDisabled = 'btn normal-case btn-disabled';
   const btnClassNameSuccess = 'btn normal-case btn-success';
@@ -238,6 +299,12 @@ export default function NewIdentity() {
       {/* Action Buttons */}
       <div className="flex flex-row justify-center space-x-4 p-4">
         <button
+          className={hasZKApp ? btnClassNameSuccess : btnClassNameTodo}
+          onClick={hasZKApp ? handleNothing : handleCompileZkApp}
+        >
+          Compile zkApp
+        </button>
+        <button
           className={hasBioAuth ? btnClassNameSuccess : btnClassNameTodo}
           onClick={hasBioAuth ? handleNothing : handleBioAuth}
         >
@@ -251,11 +318,21 @@ export default function NewIdentity() {
         </button>
         <button
           className={
-            hasBioAuth && hasSignature ? btnClassNameTodo : btnClassNameDisabled
+            hasTransaction
+              ? btnClassNameSuccess
+              : hasZKApp && hasBioAuth && hasSignature
+              ? btnClassNameTodo
+              : btnClassNameDisabled
           }
-          onClick={handleCreateIdentity}
+          onClick={handlePrepareCreateIdentityProof}
         >
-          Create Identity
+          Prepare Proof
+        </button>
+        <button
+          className={hasTransaction ? btnClassNameTodo : btnClassNameDisabled}
+          onClick={handleSendCreateIdentityProof}
+        >
+          Send Proof
         </button>
       </div>
 
