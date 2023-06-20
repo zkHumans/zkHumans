@@ -5,6 +5,7 @@ import {
   method,
   Permissions,
   Poseidon,
+  provablePure,
   PublicKey,
   SmartContract,
   State,
@@ -142,6 +143,17 @@ export class IdentityManager extends SmartContract {
   // root hash of the Identity Manager MT
   @state(Field) commitment = State<Field>();
 
+  override events = {
+    createIdentity: provablePure({
+      identity: Identity,
+      commitment: Field,
+    }),
+    updateIdentity: provablePure({
+      identity: Identity,
+      commitment: Field,
+    }),
+  };
+
   override init() {
     super.init();
     this.commitment.set(Field(0));
@@ -183,6 +195,8 @@ export class IdentityManager extends SmartContract {
     );
 
     this.commitment.set(newCommitment);
+
+    this.emitEvent('createIdentity', { identity, commitment: newCommitment });
   }
 
   @method addAuthnFactorToIdentityKeyring(
@@ -238,5 +252,10 @@ export class IdentityManager extends SmartContract {
     );
 
     this.commitment.set(newCommitment);
+
+    this.emitEvent('updateIdentity', {
+      identity: newIdentity,
+      commitment: newCommitment,
+    });
   }
 }

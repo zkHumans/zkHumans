@@ -145,6 +145,27 @@ await addAuthnFactorToIdentityKeyring(
   { salt, secret: 'secretCode' }
 );
 
+await addAuthnFactorToIdentityKeyring(
+  smtIDManager,
+  Darcy,
+  darcyID,
+  smtIDKeyrings[3],
+  { type: AuthnType.operator, provider: AuthnProvider.self, revision: 0 },
+  { salt, secret: 'XXXXXXXXXX' }
+);
+
+////////////////////////////////////////////////////////////////////////
+// Smart Contract Events
+////////////////////////////////////////////////////////////////////////
+
+const events = await zkapp.fetchEvents();
+console.log(
+  `events on ${zkapp.address.toBase58()}`,
+  events.map((e) => {
+    return { type: e.type, data: JSON.stringify(e.event) };
+  })
+);
+
 ////////////////////////////////////////////////////////////////////////
 
 async function addNewIdentity(
