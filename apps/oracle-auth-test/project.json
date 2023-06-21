@@ -4,14 +4,14 @@
   "sourceRoot": "apps/oracle-auth-test/src",
   "projectType": "application",
   "targets": {
-    "build-esbuild": {
+    "build": {
       "executor": "@nx/esbuild:esbuild",
       "outputs": ["{options.outputPath}"],
       "defaultConfiguration": "production",
       "options": {
         "platform": "node",
         "outputPath": "dist/apps/oracle-auth-test",
-        "format": ["cjs"],
+        "format": ["esm"],
         "bundle": false,
         "main": "apps/oracle-auth-test/src/main.ts",
         "tsConfig": "apps/oracle-auth-test/tsconfig.app.json",
@@ -34,25 +34,6 @@
             }
           }
         }
-      }
-    },
-    "build": {
-      "executor": "@nx/webpack:webpack",
-      "outputs": ["{options.outputPath}"],
-      "defaultConfiguration": "production",
-      "options": {
-        "target": "node",
-        "compiler": "tsc",
-        "outputPath": "dist/apps/oracle-auth-test",
-        "main": "apps/oracle-auth-test/src/main.ts",
-        "tsConfig": "apps/oracle-auth-test/tsconfig.app.json",
-        "assets": ["apps/oracle-auth-test/src/assets"],
-        "isolatedConfig": true,
-        "webpackConfig": "apps/oracle-auth-test/webpack.config.js"
-      },
-      "configurations": {
-        "development": {},
-        "production": {}
       }
     },
     "serve": {
