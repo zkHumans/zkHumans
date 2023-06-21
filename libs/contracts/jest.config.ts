@@ -1,6 +1,6 @@
 /* eslint-disable */
 export default {
-  displayName: 'contracts-zkhumans',
+  displayName: 'contracts',
   preset: '../../jest.preset.js',
   transform: {
     '^.+\\.[tj]s$': [
@@ -9,7 +9,7 @@ export default {
     ],
   },
   moduleFileExtensions: ['ts', 'js', 'html'],
-  coverageDirectory: '../../coverage/libs/contracts-zkhumans',
+  coverageDirectory: '../../coverage/libs/contracts',
 
   // from zk-generated contracts
   testEnvironment: 'node',
