@@ -95,6 +95,17 @@ services:
     command: >
       npx nx run oracle-auth:start
 
+  sync:
+    profiles: ['run']
+    extends:
+      service: base-service
+    container_name: sync
+    depends_on:
+      api:
+        condition: service_healthy
+    command: >
+      npx nx run sync:start
+
   prisma-studio:
     profiles: ['run', 'maintenance']
     extends:
