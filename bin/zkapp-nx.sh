@@ -14,10 +14,5 @@ ln -sf ../../dist/libs/${build_dir} ./build
 
 # "zk deploy" expects ./node_modules exists
 # - custom tsconfig paths are found there
-# - built nx libraries are manually linked
-ln -sf ../../node_modules . \
-  && mkdir -p node_modules/@zkhumans \
-  && ln -sf \
-    ../../dist/libs/snarky-bioauth \
-    ../../dist/libs/utils \
-    ./node_modules/@zkhumans/
+# - built nx libraries are symlinked (by main npm postinstall)
+ln -sf ../../node_modules .
