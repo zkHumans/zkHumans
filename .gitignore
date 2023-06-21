@@ -47,7 +47,7 @@ apps/**/.cache
 apps/**/tsconfig.tsbuildinfo
 
 # Mina zkApp files
-libs/contracts-*/build
-libs/contracts-*/keys
+libs/contracts*/build
+libs/contracts*/keys
 
 _/
