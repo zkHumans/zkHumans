@@ -29,7 +29,6 @@
     "@nx/linter": "16.3.2",
     "@nx/node": "16.3.2",
     "@nx/remix": "^16.3.1",
-    "@nx/webpack": "16.3.2",
     "@nx/workspace": "16.3.2",
     "@remix-run/dev": "^1.17.1",
     "@remix-run/eslint-config": "^1.17.1",
