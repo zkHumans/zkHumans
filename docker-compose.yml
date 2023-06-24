@@ -49,8 +49,8 @@ services:
     command: sh -cx "
       npx prisma migrate deploy
       && npx nx run api:serve:production
-        --inspect=false
-        --watch=false
+      --inspect=false
+      --watch=false
       "
 
   app:
