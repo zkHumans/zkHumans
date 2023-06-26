@@ -1,9 +1,12 @@
 import { basename } from 'path';
 import { promises as fs } from 'fs';
-import { AccountUpdate, CircuitString, PrivateKey } from 'snarkyjs';
-import { MemoryStore, SparseMerkleTree } from 'snarky-smt';
-import { Identity, IdentityManager } from '../IdentityManager';
+import { AccountUpdate, MerkleMap, PrivateKey } from 'snarkyjs';
 import { deploy, loopUntilAccountExists } from '@zkhumans/utils';
+import {
+  Identity,
+  IdentityManager,
+  eventStoreDefault,
+} from '../IdentityManager';
 
 Error.stackTraceLimit = 1000;
 
@@ -85,12 +88,21 @@ try {
   // create the zkApp
   const zkApp = new IdentityManager(zkAppPublicKey);
 
-  // create empty SMT, get root
-  const smtIDManager = await SparseMerkleTree.build<CircuitString, Identity>(
-    new MemoryStore<Identity>(),
-    CircuitString,
-    Identity as any // eslint-disable-line @typescript-eslint/no-explicit-any
-  );
+  // create empty MM, get root
+  const mmIDManager = new MerkleMap();
+
+  // TODO: restore MM from db to upgrade zkApp with existing off-line storage
+
+  // simulate the zkApp itself as an Identity
+  // to conform its off-chain storage mechanics
+  const zkAppIdentity = new Identity({
+    identifier: zkAppPublicKey,
+    commitment: mmIDManager.getRoot(),
+  });
+  const initStoreId = zkAppIdentity.toKey();
+  const initRoot = zkAppIdentity.toValue();
+  console.log('init storeId :', initStoreId.toString());
+  console.log('init root    :', initRoot.toString());
 
   await deploy(deployerPrivateKey, zkAppPrivateKey, config.url, () => {
     const sender = deployerPrivateKey.toPublicKey();
@@ -99,8 +111,16 @@ try {
     // NOTE: this calls `init()` if this is the first deploy
     zkApp.deploy({ verificationKey });
 
-    // set the initial root hash
-    zkApp.idsRoot.set(smtIDManager.getRoot());
+    // set initial storage identifier and root hash
+    zkApp.idsStoreId.set(initStoreId);
+    zkApp.idsRoot.set(initRoot);
+
+    // notify off-chain storage
+    zkApp.emitEvent('store:new', {
+      ...eventStoreDefault,
+      id: initStoreId,
+      root1: initRoot,
+    });
   });
 
   const zkAppAccount = await loopUntilAccountExists({
@@ -111,10 +131,10 @@ try {
     network: config.url,
   });
   if (!zkAppAccount) {
-    console.error(`${EXE}: ERROR: zkAppAccount account not deployed(?).`);
+    console.error(`${EXE}: ERROR: zkAppAccount: account not deployed(?).`);
     process.exit(1);
   }
-  console.log('zkAppAccount account deployed.');
+  console.log('⚡ zkApp deployed @', zkAppPublicKey.toBase58());
 
   process.exit(0);
 } catch (e) {

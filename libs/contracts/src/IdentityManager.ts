@@ -2,33 +2,29 @@ import {
   CircuitString,
   DeployArgs,
   Field,
-  method,
+  MerkleMapWitness,
   Permissions,
   Poseidon,
-  provablePure,
   PublicKey,
   SmartContract,
   State,
-  state,
   Struct,
+  method,
+  state,
 } from 'snarkyjs';
-import {
-  ProvableSMTUtils,
-  SparseMerkleProof,
-  SparseMerkleTree,
-} from 'snarky-smt';
 
 /**
  * Abbreviations:
- * - authn: authentication
- * - authz: authorization
- * - (S)MT: (Sparse) Merkle Tree
+ * - AuthN : authentication
+ * - AuthZ : authorization
+ * - (S)MT : (Sparse) Merkle Tree
+ * - MM    : Merkle Map
  */
 
 /**
  * The type of a single factor of authentication.
  */
-export enum AuthnType {
+export enum AuthNType {
   operator = 1,
   password,
   facescan,
@@ -40,7 +36,7 @@ export enum AuthnType {
 /**
  * The provider of an authentication factor.
  */
-export enum AuthnProvider {
+export enum AuthNProvider {
   self = 1,
   zkhumans,
   humanode,
@@ -48,19 +44,18 @@ export enum AuthnProvider {
 }
 
 /**
- * The public aspect of an authentication factor.
+ * The protocol aspect of an authentication factor.
  */
-export type AuthnFactorPublic = {
-  type: AuthnType;
-  provider: AuthnProvider;
+export type AuthNFactorProtocol = {
+  type: AuthNType;
+  provider: AuthNProvider;
   revision: number;
 };
 
 /**
- * The private aspect of an authentication factor.
- * These are never revealed.
+ * The data aspect of an authentication factor.
  */
-export type AuthnFactorPrivate = {
+export type AuthNFactorData = {
   secret: string;
   salt: string;
 };
@@ -68,95 +63,133 @@ export type AuthnFactorPrivate = {
 /**
  * A single factor of authentication.
  *
- * A "authentication factor" exists as an entry within an individual's identity
- * keyring whereby the key:value entry uses the public Struct types as the
- * value and a hash of the public and private inputs as the key.
+ * An Authentication Factor exists as an entry within an individual's identity
+ * keyring, implemented as a MerkleMap. The MerkleMap key element is the hash
+ * of all composit types while the value is simply `Field(1)` to prove
+ * inclusion of the key within the MerkleMap.
  *
- * Struct types are used as public input:
- * - type; the type of the authentication
- * - provider; the provider of the authentication
- * - revision; protocol revision, default to Field(0)
+ * Types are expressed in two parts; Protocol and Data.
  *
- * A hash is generated from public types with two additional private inputs:
- * - secret; provided by the user or an authentication provider
- * - salt; provided by the identity provider (aka the zkapp)
+ * Protocol: exposed within off-chain storage and SmartContract events
+ * - type: the type of the authentication
+ * - provider: the provider of the authentication
+ * - revision: protocol revision, default to Field(0)
+ *
+ * Data: kept secret and never revealed
+ * - secret: provided by the user or an authentication provider
+ * - salt: provided by the identity provider (aka the zkapp)
  */
-export class AuthnFactor extends Struct({
-  type: Field,
-  provider: Field,
-  revision: Field,
-  // TODO: createdAt: Field,
-  // TODO: updatedAt: Field,
-}) {}
-
-/**
- * Note: This utility class provides methods separate from AuthnFactor for
- * simpler typing with SparseMerkleTree
- */
-export class AuthnFactorUtils {
-  static init(publicInput: AuthnFactorPublic): AuthnFactor {
-    const { type: _type, provider, revision } = publicInput;
-    return new AuthnFactor({
-      type: Field(_type),
-      provider: Field(provider),
-      revision: Field(revision),
-    });
-  }
-
-  static hash(af: AuthnFactor, privateInput: AuthnFactorPrivate): Field {
-    const { salt, secret } = privateInput;
+export class AuthNFactor extends Struct({
+  protocol: {
+    type: Field,
+    provider: Field,
+    revision: Field,
+  },
+  data: {
+    salt: CircuitString,
+    secret: CircuitString,
+  },
+}) {
+  toKey(): Field {
     return Poseidon.hash([
-      af.type,
-      af.provider,
-      af.revision,
-      ...CircuitString.fromString(salt).toFields(),
-      ...CircuitString.fromString(secret).toFields(),
+      this.protocol.type,
+      this.protocol.provider,
+      this.protocol.revision,
+      ...this.data.salt.toFields(),
+      ...this.data.secret.toFields(),
     ]);
   }
-}
 
-export type SMTIdentityKeyring = SparseMerkleTree<Field, AuthnFactor>;
+  toValue(): Field {
+    // all that is need as we only prove inclusion with MM
+    return Field(1);
+  }
+
+  static init({
+    protocol,
+    data,
+  }: {
+    protocol: AuthNFactorProtocol;
+    data: AuthNFactorData;
+  }): AuthNFactor {
+    return new AuthNFactor({
+      protocol: {
+        type: Field(protocol.type),
+        provider: Field(protocol.provider),
+        revision: Field(protocol.revision),
+      },
+      data: {
+        salt: CircuitString.fromString(data.salt),
+        secret: CircuitString.fromString(data.secret),
+      },
+    });
+  }
+}
 
 /**
  * An individual identity. This is stored as the value element of
  * IdentityManager's Identity Manager MT.
- * - publicKey; the UUID of the Identity
- * - commitment; root hash of this identity's keyring MT
+ * - identifier: the UUID of the Identity (a pseudo PublicKey)
+ * - commitment: root hash of this identity's keyring MT
  */
 export class Identity extends Struct({
-  publicKey: PublicKey,
+  identifier: PublicKey,
   commitment: Field,
-}) {}
+}) {
+  toKey(): Field {
+    return Poseidon.hash(this.identifier.toFields());
+  }
 
-export class IdentityUtils {
-  static setCommitment(identity: Identity, commitment: Field): Identity {
+  toValue(): Field {
+    return this.commitment;
+  }
+
+  setCommitment(commitment: Field): Identity {
     return new Identity({
-      publicKey: identity.publicKey,
+      identifier: this.identifier,
       commitment,
     });
   }
 }
 
-export type SMTIdentityManager = SparseMerkleTree<CircuitString, Identity>;
+export class EventStore extends Struct({
+  id: Field, // store identifier
+  root0: Field, // before
+  root1: Field, // after
+  key: Field,
+  value: Field,
+  meta: [Field, Field, Field, Field],
+}) {}
+
+// "empty" or default value for a key not within a MerkleMap
+export const EMPTY = Field(0);
+
+export const eventStoreDefault = {
+  id: EMPTY,
+  root0: EMPTY,
+  root1: EMPTY,
+  key: EMPTY,
+  value: EMPTY,
+  meta: [EMPTY, EMPTY, EMPTY, EMPTY],
+};
 
 export class IdentityManager extends SmartContract {
-  // root hash of the Identity Manager Merkle Map
+  // Identity Manager Merkle Map; off-chain storage identifier
+  @state(Field) idsStoreId = State<Field>();
+
+  // Identity Manager Merkle Map; root hash
   @state(Field) idsRoot = State<Field>();
 
   override events = {
-    createIdentity: provablePure({
-      identity: Identity,
-      commitment: Field,
-    }),
-    updateIdentity: provablePure({
-      identity: Identity,
-      commitment: Field,
-    }),
+    // for updating off-chain data
+    'store:new': EventStore,
+    'store:set': EventStore,
   };
 
   override init() {
     super.init();
-    this.idsRoot.set(Field(0));
+    this.idsRoot.set(EMPTY);
+    this.idsStoreId.set(EMPTY);
   }
 
   override deploy(args: DeployArgs) {
@@ -167,95 +200,94 @@ export class IdentityManager extends SmartContract {
     });
   }
 
-  // add a new Identity iff the identifier does not already exist
-  // (using non-existence merkle proof)
-  @method
-  addNewIdentity(
-    identifier: CircuitString,
-    identity: Identity,
-    merkleProof: SparseMerkleProof
-  ) {
-    const commitment = this.idsRoot.getAndAssertEquals();
+  // add identity; only if it has not already been added
+  @method addIdentity(identity: Identity, witnessManager: MerkleMapWitness) {
+    const idsRoot = this.idsRoot.getAndAssertEquals();
+    const idsStoreId = this.idsStoreId.getAndAssertEquals();
 
-    // prove the identifier IS NOT in the Identity Manager MT
-    ProvableSMTUtils.checkNonMembership(
-      merkleProof,
-      commitment,
-      identifier,
-      CircuitString
-    ).assertTrue();
+    const key = identity.toKey();
+    const value = identity.toValue();
 
-    // add new identifier
-    const newCommitment = ProvableSMTUtils.computeRoot(
-      merkleProof.sideNodes,
-      identifier,
-      CircuitString,
-      identity,
-      Identity
-    );
+    // prove the identity has not been added
+    // by asserting the "current" value for this key is empty
+    const [root0] = witnessManager.computeRootAndKey(EMPTY);
+    root0.assertEquals(idsRoot, 'Identity already added!');
 
-    this.idsRoot.set(newCommitment);
+    // set the new Merkle Map root based on the new data
+    const [root1] = witnessManager.computeRootAndKey(value);
+    this.idsRoot.set(root1);
 
-    this.emitEvent('createIdentity', { identity, commitment: newCommitment });
+    this.emitEvent('store:set', {
+      ...eventStoreDefault,
+      id: idsStoreId,
+      root0,
+      root1,
+      key,
+      value,
+    });
+
+    this.emitEvent('store:new', {
+      ...eventStoreDefault,
+      id: key,
+      root1: value,
+    });
   }
 
-  @method addAuthnFactorToIdentityKeyring(
-    identifier: CircuitString,
-    identity: Identity,
-    merkleProofManager: SparseMerkleProof,
-    authnFactorHash: Field,
-    authnFactor: AuthnFactor,
-    merkleProofKeyring: SparseMerkleProof
+  /**
+   * Add an Authentication Factor to an Identity.
+   */
+  @method addAuthNFactor(
+    authNFactor: AuthNFactor,
+    id0: Identity,
+    id1: Identity,
+    witnessManager: MerkleMapWitness,
+    witnessKeyring: MerkleMapWitness
   ) {
-    const commitment = this.idsRoot.getAndAssertEquals();
+    const idsRoot = this.idsRoot.getAndAssertEquals();
+    const idsStoreId = this.idsStoreId.getAndAssertEquals();
 
-    // prove the identifier:identity IS in the Identity Manager MT
-    ProvableSMTUtils.checkMembership(
-      merkleProofManager,
-      commitment,
-      identifier,
-      CircuitString,
-      identity,
-      Identity
-    ).assertTrue();
+    // prove the Identity has been added to the current Manager MM
+    const [rootManager0] = witnessManager.computeRootAndKey(id0.toValue());
+    rootManager0.assertEquals(idsRoot, 'Identity not found!');
 
-    // prove the authnFactor IS NOT in the Identity Keyring MT
-    ProvableSMTUtils.checkNonMembership(
-      merkleProofKeyring,
-      identity.commitment,
-      authnFactorHash,
-      Field
-    ).assertTrue();
+    // prove the AuthNFactor IS NOT in the current Keyring MM
+    const [rootKeyring0] = witnessKeyring.computeRootAndKey(EMPTY);
+    rootKeyring0.assertEquals(id0.commitment, 'AuthNFactor already added!');
 
-    // add the new authnFactor to the Identity Keyring MT
-    const newAuthnFactorCommitment = ProvableSMTUtils.computeRoot(
-      merkleProofKeyring.sideNodes,
-      authnFactorHash,
-      Field,
-      authnFactor,
-      AuthnFactor
-    );
+    const key = authNFactor.toKey();
+    const value = authNFactor.toValue();
 
-    // update the Identity Keyring commitment
-    // const newIdentity = identity.setCommitment(newAuthnFactorCommitment);
-    const newIdentity = IdentityUtils.setCommitment(
-      identity,
-      newAuthnFactorCommitment
-    );
+    // prove the AuthNFactor IS in the new Keyring MM
+    const [rootKeyring1] = witnessKeyring.computeRootAndKey(value);
+    rootKeyring1.assertEquals(id1.commitment, 'AuthNFactor not in new ID');
 
-    const newCommitment = ProvableSMTUtils.computeRoot(
-      merkleProofManager.sideNodes,
-      identifier,
-      CircuitString,
-      newIdentity,
-      Identity
-    );
+    // set the new Manager MM based on the new data
+    const [rootManager1] = witnessManager.computeRootAndKey(id1.toValue());
+    this.idsRoot.set(rootManager1);
 
-    this.idsRoot.set(newCommitment);
+    // set the AuthNFactor in the Keyring
+    this.emitEvent('store:set', {
+      id: id1.toKey(),
+      root0: rootKeyring0,
+      root1: rootKeyring1,
+      key,
+      value,
+      meta: [
+        authNFactor.protocol.type,
+        authNFactor.protocol.provider,
+        authNFactor.protocol.revision,
+        EMPTY,
+      ],
+    });
 
-    this.emitEvent('updateIdentity', {
-      identity: newIdentity,
-      commitment: newCommitment,
+    // set the Identity in the Manager
+    this.emitEvent('store:set', {
+      ...eventStoreDefault,
+      id: idsStoreId,
+      root0: rootManager0,
+      root1: rootManager1,
+      key: id1.toKey(),
+      value: id1.toValue(),
     });
   }
 }
