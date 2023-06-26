@@ -140,8 +140,8 @@ export class IdentityUtils {
 export type SMTIdentityManager = SparseMerkleTree<CircuitString, Identity>;
 
 export class IdentityManager extends SmartContract {
-  // root hash of the Identity Manager MT
-  @state(Field) commitment = State<Field>();
+  // root hash of the Identity Manager Merkle Map
+  @state(Field) idsRoot = State<Field>();
 
   override events = {
     createIdentity: provablePure({
@@ -156,7 +156,7 @@ export class IdentityManager extends SmartContract {
 
   override init() {
     super.init();
-    this.commitment.set(Field(0));
+    this.idsRoot.set(Field(0));
   }
 
   override deploy(args: DeployArgs) {
@@ -175,7 +175,7 @@ export class IdentityManager extends SmartContract {
     identity: Identity,
     merkleProof: SparseMerkleProof
   ) {
-    const commitment = this.commitment.getAndAssertEquals();
+    const commitment = this.idsRoot.getAndAssertEquals();
 
     // prove the identifier IS NOT in the Identity Manager MT
     ProvableSMTUtils.checkNonMembership(
@@ -194,7 +194,7 @@ export class IdentityManager extends SmartContract {
       Identity
     );
 
-    this.commitment.set(newCommitment);
+    this.idsRoot.set(newCommitment);
 
     this.emitEvent('createIdentity', { identity, commitment: newCommitment });
   }
@@ -207,7 +207,7 @@ export class IdentityManager extends SmartContract {
     authnFactor: AuthnFactor,
     merkleProofKeyring: SparseMerkleProof
   ) {
-    const commitment = this.commitment.getAndAssertEquals();
+    const commitment = this.idsRoot.getAndAssertEquals();
 
     // prove the identifier:identity IS in the Identity Manager MT
     ProvableSMTUtils.checkMembership(
@@ -251,7 +251,7 @@ export class IdentityManager extends SmartContract {
       Identity
     );
 
-    this.commitment.set(newCommitment);
+    this.idsRoot.set(newCommitment);
 
     this.emitEvent('updateIdentity', {
       identity: newIdentity,
