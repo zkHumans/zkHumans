@@ -100,7 +100,7 @@ try {
     zkApp.deploy({ verificationKey });
 
     // set the initial root hash
-    zkApp.commitment.set(smtIDManager.getRoot());
+    zkApp.idsRoot.set(smtIDManager.getRoot());
   });
 
   const zkAppAccount = await loopUntilAccountExists({

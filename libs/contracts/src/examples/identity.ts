@@ -107,7 +107,7 @@ if (proofsEnabled) {
 const tx = await Mina.transaction(feePayer, () => {
   AccountUpdate.fundNewAccount(feePayer);
   zkapp.deploy({ zkappKey });
-  zkapp.commitment.set(initialCommitment);
+  zkapp.idsRoot.set(initialCommitment);
 });
 await tx.prove();
 console.log(`@T+${t()} | deploy tx.prove()`);
@@ -161,10 +161,9 @@ await addAuthnFactorToIdentityKeyring(
 const events = await zkapp.fetchEvents();
 console.log(
   `events on ${zkapp.address.toBase58()}`,
-  events.map((e) => {
-    return { type: e.type, data: JSON.stringify(e.event) };
-  })
+  events.map((e) => ({ type: e.type, data: JSON.stringify(e.event) }))
 );
+console.log(events);
 
 ////////////////////////////////////////////////////////////////////////
 
@@ -187,7 +186,7 @@ async function addNewIdentity(
   console.log(`@T+${t()} | - tx.prove()  sign()  send()`);
 
   await smtIDManager_.update(identifier, identity);
-  zkapp.commitment.get().assertEquals(smtIDManager_.getRoot());
+  zkapp.idsRoot.get().assertEquals(smtIDManager_.getRoot());
 }
 
 async function addAuthnFactorToIdentityKeyring(
@@ -237,7 +236,7 @@ async function addAuthnFactorToIdentityKeyring(
     smtKeyring_.getRoot()
   );
   await smtIDManager_.update(identifier, newIdentity);
-  zkapp.commitment.get().assertEquals(smtIDManager_.getRoot());
+  zkapp.idsRoot.get().assertEquals(smtIDManager_.getRoot());
 }
 
 console.log('🚀 works!');
