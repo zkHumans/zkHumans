@@ -3,30 +3,37 @@ import {
   CircuitString,
   Field,
   Mina,
+  Poseidon,
   PrivateKey,
 } from 'snarkyjs';
-import { MemoryStore, SparseMerkleTree } from 'snarky-smt';
 import {
-  AuthnFactor,
-  AuthnFactorUtils,
+  AuthNFactor,
   AuthnProvider,
   AuthnType,
+  ExtendedMerkleMap,
   Identity,
   IdentityManager,
-  IdentityUtils,
 } from '../IdentityManager';
 
-import type {
-  AuthnFactorPrivate,
-  AuthnFactorPublic,
-  SMTIdentityKeyring,
-  SMTIdentityManager,
-} from '../IdentityManager';
+import { AuthnFactorPrivate, AuthnFactorPublic } from '../IdentityManager';
 
 import { strToBool } from '@zkhumans/utils';
 
 const proofsEnabled = strToBool(process.env['ZK_PROOFS_ENABLED']) ?? true;
 console.log('ZK_PROOFS_ENABLED:', proofsEnabled);
+
+// performance logging
+const t0 = performance.now();
+const t = () => Number(((performance.now() - t0) / 1000 / 60).toFixed(2)) + 'm';
+const log = (
+  ...args: any[] /* eslint-disable-line @typescript-eslint/no-explicit-any */
+) => console.log(`@T+${t()} |`, ...args);
+
+if (proofsEnabled) {
+  log('compile SmartContract...');
+  await IdentityManager.compile();
+  log('...compile SmartContract');
+}
 
 const Local = Mina.LocalBlockchain({ proofsEnabled });
 Mina.setActiveInstance(Local);
@@ -37,96 +44,78 @@ const feePayerKey = Local.testAccounts[0].privateKey;
 const zkappKey = PrivateKey.random();
 const zkappAddress = zkappKey.toPublicKey();
 
-////////////////////////////////////////////////////////////////////////
-// Create an Identity Manager MT
-////////////////////////////////////////////////////////////////////////
+// Create an Identity Manager Merkle Map
+const idManagerMerkleMap = new ExtendedMerkleMap<Identity>();
 
-const store = new MemoryStore<Identity>();
-const smtIDManager = await SparseMerkleTree.build<CircuitString, Identity>(
-  store,
-  CircuitString,
-  Identity as any // eslint-disable-line @typescript-eslint/no-explicit-any
-);
-
-////////////////////////////////////////////////////////////////////////
-// Create 4 Identity Keyring MTs
-////////////////////////////////////////////////////////////////////////
-
-const smtIDKeyrings: Array<SMTIdentityKeyring> = [];
+// Create 4 Identity Keyring Merkle Maps
+const idKeyringMerkleMaps: Array<ExtendedMerkleMap<AuthNFactor>> = [];
 for (let i = 0; i < 4; i++) {
-  smtIDKeyrings[i] = await SparseMerkleTree.build(
-    new MemoryStore<AuthnFactor>(),
-    Field,
-    AuthnFactor
-  );
+  idKeyringMerkleMaps[i] = new ExtendedMerkleMap<AuthNFactor>();
 }
 
-////////////////////////////////////////////////////////////////////////
 // Create 4 identities
-////////////////////////////////////////////////////////////////////////
 
 const aliceID = new Identity({
   publicKey: Local.testAccounts[0].publicKey,
-  commitment: smtIDKeyrings[0].getRoot(),
+  commitment: idKeyringMerkleMaps[0].getRoot(),
 });
 const bobID = new Identity({
   publicKey: Local.testAccounts[1].publicKey,
-  commitment: smtIDKeyrings[1].getRoot(),
+  commitment: idKeyringMerkleMaps[1].getRoot(),
 });
 const charlieID = new Identity({
   publicKey: Local.testAccounts[2].publicKey,
-  commitment: smtIDKeyrings[2].getRoot(),
+  commitment: idKeyringMerkleMaps[2].getRoot(),
 });
 const darcyID = new Identity({
   publicKey: Local.testAccounts[3].publicKey,
-  commitment: smtIDKeyrings[3].getRoot(),
+  commitment: idKeyringMerkleMaps[3].getRoot(),
 });
 
 // use their MINA publicKey as identity identifier
-const Alice = CircuitString.fromString(aliceID.publicKey.toBase58());
-const Bob = CircuitString.fromString(bobID.publicKey.toBase58());
-const Charlie = CircuitString.fromString(charlieID.publicKey.toBase58());
-const Darcy = CircuitString.fromString(darcyID.publicKey.toBase58());
+const Alice = Poseidon.hash(aliceID.publicKey.toFields());
+const Bob = Poseidon.hash(bobID.publicKey.toFields());
+const Charlie = Poseidon.hash(charlieID.publicKey.toFields());
+const Darcy = Poseidon.hash(darcyID.publicKey.toFields());
 
 // add 2 identities initially
-await smtIDManager.update(Alice, aliceID);
-await smtIDManager.update(Bob, bobID);
+idManagerMerkleMap.set(Alice, aliceID);
+idManagerMerkleMap.set(Bob, bobID);
 
-const initialCommitment = smtIDManager.getRoot();
+const initialCommitment = idManagerMerkleMap.getRoot();
 
 const zkapp = new IdentityManager(zkappAddress);
-console.log('@T+0 | Deploying IdentityManager...');
-const t0 = performance.now();
-const t = () => Number(((performance.now() - t0) / 1000 / 60).toFixed(2)) + 'm';
 
-if (proofsEnabled) {
-  await IdentityManager.compile();
-  console.log(`@T+${t()} | compiled SmartContract`);
-}
-
+// deploy
+log('Deploying IdentityManager...');
 const tx = await Mina.transaction(feePayer, () => {
   AccountUpdate.fundNewAccount(feePayer);
   zkapp.deploy({ zkappKey });
   zkapp.idsRoot.set(initialCommitment);
 });
+log('deploy tx.prove()...');
 await tx.prove();
-console.log(`@T+${t()} | deploy tx.prove()`);
-await tx.sign([feePayerKey]).send();
-console.log(`@T+${t()} | deploy tx.sign().send()`);
+log('...deploy tx.prove()');
 
-const cB = (await smtIDManager.get(Bob))?.commitment;
-console.log(`@T+${t()} | initial id commitment of Bob = ${cB}`);
+log('deploy tx.sign().send()...');
+await tx.sign([feePayerKey]).send();
+log('...deploy tx.sign().send()');
+
+const cB = idManagerMerkleMap.get(Bob)?.commitment;
+log(`initial id commitment of Bob = ${cB}`);
 
 // add new identity
-await addNewIdentity(smtIDManager, Charlie, charlieID);
-console.log(`@T+${t()} | addNewIdentity(smtIDManager, Charlie, charlieID)`);
+log('addIdentity Charlie...');
+await addIdentity(idManagerMerkleMap, Charlie, charlieID);
+log('...addIdentity Charlie');
 
-const cC = (await smtIDManager.get(Charlie))?.commitment;
-console.log(`@T+${t()} | initial id commitment of Charlie = ${cC}`);
+const cC = idManagerMerkleMap.get(Charlie)?.commitment;
+log(`initial id commitment of Charlie = ${cC}`);
 
 // add another identity
-await addNewIdentity(smtIDManager, Darcy, darcyID);
-console.log(`@T+${t()} | addNewIdentity(smtIDManager, Darcy, darcyID)`);
+log('addIdentity Darcy...');
+await addIdentity(idManagerMerkleMap, Darcy, darcyID);
+log('...addIdentity Darcy');
 
 ////////////////////////////////////////////////////////////////////////
 // Personal Identity Keyring Management
@@ -134,25 +123,27 @@ console.log(`@T+${t()} | addNewIdentity(smtIDManager, Darcy, darcyID)`);
 
 const salt = 'uniqueTotheZkapp';
 
-// create a SMT for the individual's authn keyring
-
-await addAuthnFactorToIdentityKeyring(
-  smtIDManager,
+log('addAuthNFactor Alice...');
+await addAuthNFactor(
+  idManagerMerkleMap,
   Alice,
   aliceID,
-  smtIDKeyrings[0],
+  idKeyringMerkleMaps[0],
   { type: AuthnType.operator, provider: AuthnProvider.self, revision: 0 },
   { salt, secret: 'secretCode' }
 );
+log('...addAuthNFactor Alice');
 
-await addAuthnFactorToIdentityKeyring(
-  smtIDManager,
+log('addAuthNFactor Darcy...');
+await addAuthNFactor(
+  idManagerMerkleMap,
   Darcy,
   darcyID,
-  smtIDKeyrings[3],
+  idKeyringMerkleMaps[3],
   { type: AuthnType.operator, provider: AuthnProvider.self, revision: 0 },
   { salt, secret: 'XXXXXXXXXX' }
 );
+log('...addAuthNFactor Darcy');
 
 ////////////////////////////////////////////////////////////////////////
 // Smart Contract Events
@@ -160,83 +151,91 @@ await addAuthnFactorToIdentityKeyring(
 
 const events = await zkapp.fetchEvents();
 console.log(
-  `events on ${zkapp.address.toBase58()}`,
-  events.map((e) => ({ type: e.type, data: JSON.stringify(e.event) }))
+  `Events on ${zkapp.address.toBase58()}`,
+  events.map((e) => ({ type: e.type, data: JSON.stringify(e.event, null, 2) }))
 );
-console.log(events);
 
 ////////////////////////////////////////////////////////////////////////
+// helper functions
+////////////////////////////////////////////////////////////////////////
 
-async function addNewIdentity(
-  smtIDManager_: SMTIdentityManager,
-  identifier: CircuitString,
+async function addIdentity(
+  idManagerMM: ExtendedMerkleMap<Identity>,
+  identifier: Field,
   identity: Identity
 ) {
-  console.log(`@T+${t()} | addNewIdentity...`);
-
   // prove the identifier IS NOT in the Identity Manager MT
-  const merkleProof = await smtIDManager_.prove(identifier);
-  console.log(`@T+${t()} | - smtIDManager.prove()`);
+  log(' - idManagerMM.getWitness()...');
+  const witness = idManagerMM.getWitness(identifier);
+  log(' - ...idManagerMM.getWitness()');
 
+  log(' - tx: prove() sign() send()...');
   const tx = await Mina.transaction(feePayer, () => {
-    zkapp.addNewIdentity(identifier, identity, merkleProof);
+    zkapp.addIdentity(identity, witness);
   });
   await tx.prove();
   await tx.sign([feePayerKey]).send();
-  console.log(`@T+${t()} | - tx.prove()  sign()  send()`);
-
-  await smtIDManager_.update(identifier, identity);
-  zkapp.idsRoot.get().assertEquals(smtIDManager_.getRoot());
-}
-
-async function addAuthnFactorToIdentityKeyring(
-  smtIDManager_: SMTIdentityManager,
-  identifier: CircuitString,
-  identity: Identity,
-  smtKeyring_: SMTIdentityKeyring,
-  authnFactorPublic: AuthnFactorPublic,
-  authnFactorPrivate: AuthnFactorPrivate
-) {
-  console.log(`@T+${t()} | addAuthnFactorToIdentity...`);
-
-  // prove the identifier IS in the Identity Manager MT
-  const merkleProofManager = await smtIDManager_.prove(identifier);
-  console.log(`@T+${t()} | - smtIDManager.prove()`);
-
-  // create new authn factor
-  const authnFactor = AuthnFactorUtils.init(authnFactorPublic);
-  const authnFactorHash = AuthnFactorUtils.hash(
-    authnFactor,
-    authnFactorPrivate
-  );
-  console.log(`@T+${t()} | - authnFactor.hash()`);
-
-  // prove the authn factor IS NOT in the Identity Keyring MT
-  const merkleProofKeyring = await smtKeyring_.prove(authnFactorHash);
-  console.log(`@T+${t()} | - smtKeyring.prove()`);
-
-  const tx = await Mina.transaction(feePayer, () => {
-    zkapp.addAuthnFactorToIdentityKeyring(
-      identifier,
-      identity,
-      merkleProofManager,
-      authnFactorHash,
-      authnFactor,
-      merkleProofKeyring
-    );
-  });
-  await tx.prove();
-  await tx.sign([feePayerKey]).send();
-  console.log(`@T+${t()} | - tx.prove()  sign()  send()`);
+  log(' - ...tx: prove() sign() send()');
 
   // if tx was successful, we can update our off-chain storage
-  await smtKeyring_.update(authnFactorHash, authnFactor);
-  const newIdentity = IdentityUtils.setCommitment(
-    identity,
-    smtKeyring_.getRoot()
-  );
-  await smtIDManager_.update(identifier, newIdentity);
-  zkapp.idsRoot.get().assertEquals(smtIDManager_.getRoot());
+  idManagerMM.set(identifier, identity);
+  log(' - idManagerMM.getRoot() :', idManagerMM.getRoot().toString());
+  log(' - zkapp.idsRoot.get()   :', zkapp.idsRoot.get().toString());
+  zkapp.idsRoot.get().assertEquals(idManagerMM.getRoot());
+}
+
+async function addAuthNFactor(
+  idManagerMM: ExtendedMerkleMap<Identity>,
+  identifier: Field,
+  identity: Identity,
+  idKeyringMM: ExtendedMerkleMap<AuthNFactor>,
+  afPublic: AuthnFactorPublic,
+  afPrivate: AuthnFactorPrivate
+) {
+  // prove the identifier IS in the Identity Manager MT
+  log(' - idManagerMM.getWitness()...');
+  const witnessManager = idManagerMM.getWitness(identifier);
+  log(' - ...idManagerMM.getWitness()');
+
+  const authNFactor = new AuthNFactor({
+    publicData: {
+      type: Field(afPublic.type),
+      provider: Field(afPublic.provider),
+      revision: Field(afPublic.revision),
+    },
+    privateData: {
+      salt: CircuitString.fromString(afPrivate.salt),
+      secret: CircuitString.fromString(afPrivate.secret),
+    },
+  });
+
+  log(' - authNFactor.hash()...');
+  const authNFactorHash = authNFactor.hash();
+  log(' - ...authNFactor.hash()');
+
+  // prove the AuthNFactor IS NOT in the Identity Keyring MT
+  log(' - idKeyringMM.getWitness()...');
+  const witnessKeyring = idKeyringMM.getWitness(authNFactorHash);
+  log(' - ...idKeyringMM.getWitness()');
+
+  const id0 = identity;
+
+  idKeyringMM.set(authNFactorHash, authNFactor);
+  const id1 = id0.setCommitment(idKeyringMM.getRoot());
+
+  log(' - tx: prove() sign() send()...');
+  const tx = await Mina.transaction(feePayer, () => {
+    zkapp.addAuthNFactor(authNFactor, id0, id1, witnessManager, witnessKeyring);
+  });
+  await tx.prove();
+  await tx.sign([feePayerKey]).send();
+  log(' - ...tx: prove() sign() send()');
+
+  // if tx was successful, we can update our off-chain storage
+  idManagerMM.set(identifier, id1);
+  log(' - idManagerMM.getRoot() :', idManagerMM.getRoot().toString());
+  log(' - zkapp.idsRoot.get()   :', zkapp.idsRoot.get().toString());
+  zkapp.idsRoot.get().assertEquals(idManagerMM.getRoot());
 }
 
 console.log('🚀 works!');
