@@ -8,16 +8,14 @@ import {
 } from 'snarkyjs';
 import {
   AuthNFactor,
-  AuthnProvider,
-  AuthnType,
-  ExtendedMerkleMap,
+  AuthNProvider,
+  AuthNType,
   Identity,
   IdentityManager,
 } from '../IdentityManager';
+import { ExtendedMerkleMap, strToBool } from '@zkhumans/utils';
 
-import { AuthnFactorPrivate, AuthnFactorPublic } from '../IdentityManager';
-
-import { strToBool } from '@zkhumans/utils';
+import type { AuthNFactorPrivate, AuthNFactorPublic } from '../IdentityManager';
 
 const proofsEnabled = strToBool(process.env['ZK_PROOFS_ENABLED']) ?? true;
 console.log('ZK_PROOFS_ENABLED:', proofsEnabled);
@@ -129,7 +127,7 @@ await addAuthNFactor(
   Alice,
   aliceID,
   idKeyringMerkleMaps[0],
-  { type: AuthnType.operator, provider: AuthnProvider.self, revision: 0 },
+  { type: AuthNType.operator, provider: AuthNProvider.self, revision: 0 },
   { salt, secret: 'secretCode' }
 );
 log('...addAuthNFactor Alice');
@@ -140,7 +138,7 @@ await addAuthNFactor(
   Darcy,
   darcyID,
   idKeyringMerkleMaps[3],
-  { type: AuthnType.operator, provider: AuthnProvider.self, revision: 0 },
+  { type: AuthNType.operator, provider: AuthNProvider.self, revision: 0 },
   { salt, secret: 'XXXXXXXXXX' }
 );
 log('...addAuthNFactor Darcy');
@@ -154,6 +152,7 @@ console.log(
   `Events on ${zkapp.address.toBase58()}`,
   events.map((e) => ({ type: e.type, data: JSON.stringify(e.event, null, 2) }))
 );
+console.log('Events', events);
 
 ////////////////////////////////////////////////////////////////////////
 // helper functions
@@ -189,8 +188,8 @@ async function addAuthNFactor(
   identifier: Field,
   identity: Identity,
   idKeyringMM: ExtendedMerkleMap<AuthNFactor>,
-  afPublic: AuthnFactorPublic,
-  afPrivate: AuthnFactorPrivate
+  afPublic: AuthNFactorPublic,
+  afPrivate: AuthNFactorPrivate
 ) {
   // prove the identifier IS in the Identity Manager MT
   log(' - idManagerMM.getWitness()...');
