@@ -63,23 +63,21 @@ export type AuthNFactorData = {
 /**
  * A single factor of authentication.
  *
- * A "authentication factor" exists as an entry within an individual's identity
+ * An Authentication Factor exists as an entry within an individual's identity
  * keyring, implemented as a MerkleMap. The MerkleMap key element is the hash
  * of all composit types while the value is simply `Field(1)` to prove
  * inclusion of the key within the MerkleMap.
  *
- * An AuthNFactor's types are expressed in two parts; Protocol and Data. The
- * Data element is kept secret and never revealed. The Protocol element is
- * exposed within off-chain storage and SmartContract events.
+ * Types are expressed in two parts; Protocol and Data.
  *
- * Protocol:
- * - type; the type of the authentication
- * - provider; the provider of the authentication
- * - revision; protocol revision, default to Field(0)
+ * Protocol: exposed within off-chain storage and SmartContract events
+ * - type: the type of the authentication
+ * - provider: the provider of the authentication
+ * - revision: protocol revision, default to Field(0)
  *
- * Data:
- * - secret; provided by the user or an authentication provider
- * - salt; provided by the identity provider (aka the zkapp)
+ * Data: kept secret and never revealed
+ * - secret: provided by the user or an authentication provider
+ * - salt: provided by the identity provider (aka the zkapp)
  */
 export class AuthNFactor extends Struct({
   protocol: {
@@ -105,6 +103,26 @@ export class AuthNFactor extends Struct({
   toValue(): Field {
     // all that is need as we only prove inclusion with MM
     return Field(1);
+  }
+
+  static init({
+    protocol,
+    data,
+  }: {
+    protocol: AuthNFactorProtocol;
+    data: AuthNFactorData;
+  }): AuthNFactor {
+    return new AuthNFactor({
+      protocol: {
+        type: Field(protocol.type),
+        provider: Field(protocol.provider),
+        revision: Field(protocol.revision),
+      },
+      data: {
+        salt: CircuitString.fromString(data.salt),
+        secret: CircuitString.fromString(data.secret),
+      },
+    });
   }
 }
 
