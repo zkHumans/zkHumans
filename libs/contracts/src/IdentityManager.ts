@@ -68,7 +68,9 @@ export type AuthNFactorData = {
  * of all composit types while the value is simply `Field(1)` to prove
  * inclusion of the key within the MerkleMap.
  *
- * An AuthNFactor's types are expressed in two parts; Protocol and Data.
+ * An AuthNFactor's types are expressed in two parts; Protocol and Data. The
+ * Data element is kept secret and never revealed. The Protocol element is
+ * exposed within off-chain storage and SmartContract events.
  *
  * Protocol:
  * - type; the type of the authentication
@@ -142,9 +144,13 @@ export class EventStore extends Struct({
   root1: Field, // after
   key: Field,
   value: Field,
+  meta: [Field, Field, Field, Field],
 }) {}
 
+// "empty" or default value for a key not within a MerkleMap
 const EMPTY = Field(0);
+
+const meta = [EMPTY, EMPTY, EMPTY, EMPTY]; // default EventStore meta
 
 export class IdentityManager extends SmartContract {
   // root hash of the Identity Manager Merkle Map
@@ -189,6 +195,7 @@ export class IdentityManager extends SmartContract {
       root1,
       key,
       value,
+      meta,
     });
   }
 
@@ -232,6 +239,12 @@ export class IdentityManager extends SmartContract {
       root1: rootKeyring1,
       key,
       value,
+      meta: [
+        authNFactor.protocol.type,
+        authNFactor.protocol.provider,
+        authNFactor.protocol.revision,
+        EMPTY,
+      ],
     });
 
     // set the Identity in the Manager
@@ -240,6 +253,7 @@ export class IdentityManager extends SmartContract {
       root1: rootManager1,
       key: id1.toKey(),
       value: id1.toValue(),
+      meta,
     });
   }
 }
