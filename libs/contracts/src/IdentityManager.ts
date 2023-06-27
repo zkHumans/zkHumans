@@ -10,16 +10,15 @@ import {
   State,
   Struct,
   method,
-  provablePure,
   state,
 } from 'snarkyjs';
 
 /**
  * Abbreviations:
- * - authn: authentication
- * - authz: authorization
- * - (S)MT: (Sparse) Merkle Tree
- * - MM   : Merkle Map
+ * - AuthN : authentication
+ * - AuthZ : authorization
+ * - (S)MT : (Sparse) Merkle Tree
+ * - MM    : Merkle Map
  */
 
 /**
@@ -45,19 +44,18 @@ export enum AuthNProvider {
 }
 
 /**
- * The public aspect of an authentication factor.
+ * The protocol aspect of an authentication factor.
  */
-export type AuthNFactorPublic = {
+export type AuthNFactorProtocol = {
   type: AuthNType;
   provider: AuthNProvider;
   revision: number;
 };
 
 /**
- * The private aspect of an authentication factor.
- * These are never revealed.
+ * The data aspect of an authentication factor.
  */
-export type AuthNFactorPrivate = {
+export type AuthNFactorData = {
   secret: string;
   salt: string;
 };
@@ -66,53 +64,45 @@ export type AuthNFactorPrivate = {
  * A single factor of authentication.
  *
  * A "authentication factor" exists as an entry within an individual's identity
- * keyring whereby the key:value entry uses the public Struct types as the
- * value and a hash of the public and private inputs as the key.
+ * keyring, implemented as a MerkleMap. The MerkleMap key element is the hash
+ * of all composit types while the value is simply `Field(1)` to prove
+ * inclusion of the key within the MerkleMap.
  *
- * Struct types are used as public input:
+ * An AuthNFactor's types are expressed in two parts; Protocol and Data.
+ *
+ * Protocol:
  * - type; the type of the authentication
  * - provider; the provider of the authentication
  * - revision; protocol revision, default to Field(0)
  *
- * A hash is generated from public types with two additional private inputs:
+ * Data:
  * - secret; provided by the user or an authentication provider
  * - salt; provided by the identity provider (aka the zkapp)
  */
 export class AuthNFactor extends Struct({
-  publicData: {
+  protocol: {
     type: Field,
     provider: Field,
     revision: Field,
-    // TODO: createdAt: UInt32,
-    // TODO: updatedAt: UInt32,
   },
-  privateData: {
+  data: {
     salt: CircuitString,
     secret: CircuitString,
   },
 }) {
-  hash(): Field {
+  toKey(): Field {
     return Poseidon.hash([
-      this.publicData.type,
-      this.publicData.provider,
-      this.publicData.revision,
-      ...this.privateData.salt.toFields(),
-      ...this.privateData.secret.toFields(),
+      this.protocol.type,
+      this.protocol.provider,
+      this.protocol.revision,
+      ...this.data.salt.toFields(),
+      ...this.data.secret.toFields(),
     ]);
   }
 
-  toJSON() {
-    return {
-      publicData: {
-        type: this.publicData.type.toString(),
-        provider: this.publicData.provider.toString(),
-        revision: this.publicData.revision.toString(),
-      },
-      privateData: {
-        salt: this.privateData.salt.toString(),
-        secret: this.privateData.secret.toString(),
-      },
-    };
+  toValue(): Field {
+    // all that is need as we only prove inclusion with MM
+    return Field(1);
   }
 }
 
@@ -124,31 +114,35 @@ export class AuthNFactor extends Struct({
 /**
  * An individual identity. This is stored as the value element of
  * IdentityManager's Identity Manager MT.
- * - publicKey; the UUID of the Identity
+ * - identifier; the UUID of the Identity (a pseudo PublicKey)
  * - commitment; root hash of this identity's keyring MT
  */
 export class Identity extends Struct({
-  publicKey: PublicKey,
+  identifier: PublicKey,
   commitment: Field,
 }) {
-  hash(): Field {
-    return Poseidon.hash(this.publicKey.toFields().concat(this.commitment));
+  toKey(): Field {
+    return Poseidon.hash(this.identifier.toFields());
   }
 
-  toJSON() {
-    return {
-      publicKey: this.publicKey.toBase58(),
-      commitment: this.commitment.toString(),
-    };
+  toValue(): Field {
+    return this.commitment;
   }
 
   setCommitment(commitment: Field): Identity {
     return new Identity({
-      publicKey: this.publicKey,
+      identifier: this.identifier,
       commitment,
     });
   }
 }
+
+export class EventStore extends Struct({
+  root0: Field, // before
+  root1: Field, // after
+  key: Field,
+  value: Field,
+}) {}
 
 const EMPTY = Field(0);
 
@@ -157,26 +151,8 @@ export class IdentityManager extends SmartContract {
   @state(Field) idsRoot = State<Field>();
 
   override events = {
-    addIdentity: provablePure({
-      identity: Identity,
-      commitment: Field,
-    }),
-    addAuthNFactor: provablePure({
-      identity: Identity,
-      commitment: Field,
-      authNFactorHash: Field,
-    }),
-    updateIdentity: provablePure({
-      identity: Identity,
-      commitment: Field,
-    }),
     // for updating off-chain data
-    storeSet: provablePure({
-      root0: Field, // before
-      root1: Field, // after
-      key: Field,
-      value: Field,
-    }),
+    'store:set': EventStore,
   };
 
   override init() {
@@ -196,22 +172,23 @@ export class IdentityManager extends SmartContract {
   @method addIdentity(identity: Identity, witnessManager: MerkleMapWitness) {
     const idsRoot = this.idsRoot.getAndAssertEquals();
 
+    const key = identity.toKey();
+    const value = identity.toValue();
+
     // prove the identity has not been added
     // by asserting the "current" value for this key is empty
     const [root0] = witnessManager.computeRootAndKey(EMPTY);
     root0.assertEquals(idsRoot, 'Identity already added!');
 
     // set the new Merkle Map root based on the new data
-    const [root1] = witnessManager.computeRootAndKey(identity.hash());
+    const [root1] = witnessManager.computeRootAndKey(value);
     this.idsRoot.set(root1);
 
-    this.emitEvent('addIdentity', { identity, commitment: root1 });
-
-    this.emitEvent('storeSet', {
+    this.emitEvent('store:set', {
       root0,
       root1,
-      key: Poseidon.hash(identity.publicKey.toFields()),
-      value: identity.hash(), // TODO hash once?
+      key,
+      value,
     });
   }
 
@@ -231,47 +208,38 @@ export class IdentityManager extends SmartContract {
     const idsRoot = this.idsRoot.getAndAssertEquals();
 
     // prove the Identity has been added to the current Manager MM
-    const [rootManager0] = witnessManager.computeRootAndKey(id0.hash());
+    const [rootManager0] = witnessManager.computeRootAndKey(id0.toValue());
     rootManager0.assertEquals(idsRoot, 'Identity not found!');
 
     // prove the AuthNFactor IS NOT in the current Keyring MM
     const [rootKeyring0] = witnessKeyring.computeRootAndKey(EMPTY);
     rootKeyring0.assertEquals(id0.commitment, 'AuthNFactor already added!');
 
+    const key = authNFactor.toKey();
+    const value = authNFactor.toValue();
+
     // prove the AuthNFactor IS in the new Keyring MM
-    const authNFactorHash = authNFactor.hash();
-    const [rootKeyring1] = witnessKeyring.computeRootAndKey(authNFactorHash);
-    rootKeyring1.assertEquals(id1.commitment, 'AutnNFactor not in new ID');
+    const [rootKeyring1] = witnessKeyring.computeRootAndKey(value);
+    rootKeyring1.assertEquals(id1.commitment, 'AuthNFactor not in new ID');
 
     // set the new Manager MM based on the new data
-    const [rootManager1] = witnessManager.computeRootAndKey(id1.hash());
+    const [rootManager1] = witnessManager.computeRootAndKey(id1.toValue());
     this.idsRoot.set(rootManager1);
 
-    this.emitEvent('addAuthNFactor', {
-      identity: id1,
-      commitment: rootKeyring1,
-      authNFactorHash,
-    });
-
-    this.emitEvent('updateIdentity', {
-      identity: id1,
-      commitment: rootManager1,
-    });
-
     // set the AuthNFactor in the Keyring
-    this.emitEvent('storeSet', {
+    this.emitEvent('store:set', {
       root0: rootKeyring0,
       root1: rootKeyring1,
-      key: authNFactorHash,
-      value: Field(1), // only need to prove it's in there
+      key,
+      value,
     });
 
-    // set the identity in the Manager
-    this.emitEvent('storeSet', {
+    // set the Identity in the Manager
+    this.emitEvent('store:set', {
       root0: rootManager0,
       root1: rootManager1,
-      key: Poseidon.hash(id1.publicKey.toFields()),
-      value: id1.commitment,
+      key: id1.toKey(),
+      value: id1.toValue(),
     });
   }
 }
