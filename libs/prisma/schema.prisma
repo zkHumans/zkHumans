@@ -35,3 +35,26 @@ model smtTxn {
   smt   smt?    @relation(fields: [smtId], references: [id], onDelete: Cascade, onUpdate: Cascade)
   smtId String?
 }
+
+model store {
+  id         String @id
+  commitment String // root hash
+
+  // relations
+  data storeData[]
+}
+
+model storeData {
+  id          Int     @id @default(autoincrement())
+  key         String
+  value       String?
+  meta        Json?
+  blockHeight BigInt?
+  globalSlot  BigInt?
+
+  // relations
+  store   store  @relation(fields: [storeId], references: [id], onDelete: Cascade, onUpdate: Cascade)
+  storeId String
+
+  @@unique([key, storeId])
+}
