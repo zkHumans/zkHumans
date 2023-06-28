@@ -139,27 +139,26 @@ export default function NewIdentity() {
     }
 
     // dynamically load libs for in-browser only, avoid ERR_REQUIRE_ESM
-    const { IdentityClientUtils: IDUtils } = await import(
-      '@zkhumans/utils-client'
-    );
+    const { IdentityClientUtils } = await import('@zkhumans/utils-client');
+    const IDUtils = IdentityClientUtils;
 
-    // create Identity Keyring SMT
-    const smtIDKeyring = await IDUtils.getKeyringSMT(identifier);
+    // create Identity Keyring MM
+    const mmIDKeyring = await IDUtils.getKeyringMM(identifier);
 
-    // add Operator Key as AuthnFactor to Identity Keyring
+    // add Operator Key as AuthNFactor to Identity Keyring
     cnsl.tic('> Adding Operator Key as Authentication Factor...');
-    const statusOpKey = await IDUtils.addAuthnFactorOperatorKey(
-      smtIDKeyring,
+    const statusOpKey = await IDUtils.addAuthNFactorOperatorKey(
+      mmIDKeyring,
       identifier,
       signature
     );
     cnsl.toc(statusOpKey ? 'success' : 'error');
     if (!statusOpKey) return;
 
-    // add BioAuth as AuthnFactor to Identity Keyring
+    // add BioAuth as AuthNFactor to Identity Keyring
     cnsl.tic('> Adding BioAuth as Authentication Factor...');
-    const statusBioAuth = await IDUtils.addAuthnFactorBioAuth(
-      smtIDKeyring,
+    const statusBioAuth = await IDUtils.addAuthNFactorBioAuth(
+      mmIDKeyring,
       identifier,
       bioAuthState.auth
     );
@@ -168,11 +167,11 @@ export default function NewIdentity() {
 
     // get proof that new Identity can be added to Identity Manager
     cnsl.tic('> Create New Identity Merkle proof...');
-    const { identity, merkleProof } = await IDUtils.prepareAddNewIdentity(
+    const { identity, witness } = await IDUtils.prepareAddNewIdentity(
       identifier,
-      smtIDKeyring
+      mmIDKeyring
     );
-    cnsl.toc('success', `root=${merkleProof.root}`);
+    cnsl.toc('success', `witness=${JSON.stringify(witness.toJSON())}`);
 
     try {
       cnsl.tic('> Preparing transaction...');
@@ -180,11 +179,7 @@ export default function NewIdentity() {
       if (!zks) throw new Error('zkApp not ready for transaction');
       const { zkApp, snarkyjs } = zks;
       const tx = await snarkyjs.Mina.transaction(() => {
-        zkApp.identityManager.addNewIdentity(
-          snarkyjs.CircuitString.fromString(identifier),
-          identity,
-          merkleProof
-        );
+        zkApp.identityManager.addIdentity(identity, witness);
       });
       cnsl.toc('success');
 
