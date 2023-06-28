@@ -1,4 +1,4 @@
-import { CircuitString, Poseidon, PrivateKey } from 'snarkyjs';
+import { Poseidon, PrivateKey } from 'snarkyjs';
 import {
   generateIdentifiers,
   identifierFromBase58,

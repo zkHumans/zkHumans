@@ -21,6 +21,22 @@ export function generateIdentifiers(
   return identifiers;
 }
 
+export function generateIdentifierKeys(
+  publicKey: PublicKey,
+  count = 1,
+  offset = 0
+): PublicKey[] {
+  const identifiers: PublicKey[] = [];
+  const fields = publicKey.toFields();
+  for (let i = offset; i < offset + count; i++) {
+    publicKey.x = Poseidon.hash([...fields, Field(i)]);
+    const f = publicKey.toFields();
+    const p = PublicKey.fromFields(f);
+    identifiers.push(p);
+  }
+  return identifiers;
+}
+
 // NOTE: 2023-05-26 Some snarkyjs base58 functions were not exported that could
 // be useful, so use PublicKey.x as intermediary to convert a Field to/from
 // a Base58 string.
