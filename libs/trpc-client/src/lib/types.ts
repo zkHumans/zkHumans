@@ -5,5 +5,5 @@ import type { AppRouter } from '@zkhumans/trpc';
 type RouterInput = inferRouterInputs<AppRouter>;
 type RouterOutput = inferRouterOutputs<AppRouter>;
 
-export type ApiSmtGetInput = RouterInput['smt']['get'];
-export type ApiSmtGetOutput = RouterOutput['smt']['get'];
+export type ApiStoreByIdInput = RouterInput['store']['byId'];
+export type ApiStoreByIdOutput = RouterOutput['store']['byId'];
