@@ -95,6 +95,17 @@ services:
     command: >
       npx nx run oracle-auth:start
 
+  indexer:
+    profiles: ['run']
+    extends:
+      service: base-service
+    container_name: indexer
+    depends_on:
+      api:
+        condition: service_healthy
+    command: >
+      npx nx run indexer:serve:production
+
   prisma-studio:
     profiles: ['run', 'maintenance']
     extends:
