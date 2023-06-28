@@ -1,27 +1,16 @@
 import { trpc } from '@zkhumans/trpc-client';
 import {
-  AuthnFactor,
-  AuthnFactorUtils,
-  AuthnProvider,
-  AuthnType,
+  AuthNFactor,
+  AuthNProvider,
+  AuthNType,
   Identity,
 } from '@zkhumans/contracts';
 import { BioAuthOracle, BioAuthorizedMessage } from '@zkhumans/snarky-bioauth';
-import { CircuitString, Field, Poseidon, PublicKey } from 'snarkyjs';
-import { MemoryStore, SparseMerkleTree } from 'snarky-smt';
-import {
-  generateIdentifiers,
-  identifierFromBase58,
-  smtApplyTransactions,
-  smtValueToString,
-  smtStringToValue,
-} from '@zkhumans/utils';
+import { CircuitString, Field, MerkleMap, Poseidon, PublicKey } from 'snarkyjs';
+import { generateIdentifierKeys, identifierFromBase58 } from '@zkhumans/utils';
 
-import type { ApiSmtGetOutput } from '@zkhumans/trpc-client';
-import type {
-  AuthnFactorPublic,
-  SMTIdentityKeyring,
-} from '@zkhumans/contracts';
+import type { ApiStoreByIdOutput } from '@zkhumans/trpc-client';
+import type { AuthNFactorProtocol } from '@zkhumans/contracts';
 import type { SignedData } from '@aurowallet/mina-provider/dist/TSTypes';
 type WalletSignedData = SignedData;
 
@@ -39,58 +28,61 @@ export class IdentityClientUtils {
   static async getIdentities(account: string) {
     const publicKey = PublicKey.fromBase58(account);
 
-    const identifiers = generateIdentifiers(
-      publicKey.toFields(),
+    const keys = generateIdentifierKeys(
+      publicKey,
       IDENTITY_MGR_MAX_IDS_PER_ACCT
     );
 
-    const identities = [] as NonNullable<ApiSmtGetOutput>[];
-    for (const id of identifiers) {
-      const x = await trpc.smt.get.query({ id });
+    const identities = [] as NonNullable<ApiStoreByIdOutput>[];
+    for (const key of keys) {
+      const identity = new Identity({ identifier: key, commitment: Field(0) });
+      const id = identity.toKey().toString();
+      const x = await trpc.store.byId.query({ id });
       if (x) identities.push(x);
     }
 
     return identities;
   }
 
-  /**
-   * Get SparseMerkleTree for an Identity Keyring by the given identifier.
-   * Create in database if doesn't exist, restore from database if it does.
-   */
-  static async getKeyringSMT(identifier: string) {
-    // Create an Identity Keyring MT
-    const store = new MemoryStore<AuthnFactor>();
-    const smt = await SparseMerkleTree.build(store, Field, AuthnFactor);
+  static async getStoredMerkleMap(id: string) {
+    const mm = new MerkleMap();
 
-    // get Identity Keyring MT data from database, create if not exists
-    const dbSmtKeyring =
-      (await trpc.smt.get.query({ id: identifier })) ??
-      (await trpc.smt.create.mutate({ id: identifier, root: '' }));
+    // restore MerkleMap data from database, if it exists
+    // Note: db store is only created by the indexer service
+    const store = await trpc.store.byId.query({ id });
+    if (!store) return mm;
 
-    // apply db-stored SMT modification history to restore in-memory
-    await smtApplyTransactions(smt, Field, AuthnFactor, dbSmtKeyring);
+    // restore MerkleMap from db store
+    for (const data of store.data) {
+      try {
+        mm.set(Field(data.key), Field(data.value ?? 0));
+      } catch (e: any) {
+        console.log('Error', e.message);
+      }
+    }
 
-    return smt;
+    return mm;
   }
 
   /**
-   * Get SparseMerkleTree for an Identity Manager.
+   * Get the MerkleMap for an Identity Keyring by the given identifier.
    * Create in database if doesn't exist, restore from database if it does.
    */
-  static async getManagerSMT(idMgr: string = IDENTITY_MGR_SMT_NAME) {
-    // Create an Identity Manager MT
-    const store = new MemoryStore<Identity>();
-    const smt = await SparseMerkleTree.build(store, CircuitString, Identity);
+  static async getKeyringMM(identifier: string) {
+    const identity = new Identity({
+      identifier: PublicKey.fromBase58(identifier),
+      commitment: Field(0),
+    });
+    const id = identity.toKey().toString();
+    return this.getStoredMerkleMap(id);
+  }
 
-    // get Identity Manager MT data from database, create if not exists
-    const dbSmt =
-      (await trpc.smt.get.query({ id: idMgr })) ??
-      (await trpc.smt.create.mutate({ id: idMgr, root: '' }));
-
-    // apply db-stored SMT modification history to restore in-memory
-    await smtApplyTransactions(smt, CircuitString, Identity, dbSmt);
-
-    return smt;
+  /**
+   * Get MerkleMap for an Identity Manager.
+   * Create in database if doesn't exist, restore from database if it does.
+   */
+  static async getManagerMM(idMgr: string = IDENTITY_MGR_SMT_NAME) {
+    return this.getStoredMerkleMap(idMgr);
   }
 
   /**
@@ -102,9 +94,11 @@ export class IdentityClientUtils {
   static async getNextUnusedIdentifier(account: string) {
     const publicKey = PublicKey.fromBase58(account);
     for (let i = 0; i < IDENTITY_MGR_MAX_IDS_PER_ACCT; i++) {
-      const [id] = generateIdentifiers(publicKey.toFields(), 1, i);
-      const x = await trpc.smt.get.query({ id });
-      if (!x) return id;
+      const [key] = generateIdentifierKeys(publicKey, 1, i);
+      const identity = new Identity({ identifier: key, commitment: Field(0) });
+      const id = identity.toKey().toString();
+      const x = await trpc.store.byId.query({ id });
+      if (!x) return key.toBase58();
     }
     return null;
   }
@@ -141,8 +135,8 @@ export class IdentityClientUtils {
     return bioAuthOracle.getBioAuthLink(bioAuthId);
   }
 
-  static async addAuthnFactorOperatorKey(
-    smtIDKeyring: SMTIdentityKeyring,
+  static async addAuthNFactorOperatorKey(
+    mmKeyring: MerkleMap,
     identifier: string,
     signature: WalletSignedData
   ) {
@@ -153,29 +147,29 @@ export class IdentityClientUtils {
     );
     if (!secret || secret === '') return false;
 
-    const afPublic = {
-      type: AuthnType.operator,
-      provider: AuthnProvider.zkhumans,
+    const afProtocol = {
+      type: AuthNType.operator,
+      provider: AuthNProvider.zkhumans,
       revision: 0,
     };
 
-    await IdentityClientUtils.addAuthnFactorToKeyring(
-      smtIDKeyring,
+    await IdentityClientUtils.addAuthNFactorToKeyring(
+      mmKeyring,
       identifier,
-      afPublic,
+      afProtocol,
       secret
     );
     return true;
   }
 
-  static async addAuthnFactorBioAuth(
-    smtIDKeyring: SMTIdentityKeyring,
+  static async addAuthNFactorBioAuth(
+    mmKeyring: MerkleMap,
     identifier: string,
     bioAuth: string
   ) {
-    const afPublic = {
-      type: AuthnType.proofOfPerson,
-      provider: AuthnProvider.humanode,
+    const afProtocol = {
+      type: AuthNType.proofOfPerson,
+      provider: AuthNProvider.humanode,
       revision: 0,
     };
 
@@ -183,127 +177,130 @@ export class IdentityClientUtils {
       const data = JSON.parse(bioAuth);
       const bioAuthMsg = BioAuthorizedMessage.fromJSON(data);
       const secret = bioAuthMsg.bioAuthId.toString();
-      await IdentityClientUtils.addAuthnFactorToKeyring(
-        smtIDKeyring,
+      await IdentityClientUtils.addAuthNFactorToKeyring(
+        mmKeyring,
         identifier,
-        afPublic,
+        afProtocol,
         secret
       );
       return true;
     } catch (
       err: any // eslint-disable-line @typescript-eslint/no-explicit-any
     ) {
-      console.log('addAuthnFactorBioAuth ERROR', err);
+      console.log('addAuthNFactorBioAuth ERROR', err);
       return false;
     }
   }
 
-  static async addAuthnFactorToKeyring(
-    smtIDKeyring: SMTIdentityKeyring,
-    identifier: string,
-    afPublic: AuthnFactorPublic,
+  static async addAuthNFactorToKeyring(
+    mmKeyring: MerkleMap,
+    identifier: string, // TODO: remove
+    protocol: AuthNFactorProtocol,
     secret: string
   ) {
-    const af = AuthnFactorUtils.init(afPublic);
-    const afPrivate = { salt: IDENTITY_MGR_SALT, secret };
-    const afHash = AuthnFactorUtils.hash(af, afPrivate);
-
-    await smtIDKeyring.update(afHash, af);
-    await trpc.smt.txn.mutate({
-      id: identifier,
-      txn: 'update',
-      key: smtValueToString(afHash, Field),
-      value: smtValueToString(af, AuthnFactor),
+    const af = AuthNFactor.init({
+      protocol,
+      data: { salt: IDENTITY_MGR_SALT, secret },
     });
+
+    mmKeyring.set(af.toKey(), af.toValue());
+
+    // X: await trpc.smt.txn.mutate({
+    // X:   id: identifier,
+    // X:   txn: 'update',
+    // X:   key: smtValueToString(afHash, Field),
+    // X:   value: smtValueToString(af, AuthNFactor),
+    // X: });
   }
 
-  static async getAuthnFactorsFromKeyring(identifier: string) {
-    const authnFactors = {} as { [key: string]: AuthnFactorPublic };
-    const dbSmtKeyring = await trpc.smt.get.query({ id: identifier });
-    if (!dbSmtKeyring) return authnFactors;
-    for (const txn of dbSmtKeyring.txns) {
-      if (txn.value) {
-        const af: AuthnFactor = smtStringToValue(txn.value, AuthnFactor);
-        authnFactors[txn.key] = {
-          type: Number(af.type.toString()),
-          provider: Number(af.provider.toString()),
-          revision: Number(af.revision.toString()),
-        };
-      }
-    }
-    return authnFactors;
+  static async getAuthNFactorsFromKeyring(identifier: string) {
+    const authNFactors = {} as { [key: string]: AuthNFactorProtocol };
+
+    // X: const dbSmtKeyring = await trpc.smt.get.query({ id: identifier });
+    // X: if (!dbSmtKeyring) return authnFactors;
+    // X: for (const txn of dbSmtKeyring.txns) {
+    // X:   if (txn.value) {
+    // X:     const af: AuthNFactor = smtStringToValue(txn.value, AuthNFactor);
+    // X:     authnFactors[txn.key] = {
+    // X:       type: Number(af.type.toString()),
+    // X:       provider: Number(af.provider.toString()),
+    // X:       revision: Number(af.revision.toString()),
+    // X:     };
+    // X:   }
+    // X: }
+
+    return authNFactors;
   }
 
   static async prepareAddNewIdentity(
     identifier: string,
-    smtIDKeyring: SMTIdentityKeyring
+    mmIDKeyring: MerkleMap
   ) {
-    const smtIDManager = await IdentityClientUtils.getManagerSMT();
+    const mmIDManager = await IdentityClientUtils.getManagerMM();
 
     const pk = identifier.replace(/^zkHM/, 'B62q'); // HACK!!!!
+
     const identity = new Identity({
-      publicKey: PublicKey.fromBase58(pk),
-      commitment: smtIDKeyring.getRoot(),
+      identifier: PublicKey.fromBase58(pk),
+      commitment: mmIDKeyring.getRoot(),
     });
 
-    // prove the identifier IS NOT in the Identity Manager MT
-    const identifierCircuitString = CircuitString.fromString(identifier);
-    const merkleProof = await smtIDManager.prove(identifierCircuitString);
-    console.log('merkleProof sidenodes', merkleProof.sideNodes);
+    // prove the identity IS NOT in the Identity Manager MM
+    const witness = mmIDManager.getWitness(identity.toKey());
+    console.log('merkle witness siblings', witness.siblings);
 
-    return { identity, merkleProof };
+    return { identity, witness };
   }
 
   static async addNewIdentity(identifier: string, identity: Identity) {
-    const smtIDManager = await IdentityClientUtils.getManagerSMT();
-    const identifierCircuitString = CircuitString.fromString(identifier);
+    const mmIDManager = await IdentityClientUtils.getManagerMM();
+    mmIDManager.set(identity.toKey(), identity.toValue());
 
-    await smtIDManager.update(identifierCircuitString, identity);
-    await trpc.smt.txn.mutate({
-      id: IDENTITY_MGR_SMT_NAME,
-      txn: 'update',
-      key: smtValueToString(identifierCircuitString, CircuitString),
-      value: smtValueToString(identity, Identity),
-    });
+    // X: await trpc.smt.txn.mutate({
+    // X:   id: IDENTITY_MGR_SMT_NAME,
+    // X:   txn: 'update',
+    // X:   key: smtValueToString(identifierCircuitString, CircuitString),
+    // X:   value: smtValueToString(identity, Identity),
+    // X: });
 
-    return smtIDManager;
+    return mmIDManager;
   }
 
-  static humanReadableAuthnFactor(afp: AuthnFactorPublic) {
+  static humanReadableAuthNFactor(afp: AuthNFactorProtocol) {
     const x = { type: '', provider: '', revision: Number(afp.revision) };
 
     switch (afp.type) {
-      case AuthnType.operator:
+      case AuthNType.operator:
         x.type = 'Operator Key';
         break;
-      case AuthnType.password:
+      case AuthNType.password:
         x.type = 'Password';
         break;
-      case AuthnType.facescan:
+      case AuthNType.facescan:
         x.type = 'Facescan';
         break;
-      case AuthnType.fingerprint:
+      case AuthNType.fingerprint:
         x.type = 'Fingerprint';
         break;
-      case AuthnType.retina:
+      case AuthNType.retina:
         x.type = 'Retina';
         break;
-      case AuthnType.proofOfPerson:
+      case AuthNType.proofOfPerson:
         x.type = 'Proof of Unique Living Human';
         break;
     }
 
     switch (afp.provider) {
-      case AuthnProvider.self:
+      case AuthNProvider.self:
         x.provider = 'Self';
         break;
-      case AuthnProvider.zkhumans:
+      case AuthNProvider.zkhumans:
         x.provider = 'zkHumans';
         break;
-      case AuthnProvider.humanode:
+      case AuthNProvider.humanode:
         x.provider = 'Humanode';
         break;
-      case AuthnProvider.webauthn:
+      case AuthNProvider.webauthn:
         x.type = 'WebAuthn';
         break;
     }
