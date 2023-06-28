@@ -158,6 +158,7 @@ export class Identity extends Struct({
 }
 
 export class EventStore extends Struct({
+  id: Field, // store identifier
   root0: Field, // before
   root1: Field, // after
   key: Field,
@@ -166,22 +167,34 @@ export class EventStore extends Struct({
 }) {}
 
 // "empty" or default value for a key not within a MerkleMap
-const EMPTY = Field(0);
+export const EMPTY = Field(0);
 
-const meta = [EMPTY, EMPTY, EMPTY, EMPTY]; // default EventStore meta
+export const eventStoreDefault = {
+  id: EMPTY,
+  root0: EMPTY,
+  root1: EMPTY,
+  key: EMPTY,
+  value: EMPTY,
+  meta: [EMPTY, EMPTY, EMPTY, EMPTY],
+};
 
 export class IdentityManager extends SmartContract {
-  // root hash of the Identity Manager Merkle Map
+  // Identity Manager Merkle Map; off-chain storage identifier
+  @state(Field) idsStoreId = State<Field>();
+
+  // Identity Manager Merkle Map; root hash
   @state(Field) idsRoot = State<Field>();
 
   override events = {
     // for updating off-chain data
+    'store:new': EventStore,
     'store:set': EventStore,
   };
 
   override init() {
     super.init();
-    this.idsRoot.set(Field(0));
+    this.idsRoot.set(EMPTY);
+    this.idsStoreId.set(EMPTY);
   }
 
   override deploy(args: DeployArgs) {
@@ -195,6 +208,7 @@ export class IdentityManager extends SmartContract {
   // add identity; only if it has not already been added
   @method addIdentity(identity: Identity, witnessManager: MerkleMapWitness) {
     const idsRoot = this.idsRoot.getAndAssertEquals();
+    const idsStoreId = this.idsStoreId.getAndAssertEquals();
 
     const key = identity.toKey();
     const value = identity.toValue();
@@ -209,11 +223,18 @@ export class IdentityManager extends SmartContract {
     this.idsRoot.set(root1);
 
     this.emitEvent('store:set', {
+      ...eventStoreDefault,
+      id: idsStoreId,
       root0,
       root1,
       key,
       value,
-      meta,
+    });
+
+    this.emitEvent('store:new', {
+      ...eventStoreDefault,
+      id: key,
+      root1: value,
     });
   }
 
@@ -231,6 +252,7 @@ export class IdentityManager extends SmartContract {
     witnessKeyring: MerkleMapWitness
   ) {
     const idsRoot = this.idsRoot.getAndAssertEquals();
+    const idsStoreId = this.idsStoreId.getAndAssertEquals();
 
     // prove the Identity has been added to the current Manager MM
     const [rootManager0] = witnessManager.computeRootAndKey(id0.toValue());
@@ -253,6 +275,7 @@ export class IdentityManager extends SmartContract {
 
     // set the AuthNFactor in the Keyring
     this.emitEvent('store:set', {
+      id: id1.toKey(),
       root0: rootKeyring0,
       root1: rootKeyring1,
       key,
@@ -267,11 +290,12 @@ export class IdentityManager extends SmartContract {
 
     // set the Identity in the Manager
     this.emitEvent('store:set', {
+      ...eventStoreDefault,
+      id: idsStoreId,
       root0: rootManager0,
       root1: rootManager1,
       key: id1.toKey(),
       value: id1.toValue(),
-      meta,
     });
   }
 }

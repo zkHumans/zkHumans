@@ -13,6 +13,7 @@ import {
   EventStore,
   Identity,
   IdentityManager,
+  eventStoreDefault,
 } from '../IdentityManager';
 import { strToBool } from '@zkhumans/utils';
 
@@ -75,12 +76,22 @@ const Darcy = darcyID.toKey();
 const idManagerMerkleMap = new MerkleMap();
 idManagerMerkleMap.set(Alice, aliceID.toValue());
 idManagerMerkleMap.set(Bob, bobID.toValue());
-const initialCommitment = idManagerMerkleMap.getRoot();
 
 // set initial MM to confirm restoration from contract events later
 const initialIdManagerMM = new MerkleMap();
 initialIdManagerMM.set(Alice, aliceID.toValue());
 initialIdManagerMM.set(Bob, bobID.toValue());
+
+// simulate the zkApp itself as an Identity
+// to conform its off-chain storage mechanics
+const zkappIdentity = new Identity({
+  identifier: zkappAddress,
+  commitment: idManagerMerkleMap.getRoot(),
+});
+const initStoreId = zkappIdentity.toKey();
+const initRoot = zkappIdentity.toValue();
+console.log('init storeId :', initStoreId.toString());
+console.log('init root    :', initRoot.toString());
 
 // deploy
 log('Deploying IdentityManager...');
@@ -88,7 +99,17 @@ const zkapp = new IdentityManager(zkappAddress);
 const tx = await Mina.transaction(feePayer, () => {
   AccountUpdate.fundNewAccount(feePayer);
   zkapp.deploy({ zkappKey });
-  zkapp.idsRoot.set(initialCommitment);
+
+  // set initial storage identifier and root hash
+  zkapp.idsStoreId.set(initStoreId);
+  zkapp.idsRoot.set(initRoot);
+
+  // notify off-chain storage
+  zkapp.emitEvent('store:new', {
+    ...eventStoreDefault,
+    id: initStoreId,
+    root1: initRoot,
+  });
 });
 await tx.prove();
 await tx.sign([feePayerKey]).send();
@@ -147,10 +168,20 @@ console.log('MM 2:', initialIdManagerMM.getRoot().toString());
 
 for (const event of events) {
   switch (event.type) {
-    case 'store:set':
+    case 'store:new':
       {
         // TODO: a better way to access event data?
         const js = JSON.parse(JSON.stringify(event.event.data));
+        console.log('Event: store:new', js);
+
+        // off-chain storage should create the record
+      }
+      break;
+
+    case 'store:set':
+      {
+        const js = JSON.parse(JSON.stringify(event.event.data));
+        console.log('Event: store:set', js);
         const ev = EventStore.fromJSON(js);
 
         // add to the MM
@@ -159,6 +190,8 @@ for (const event of events) {
           const s = ev.root1.equals(initialIdManagerMM.getRoot()).toBoolean();
           console.log(s ? '✅' : '❌', 'MerkleMap set from event');
         }
+
+        // off-chain storage should set the record
       }
       break;
   }
