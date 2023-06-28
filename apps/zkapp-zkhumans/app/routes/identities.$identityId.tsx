@@ -26,7 +26,7 @@ export default function Identity() {
   const appContext = useAppContext();
   const { cnsl, zk } = appContext;
 
-  const [authnFactors, setAuthnFactors] = useState([] as AFS);
+  const [authNFactors, setAuthNFactors] = useState([] as AFS);
 
   useEffect(() => {
     (async () => {
@@ -35,14 +35,14 @@ export default function Identity() {
       const IDUtils = IdentityClientUtils;
 
       if (identity) {
-        const afs_ = await IDUtils.getAuthnFactorsFromKeyring(identity.id);
+        const afs_ = await IDUtils.getAuthNFactorsFromKeyring(identity.id);
         const afs = [] as AFS;
         for (const af of Object.keys(afs_))
           afs.push({
             key: af,
-            value: IDUtils.humanReadableAuthnFactor(afs_[af]),
+            value: IDUtils.humanReadableAuthNFactor(afs_[af]),
           });
-        setAuthnFactors(() => afs);
+        setAuthNFactors(() => afs);
       }
     })();
   }, [identity]);
@@ -79,7 +79,7 @@ export default function Identity() {
 
   if (!identity) return <Alert type="error">Identity not found.</Alert>;
 
-  const tableAuthnFactors = (
+  const tableAuthNFactors = (
     <div className="overflow-x-auto">
       <table className="table">
         <thead>
@@ -91,7 +91,7 @@ export default function Identity() {
           </tr>
         </thead>
         <tbody>
-          {authnFactors.map((af, index) => (
+          {authNFactors.map((af, index) => (
             <tr key={af.key} className="hover:bg-base-200">
               <th className="grid justify-items-center">
                 <Link to={`./authn/${af.key}/edit`}>{index}</Link>
@@ -127,8 +127,8 @@ export default function Identity() {
         <div className="my-4 text-xl font-bold">{identity.id}</div>
       </div>
 
-      {/* Table of AuthnFactors */}
-      <div className="w-full">{tableAuthnFactors}</div>
+      {/* Table of AuthNFactors */}
+      <div className="w-full">{tableAuthNFactors}</div>
 
       {/* Optional Outlet */}
       {hasOutlet && (
