@@ -39,37 +39,40 @@ export class Data extends Struct({
   }
 }
 
-function MerkleMapExtended<
+// A MerkleMap wrapper than retains the unhashed value.
+class ExtendedMerkleMap<
   V extends {
     hash(): Field;
     toJSON(): any; // eslint-disable-line @typescript-eslint/no-explicit-any
   }
->() {
-  const merkleMap = new MerkleMap();
-  const map = new Map<string, V>();
+> {
+  map;
+  merkleMap;
 
-  return {
-    get(key: Field): V | undefined {
-      return map.get(key.toString());
-    },
+  constructor() {
+    this.map = new Map<string, V>();
+    this.merkleMap = new MerkleMap();
+  }
 
-    set(key: Field, value: V) {
-      map.set(key.toString(), value);
-      merkleMap.set(key, value.hash());
-    },
+  get(key: Field): V | undefined {
+    return this.map.get(key.toString());
+  }
 
-    getRoot(): Field {
-      return merkleMap.getRoot();
-    },
+  set(key: Field, value: V) {
+    this.map.set(key.toString(), value);
+    this.merkleMap.set(key, value.hash());
+  }
 
-    getWitness(key: Field): MerkleMapWitness {
-      return merkleMap.getWitness(key);
-    },
-  };
+  getRoot(): Field {
+    return this.merkleMap.getRoot();
+  }
+
+  getWitness(key: Field): MerkleMapWitness {
+    return this.merkleMap.getWitness(key);
+  }
 }
 
-type DataMerkleMap = ReturnType<typeof MerkleMapExtended>;
-const dataMerkleMap: DataMerkleMap = MerkleMapExtended<Data>();
+const dataMerkleMap = new ExtendedMerkleMap<Data>();
 
 class Contract extends SmartContract {
   @state(Field) nullifierRoot = State<Field>();
