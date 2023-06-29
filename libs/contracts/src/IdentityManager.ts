@@ -127,15 +127,10 @@ export class AuthNFactor extends Struct({
 }
 
 /**
- * Note: This utility class provides methods separate from AuthnFactor for
- * simpler typing with SparseMerkleTree
- */
-
-/**
  * An individual identity. This is stored as the value element of
  * IdentityManager's Identity Manager MT.
- * - identifier; the UUID of the Identity (a pseudo PublicKey)
- * - commitment; root hash of this identity's keyring MT
+ * - identifier: the UUID of the Identity (a pseudo PublicKey)
+ * - commitment: root hash of this identity's keyring MT
  */
 export class Identity extends Struct({
   identifier: PublicKey,
@@ -237,9 +232,6 @@ export class IdentityManager extends SmartContract {
       root1: value,
     });
   }
-
-  // add a new Identity iff the identifier does not already exist
-  // (using non-existence merkle proof)
 
   /**
    * Add an Authentication Factor to an Identity.
