@@ -16,8 +16,6 @@
     "postinstall": "npm run link && prisma generate",
     "production-build": "NODE_ENV=production nx run-many --targets=build --configuration=production",
     "setup": "prisma migrate deploy && echo TODO prisma db seed",
-    "test:snarky-smt:merkle": "./bin/snarky-run.sh libs/contracts-example/src/examples/snarky-smt/merkle_zkapp.ts",
-    "test:snarky-smt:smt": "./bin/snarky-run.sh libs/contracts-example/src/examples/snarky-smt/smt_zkapp.ts",
     "test:snarkyjs:merkle": "./bin/snarky-run.sh libs/contracts-example/src/examples/snarkyjs/merkle_zkapp.ts",
     "test:zkhumans:identity": "./bin/snarky-run.sh libs/contracts/src/examples/identity.ts"
   },
@@ -79,7 +77,6 @@
     "react-dom": "^18.2.0",
     "remix-auth": "^3.4.0",
     "remix-auth-oauth2": "^1.7.0",
-    "snarky-smt": "github:zkhumans/snarky-smt",
     "snarkyjs": "^0.10.1",
     "superjson": "^1.12.3",
     "theme-change": "^2.5.0",
