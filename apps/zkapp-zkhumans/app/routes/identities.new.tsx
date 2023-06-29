@@ -145,7 +145,7 @@ export default function NewIdentity() {
     // create Identity Keyring MM
     const mmIDKeyring = await IDUtils.getKeyringMM(identifier);
 
-    // add Operator Key as AuthnFactor to Identity Keyring
+    // add Operator Key as AuthNFactor to Identity Keyring
     cnsl.tic('> Adding Operator Key as Authentication Factor...');
     const statusOpKey = await IDUtils.addAuthNFactorOperatorKey(
       mmIDKeyring,
