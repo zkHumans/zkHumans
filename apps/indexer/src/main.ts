@@ -92,7 +92,7 @@ const loop = async () => {
   // from the last db-recorded block
   // or start from the "beginning"
   ////////////////////////////////////
-  const startFetchEvents = dbZkapp.blockLast
+  let startFetchEvents = dbZkapp.blockLast
     ? UInt32.from(dbZkapp.blockLast).add(1)
     : undefined;
 
@@ -112,8 +112,11 @@ const loop = async () => {
   console.log(`Fetching events ${startFetchEvents} ⇾ ${blockchainLength}`);
   const events = await zkapp.fetchEvents(startFetchEvents, blockchainLength);
   for (const event of events) {
-    const blockHeight = event.blockHeight.toBigint();
     const globalSlot = event.globalSlot.toBigint();
+    const blockHeight = event.blockHeight.toBigint();
+
+    // if zkapp's first block was unknown, use the first event's block
+    if (!startFetchEvents) startFetchEvents = UInt32.from(blockHeight);
 
     // TODO: a better way to access event data?
     const js = JSON.parse(JSON.stringify(event.event.data));
