@@ -47,10 +47,10 @@ export class IdentityClientUtils {
   static async getStoredMerkleMap(id: string) {
     const mm = new MerkleMap();
 
-    // get MerkleMap data from database, create if not exists
-    const store =
-      (await trpc.store.byId.query({ id })) ??
-      (await trpc.store.create.mutate({ id, commitment: '' }));
+    // restore MerkleMap data from database, if it exists
+    // Note: db store is only created by the indexer service
+    const store = await trpc.store.byId.query({ id });
+    if (!store) return mm;
 
     // restore MerkleMap from db store
     for (const data of store.data) {
