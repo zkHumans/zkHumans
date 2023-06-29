@@ -15,25 +15,33 @@ export const selectStoreData = Prisma.validator<Prisma.storeDataSelect>()({
 export const selectStore = Prisma.validator<Prisma.storeSelect>()({
   id: true,
   commitment: true,
+  meta: true,
   data: {
     select: selectStoreData,
   },
 });
 
 export const storeRouter = t.router({
-  // create a Store with the given id and commitment
+  // create a new Store with the given id and commitment
+  // corresponds to event `store:new`
   create: t.procedure
     .input(
       z.object({
         id: z.string(),
         commitment: z.string(),
+        meta: z.string().optional(),
+        zkapp: z.object({
+          address: z.string(),
+        }),
       })
     )
-    .mutation(async ({ input: { id, commitment } }) => {
+    .mutation(async ({ input: { zkapp, id, commitment, ...data } }) => {
       return await prisma.store.create({
         data: {
           id,
           commitment,
+          zkapp: { connect: { address: zkapp.address } },
+          ...data,
         },
         select: selectStore,
       });
@@ -88,25 +96,22 @@ export const storeRouter = t.router({
         key: z.string(),
         value: z.string().optional(),
         meta: z.string().optional(),
-        blockHeight: z.number().optional(),
-        globalSlot: z.number().optional(),
+        blockHeight: z.bigint().optional(),
+        globalSlot: z.bigint().optional(),
       })
     )
-    .mutation(
-      async ({
-        input: { store, key, value, meta, blockHeight, globalSlot },
-      }) => {
-        return await prisma.storeData.create({
-          data: {
-            key,
-            value,
-            meta,
-            blockHeight,
-            globalSlot,
-            store: { connect: { id: store.id } },
-          },
-          select: { id: true },
-        });
-      }
-    ),
+    .mutation(async ({ input: { store, key, ...data } }) => {
+      return await prisma.storeData.upsert({
+        where: { key_storeId: { key, storeId: store.id } },
+        update: {
+          ...data,
+        },
+        create: {
+          ...data,
+          key,
+          store: { connect: { id: store.id } },
+        },
+        select: { id: true },
+      });
+    }),
 });
