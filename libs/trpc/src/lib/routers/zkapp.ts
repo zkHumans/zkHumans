@@ -27,6 +27,16 @@ export const zkappRouter = t.router({
       });
     }),
 
+  delete: t.procedure
+    .input(
+      z.object({
+        address: z.string(),
+      })
+    )
+    .mutation(async ({ input: { address } }) => {
+      return await prisma.zkapp.delete({ where: { address } });
+    }),
+
   update: t.procedure
     .input(
       z.object({

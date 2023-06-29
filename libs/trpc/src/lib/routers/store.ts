@@ -47,8 +47,7 @@ export const storeRouter = t.router({
       });
     }),
 
-  // clear the Store
-  clear: t.procedure
+  delete: t.procedure
     .input(
       z.object({
         id: z.string(),

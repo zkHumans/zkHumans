@@ -7,7 +7,8 @@ const trpc = createTRPCClient(process.env['API_URL']);
 describe('Store', () => {
   jest.setTimeout(1000 * 100);
 
-  const id = '__TEST__';
+  const id = '__TEST__'; // store identifier
+  const address = '__TEST__'; // zkapp address
 
   const k1 = Field(100);
   const v1 = Field(200);
@@ -20,7 +21,10 @@ describe('Store', () => {
     ////////////////////////////////////
 
     if (await trpc.store.byId.query({ id }))
-      await trpc.store.clear.mutate({ id });
+      await trpc.store.delete.mutate({ id });
+
+    if (await trpc.zkapp.byAddress.query({ address }))
+      await trpc.zkapp.delete.mutate({ address });
 
     ////////////////////////////////////
     // Create
@@ -29,19 +33,15 @@ describe('Store', () => {
     // Create a MM
     const mm1 = new MerkleMap();
 
-    // get store from database, create if not exists
-    let dbMM =
-      (await trpc.store.byId.query({ id })) ??
-      (await trpc.store.create.mutate({ id, commitment: '' }));
+    // crete zkapp in database
+    await trpc.zkapp.create.mutate({ address });
 
-    // restore Merkle Map from db store
-    for (const data of dbMM.data) {
-      try {
-        mm1.set(Field(data.key), Field(data.value));
-      } catch (e) {
-        console.log('Error', e.message);
-      }
-    }
+    // create store in database
+    let dbMM = await trpc.store.create.mutate({
+      id,
+      commitment: '',
+      zkapp: { address },
+    });
 
     ////////////////////////////////////
     // Update
@@ -83,7 +83,11 @@ describe('Store', () => {
     // get store from database, create if not exists
     const dbMM2 =
       (await trpc.store.byId.query({ id })) ??
-      (await trpc.store.create.mutate({ id, commitment: '' }));
+      (await trpc.store.create.mutate({
+        id,
+        commitment: '',
+        zkapp: { address },
+      }));
 
     // restore Merkle Map from db store
     for (const data of dbMM2.data) {
@@ -108,7 +112,10 @@ describe('Store', () => {
     // Clear
     ////////////////////////////////////
 
-    const s = await trpc.store.clear.mutate({ id });
+    const s = await trpc.store.delete.mutate({ id });
     expect(s).toBeTruthy();
+
+    const z = await trpc.zkapp.delete.mutate({ address });
+    expect(z).toBeTruthy();
   });
 });

@@ -7,9 +7,10 @@ import { useEffect, useState } from 'react';
 
 export const loader = async ({ params }: LoaderArgs) => {
   const trpc = createTRPCClient(process.env['API_URL']);
-  const id = params.identityId;
-  const identity = id ? await trpc.smt.get.query({ id }) : null;
-  return json({ identity });
+  const identifier = params.identityId;
+  // X: const identity = id ? await trpc.smt.get.query({ id }) : null;
+  // X: return json({ identity });
+  return json({ identifier });
 };
 
 type AFS = {
@@ -22,7 +23,7 @@ type AFS = {
 }[];
 
 export default function Identity() {
-  const { identity } = useLoaderData<typeof loader>();
+  const { identifier } = useLoaderData<typeof loader>();
   const appContext = useAppContext();
   const { cnsl, zk } = appContext;
 
@@ -34,23 +35,23 @@ export default function Identity() {
       const { IdentityClientUtils } = await import('@zkhumans/utils-client');
       const IDUtils = IdentityClientUtils;
 
-      if (identity) {
-        const afs_ = await IDUtils.getAuthNFactorsFromKeyring(identity.id);
-        const afs = [] as AFS;
-        for (const af of Object.keys(afs_))
-          afs.push({
-            key: af,
-            value: IDUtils.humanReadableAuthNFactor(afs_[af]),
-          });
-        setAuthNFactors(() => afs);
-      }
+      // X: if (identity) {
+      // X:   const afs_ = await IDUtils.getAuthNFactorsFromKeyring(identity.id);
+      // X:   const afs = [] as AFS;
+      // X:   for (const af of Object.keys(afs_))
+      // X:     afs.push({
+      // X:       key: af,
+      // X:       value: IDUtils.humanReadableAuthNFactor(afs_[af]),
+      // X:     });
+      // X:   setAuthNFactors(() => afs);
+      // X: }
     })();
-  }, [identity]);
+  }, [identifier]);
 
   async function handleDestroyIdentity() {
     cnsl.log('info', 'Destroying Identity...');
 
-    if (!zk.state.account || !identity) {
+    if (!zk.state.account || !identifier) {
       cnsl.log('error', 'ERROR: identity and/or account not available');
       return;
     }
@@ -69,15 +70,16 @@ export default function Identity() {
     ////////////////////////////////////////////////////////////////////////
     // TODO: security!!!
     // use signature and/or on-chain proof to destroy identity
-    // for now, just clear it from DB
+    // ~~for now, just clear it from DB~~ --> indexer deletes from events
     ////////////////////////////////////////////////////////////////////////
-    const x = await trpc.smt.clear.mutate({ id: identity.id });
-    cnsl.log(x ? 'success' : 'error', 'Destroyed Identity:', identity.id);
+    // X: const x = await trpc.smt.clear.mutate({ id: identity.id });
+    // X: cnsl.log(x ? 'success' : 'error', 'Destroyed Identity:', identity.id);
+    cnsl.log('error', 'TOOD: Destroyed Identity:', identifier);
 
     appContext.data.refresh();
   }
 
-  if (!identity) return <Alert type="error">Identity not found.</Alert>;
+  if (!identifier) return <Alert type="error">Identity not found.</Alert>;
 
   const tableAuthNFactors = (
     <div className="overflow-x-auto">
@@ -124,7 +126,7 @@ export default function Identity() {
     <div className="divide-y rounded-xl border border-neutral-400">
       {/* Heading */}
       <div className="bg-base-300 flex flex-col items-center rounded-t-xl p-1">
-        <div className="my-4 text-xl font-bold">{identity.id}</div>
+        <div className="my-4 text-xl font-bold">{identifier}</div>
       </div>
 
       {/* Table of AuthNFactors */}
