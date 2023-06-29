@@ -106,7 +106,7 @@ services:
     environment:
       - INDEXER_CYCLE_TIME
     command: >
-      npx nx run indexer:start
+      npx nx run indexer:serve:production
 
   sync:
     profiles: ['run']
