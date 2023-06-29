@@ -54,7 +54,7 @@ model store {
 
   // relations
   data         storeData[]
-  zkapp        zkapp       @relation(fields: [zkappAddress], references: [address])
+  zkapp        zkapp       @relation(fields: [zkappAddress], references: [address], onDelete: Cascade, onUpdate: Cascade)
   zkappAddress String
 }
 
