@@ -5,9 +5,10 @@ import type { AppRouter } from '@zkhumans/trpc';
 
 // Note: With the exception of NODE_ENV, process.env variables are not
 // available on statically build client, only server-side where there is an
-// actual running process[1]. The default export uses '/api' as the url. Use
-// createTRPCClient to init trpc client with a different api url, such as
-// process.env('API_URL').
+// actual running process[1]. The `trpc` export will use the url from
+// `process.env['API_URL']` when available and default to '/api' when not.
+//
+// Use `createTRPCClient` to init trpc client with an explictly set api url.
 //
 // [1] https://github.com/remix-run/remix/discussions/2928
 
@@ -20,9 +21,6 @@ const getURL = () => {
   }
 };
 
-// TODO: check if this solves "everything"? to just import trpc from here
-
-// ?: export const createTRPCClient = (url = '/api') =>
 export const createTRPCClient = (url = getURL()) =>
   createTRPCProxyClient<AppRouter>({
     transformer: SuperJSON,
