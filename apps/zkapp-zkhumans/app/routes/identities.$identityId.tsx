@@ -1,12 +1,11 @@
 import { Link, Outlet, useLoaderData, useMatches } from '@remix-run/react';
 import { json, LoaderArgs } from '@remix-run/node';
-import { trpc, createTRPCClient } from '@zkhumans/trpc-client';
+import { trpc } from '@zkhumans/trpc-client';
 import { useAppContext } from '../root';
 import { Alert } from '../components';
 import { useEffect, useState } from 'react';
 
 export const loader = async ({ params }: LoaderArgs) => {
-  const trpc = createTRPCClient(process.env['API_URL']);
   const identifier = params.identityId;
   // X: const identity = id ? await trpc.smt.get.query({ id }) : null;
   // X: return json({ identity });
