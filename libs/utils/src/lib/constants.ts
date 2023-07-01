@@ -2,6 +2,7 @@
 // https://github.com/o1-labs/snarkyjs-bindings/blob/main/crypto/constants.ts
 export const versionBytes = {
   identifier: 180,
+  bioauthPayload: 144,
 
   // tokenIdKey: 28,
   // receiptChainHash: 12,
