@@ -67,3 +67,21 @@ export class Identifier {
     return this.asField;
   }
 }
+
+/**
+ * Given a PublicKey as a seed, derive and return a number of identity
+ * {@link Identifier}s from it.
+ *
+ * @param {number} count The number of {@link Identifier}s to return
+ * @param {number} offset The index (or offset from 0) to generate from
+ */
+export function generateIdentifiers(
+  publicKey: PublicKey,
+  count = 1,
+  offset = 0
+): Identifier[] {
+  const identifiers: Identifier[] = [];
+  for (let i = offset; i < offset + count; i++)
+    identifiers.push(Identifier.fromPublicKey(publicKey, i));
+  return identifiers;
+}
