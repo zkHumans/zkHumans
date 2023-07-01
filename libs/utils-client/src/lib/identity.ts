@@ -7,7 +7,7 @@ import {
 } from '@zkhumans/contracts';
 import { BioAuthOracle, BioAuthorizedMessage } from '@zkhumans/snarky-bioauth';
 import { CircuitString, Field, MerkleMap, Poseidon, PublicKey } from 'snarkyjs';
-import { generateIdentifierKeys, identifierFromBase58 } from '@zkhumans/utils';
+import { Identifier, generateIdentifiers } from '@zkhumans/utils';
 
 import type { ApiStoreByIdOutput } from '@zkhumans/trpc-client';
 import type { AuthNFactorProtocol } from '@zkhumans/contracts';
@@ -28,20 +28,23 @@ export class IdentityClientUtils {
   static async getIdentities(account: string) {
     const publicKey = PublicKey.fromBase58(account);
 
-    const keys = generateIdentifierKeys(
+    const identifiers = generateIdentifiers(
       publicKey,
       IDENTITY_MGR_MAX_IDS_PER_ACCT
     );
 
-    const identities = [] as NonNullable<ApiStoreByIdOutput>[];
-    for (const key of keys) {
-      const identity = new Identity({ identifier: key, commitment: Field(0) });
+    const dbIdentities = [] as NonNullable<ApiStoreByIdOutput>[];
+    for (const identifier of identifiers) {
+      const identity = new Identity({
+        identifier: identifier.toField(),
+        commitment: Field(0),
+      });
       const id = identity.toKey().toString();
       const x = await trpc.store.byId.query({ id });
-      if (x) identities.push(x);
+      if (x) dbIdentities.push(x);
     }
 
-    return identities;
+    return dbIdentities;
   }
 
   static async getStoredMerkleMap(id: string) {
@@ -70,7 +73,7 @@ export class IdentityClientUtils {
    */
   static async getKeyringMM(identifier: string) {
     const identity = new Identity({
-      identifier: PublicKey.fromBase58(identifier),
+      identifier: Identifier.fromBase58(identifier).toField(),
       commitment: Field(0),
     });
     const id = identity.toKey().toString();
@@ -94,11 +97,14 @@ export class IdentityClientUtils {
   static async getNextUnusedIdentifier(account: string) {
     const publicKey = PublicKey.fromBase58(account);
     for (let i = 0; i < IDENTITY_MGR_MAX_IDS_PER_ACCT; i++) {
-      const [key] = generateIdentifierKeys(publicKey, 1, i);
-      const identity = new Identity({ identifier: key, commitment: Field(0) });
+      const identifier = Identifier.fromPublicKey(publicKey, i);
+      const identity = new Identity({
+        identifier: identifier.toField(),
+        commitment: Field(0),
+      });
       const id = identity.toKey().toString();
       const x = await trpc.store.byId.query({ id });
-      if (!x) return key.toBase58();
+      if (!x) return identifier.toBase58();
     }
     return null;
   }
@@ -110,7 +116,7 @@ export class IdentityClientUtils {
     if (!data) return null;
     try {
       const hash = Poseidon.hash([
-        identifierFromBase58(identifier),
+        Identifier.fromBase58(identifier).toField(),
         ...CircuitString.fromString(data.signature.field).toFields(),
         ...CircuitString.fromString(data.signature.scalar).toFields(),
       ]);
@@ -125,7 +131,7 @@ export class IdentityClientUtils {
   static async getBioAuth(identifier: string) {
     const meta = await trpc.meta.query();
     const bioAuthOracle = new BioAuthOracle(meta.url.auth);
-    const fIdentifier = identifierFromBase58(identifier);
+    const fIdentifier = Identifier.fromBase58(identifier).toField();
     return await bioAuthOracle.fetchBioAuth(fIdentifier);
   }
 
@@ -238,10 +244,8 @@ export class IdentityClientUtils {
   ) {
     const mmIDManager = await IdentityClientUtils.getManagerMM();
 
-    const pk = identifier.replace(/^zkHM/, 'B62q'); // HACK!!!!
-
     const identity = new Identity({
-      identifier: PublicKey.fromBase58(pk),
+      identifier: Identifier.fromBase58(identifier).toField(),
       commitment: mmIDKeyring.getRoot(),
     });
 
