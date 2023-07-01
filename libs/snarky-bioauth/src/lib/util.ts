@@ -1,10 +1,11 @@
-import { Field, PublicKey } from 'snarkyjs';
-
-// utilities to convert bioauth payloads (Poseidon hashes) to Base58 strings
-// using snarkyjs' implementation
-
-// TODO/NOTE: HACK !! 2022-12-13 Some snarkyjs base58 functions were not
-// exported that could be useful, so use PublicKey.x as intermediary
+import { Field } from 'snarkyjs';
+import {
+  bigintFromUint8Array,
+  bigintToUint8Array,
+  fromBase58Check,
+  toBase58Check,
+  versionBytes,
+} from '@zkhumans/utils';
 
 /**
  * Convert bio-auth payload (Field) to Base58 string.
@@ -13,11 +14,9 @@ import { Field, PublicKey } from 'snarkyjs';
  * @returns {} string
  */
 export function payloadToBase58(payload: Field): string {
-  const publicKey = PublicKey.fromBase58(
-    'B62qkZwEYr2j1d2BdB4CqbRJa7F1GTXPM4MmSzi9THjKK9RMYHH1qKJ'
-  );
-  publicKey.x = payload;
-  return publicKey.toBase58();
+  const bi = payload.toBigInt();
+  const u8 = bigintToUint8Array(bi);
+  return toBase58Check(u8, versionBytes.bioauthPayload);
 }
 
 /**
@@ -27,6 +26,7 @@ export function payloadToBase58(payload: Field): string {
  * @returns {} Field
  */
 export function payloadFromBase58(id: string): Field {
-  const publicKey = PublicKey.fromBase58(id);
-  return publicKey.x;
+  const u8 = fromBase58Check(id, versionBytes.bioauthPayload);
+  const bi = bigintFromUint8Array(u8);
+  return Field(bi);
 }
