@@ -15,7 +15,7 @@ import {
   IdentityManager,
   eventStoreDefault,
 } from '../IdentityManager';
-import { strToBool } from '@zkhumans/utils';
+import { Identifier, strToBool } from '@zkhumans/utils';
 
 import type { AuthNFactorData, AuthNFactorProtocol } from '../IdentityManager';
 
@@ -48,21 +48,35 @@ const zkappAddress = zkappKey.toPublicKey();
 const idKeyringMerkleMaps: Array<MerkleMap> = [];
 for (let i = 0; i < 4; i++) idKeyringMerkleMaps[i] = new MerkleMap();
 
+Identifier.fromPublicKey(Local.testAccounts[0].publicKey, 1).toField();
+
 // Create 4 identities
 const aliceID = new Identity({
-  identifier: Local.testAccounts[0].publicKey,
+  identifier: Identifier.fromPublicKey(
+    Local.testAccounts[0].publicKey,
+    1
+  ).toField(),
   commitment: idKeyringMerkleMaps[0].getRoot(),
 });
 const bobID = new Identity({
-  identifier: Local.testAccounts[1].publicKey,
+  identifier: Identifier.fromPublicKey(
+    Local.testAccounts[1].publicKey,
+    1
+  ).toField(),
   commitment: idKeyringMerkleMaps[1].getRoot(),
 });
 const charlieID = new Identity({
-  identifier: Local.testAccounts[2].publicKey,
+  identifier: Identifier.fromPublicKey(
+    Local.testAccounts[2].publicKey,
+    1
+  ).toField(),
   commitment: idKeyringMerkleMaps[2].getRoot(),
 });
 const darcyID = new Identity({
-  identifier: Local.testAccounts[3].publicKey,
+  identifier: Identifier.fromPublicKey(
+    Local.testAccounts[3].publicKey,
+    1
+  ).toField(),
   commitment: idKeyringMerkleMaps[3].getRoot(),
 });
 
@@ -85,7 +99,7 @@ initialIdManagerMM.set(Bob, bobID.toValue());
 // simulate the zkApp itself as an Identity
 // to conform its off-chain storage mechanics
 const zkappIdentity = new Identity({
-  identifier: zkappAddress,
+  identifier: Identifier.fromPublicKey(zkappAddress, 1).toField(),
   commitment: idManagerMerkleMap.getRoot(),
 });
 const initStoreId = zkappIdentity.toKey();

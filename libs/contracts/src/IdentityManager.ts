@@ -5,7 +5,6 @@ import {
   MerkleMapWitness,
   Permissions,
   Poseidon,
-  PublicKey,
   SmartContract,
   State,
   Struct,
@@ -129,11 +128,11 @@ export class AuthNFactor extends Struct({
 /**
  * An individual identity. This is stored as the value element of
  * IdentityManager's Identity Manager MT.
- * - identifier: the UUID of the Identity (a pseudo PublicKey)
+ * - identifier: the UUID of the Identity
  * - commitment: root hash of this identity's keyring MT
  */
 export class Identity extends Struct({
-  identifier: PublicKey,
+  identifier: Field,
   commitment: Field,
 }) {
   toKey(): Field {

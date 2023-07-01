@@ -1,8 +1,6 @@
-import { Field, PrivateKey } from 'snarkyjs';
+import { Field } from 'snarkyjs';
 import { jest } from '@jest/globals';
 import { Identity } from './IdentityManager';
-
-const acct = PrivateKey.random();
 
 describe('IdentityManager', () => {
   jest.setTimeout(1000 * 100);
@@ -10,7 +8,7 @@ describe('IdentityManager', () => {
   // convert Identity to String and back again
   it('toJSON <--> fromJSON | Identity', () => {
     const identity = new Identity({
-      identifier: acct.toPublicKey(),
+      identifier: Field(1111),
       commitment: Field(1111),
     });
 

@@ -1,7 +1,7 @@
 import { basename } from 'path';
 import { promises as fs } from 'fs';
 import { AccountUpdate, MerkleMap, PrivateKey } from 'snarkyjs';
-import { deploy, loopUntilAccountExists } from '@zkhumans/utils';
+import { Identifier, deploy, loopUntilAccountExists } from '@zkhumans/utils';
 import {
   Identity,
   IdentityManager,
@@ -96,7 +96,7 @@ try {
   // simulate the zkApp itself as an Identity
   // to conform its off-chain storage mechanics
   const zkAppIdentity = new Identity({
-    identifier: zkAppPublicKey,
+    identifier: Identifier.fromPublicKey(zkAppPublicKey, 1).toField(),
     commitment: mmIDManager.getRoot(),
   });
   const initStoreId = zkAppIdentity.toKey();
