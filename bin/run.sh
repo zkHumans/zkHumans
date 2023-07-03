@@ -1,11 +1,10 @@
 #!/usr/bin/env bash
 
 # A wrapper to:
-# - run a node script from cli
-# - with node options
-# - by referencing the script's typescript source file
-
-# TODO: integrate then remove snarky-run.sh
+# - run a node script from cli with node options
+# - execute a built file by referencing its (typescript) source file
+#
+# Orginally a snarky-run helper; works for snarkyjs files and others.
 
 test -z "${1}" && echo "USAGE: ${0} <path to file>" && exit 1
 test ! -f nx.json && echo "ERROR: ${0}: run from project root" && exit 1
@@ -31,10 +30,11 @@ d=$(echo ${1} | cut -d'/' -f 1,2)
 f=$(echo ${1} | cut -d'/' -f 3- | sed -e 's/\.ts$/.js/')
 b="dist/${d}/${f}"
 
-# TODO: run npm build script if exists, fallback to nx :build target
-
 # rebuild to ensure build file is current
-npx nx run ${p}:build
+# run npm build script if exists, fallback to nx :build target
+grep -q '"build": ' ${d}/package.json \
+  && (pushd ${d} && npm run build && popd) \
+  || npx nx run ${p}:build
 
 # execute the built file with node options and pass params
 exec node ${node_options[@]} ${b} "${@:2}"
