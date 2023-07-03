@@ -16,8 +16,8 @@
     "postinstall": "npm run link && prisma generate",
     "production-build": "NODE_ENV=production nx run-many --targets=build --configuration=production",
     "setup": "prisma migrate deploy && echo TODO prisma db seed",
-    "test:snarkyjs:merkle": "./bin/snarky-run.sh libs/contracts-example/src/examples/snarkyjs/merkle_zkapp.ts",
-    "test:zkhumans:identity": "./bin/snarky-run.sh libs/contracts/src/examples/identity.ts"
+    "test:snarkyjs:merkle": "./bin/run.sh libs/contracts-example/src/examples/snarkyjs/merkle_zkapp.ts",
+    "test:zkhumans:identity": "./bin/run.sh libs/contracts/src/examples/identity.ts"
   },
   "private": true,
   "devDependencies": {
