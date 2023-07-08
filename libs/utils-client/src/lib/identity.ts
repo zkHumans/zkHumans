@@ -39,7 +39,7 @@ export class IdentityClientUtils {
         identifier: identifier.toField(),
         commitment: Field(0),
       });
-      const id = identity.toKey().toString();
+      const id = identity.getKey().toString();
       const x = await trpc.store.byId.query({ id });
       if (x) dbIdentities.push(x);
     }
@@ -76,7 +76,7 @@ export class IdentityClientUtils {
       identifier: Identifier.fromBase58(identifier).toField(),
       commitment: Field(0),
     });
-    const id = identity.toKey().toString();
+    const id = identity.getKey().toString();
     return this.getStoredMerkleMap(id);
   }
 
@@ -102,7 +102,7 @@ export class IdentityClientUtils {
         identifier: identifier.toField(),
         commitment: Field(0),
       });
-      const id = identity.toKey().toString();
+      const id = identity.getKey().toString();
       const x = await trpc.store.byId.query({ id });
       if (!x) return identifier.toBase58();
     }
@@ -209,7 +209,7 @@ export class IdentityClientUtils {
       data: { salt: IDENTITY_MGR_SALT, secret },
     });
 
-    mmKeyring.set(af.toKey(), af.toValue());
+    mmKeyring.set(af.getKey(), af.getValue());
 
     // X: await trpc.smt.txn.mutate({
     // X:   id: identifier,
@@ -250,7 +250,7 @@ export class IdentityClientUtils {
     });
 
     // prove the identity IS NOT in the Identity Manager MM
-    const witness = mmIDManager.getWitness(identity.toKey());
+    const witness = mmIDManager.getWitness(identity.getKey());
     console.log('merkle witness siblings', witness.siblings);
 
     return { identity, witness };
@@ -258,7 +258,7 @@ export class IdentityClientUtils {
 
   static async addNewIdentity(identifier: string, identity: Identity) {
     const mmIDManager = await IdentityClientUtils.getManagerMM();
-    mmIDManager.set(identity.toKey(), identity.toValue());
+    mmIDManager.set(identity.getKey(), identity.getValue());
 
     // X: await trpc.smt.txn.mutate({
     // X:   id: IDENTITY_MGR_SMT_NAME,
