@@ -89,7 +89,7 @@ export class AuthNFactor extends Struct({
     secret: CircuitString,
   },
 }) {
-  toKey(): Field {
+  getKey(): Field {
     return Poseidon.hash([
       this.protocol.type,
       this.protocol.provider,
@@ -99,7 +99,7 @@ export class AuthNFactor extends Struct({
     ]);
   }
 
-  toValue(): Field {
+  getValue(): Field {
     // all that is need as we only prove inclusion with MM
     return Field(1);
   }
@@ -135,11 +135,11 @@ export class Identity extends Struct({
   identifier: Field,
   commitment: Field,
 }) {
-  toKey(): Field {
+  getKey(): Field {
     return Poseidon.hash(this.identifier.toFields());
   }
 
-  toValue(): Field {
+  getValue(): Field {
     return this.commitment;
   }
 
@@ -204,8 +204,8 @@ export class IdentityManager extends SmartContract {
     const idsRoot = this.idsRoot.getAndAssertEquals();
     const idsStoreId = this.idsStoreId.getAndAssertEquals();
 
-    const key = identity.toKey();
-    const value = identity.toValue();
+    const key = identity.getKey();
+    const value = identity.getValue();
 
     // prove the identity has not been added
     // by asserting the "current" value for this key is empty
@@ -246,27 +246,27 @@ export class IdentityManager extends SmartContract {
     const idsStoreId = this.idsStoreId.getAndAssertEquals();
 
     // prove the Identity has been added to the current Manager MM
-    const [rootManager0] = witnessManager.computeRootAndKey(id0.toValue());
+    const [rootManager0] = witnessManager.computeRootAndKey(id0.getValue());
     rootManager0.assertEquals(idsRoot, 'Identity not found!');
 
     // prove the AuthNFactor IS NOT in the current Keyring MM
     const [rootKeyring0] = witnessKeyring.computeRootAndKey(EMPTY);
     rootKeyring0.assertEquals(id0.commitment, 'AuthNFactor already added!');
 
-    const key = authNFactor.toKey();
-    const value = authNFactor.toValue();
+    const key = authNFactor.getKey();
+    const value = authNFactor.getValue();
 
     // prove the AuthNFactor IS in the new Keyring MM
     const [rootKeyring1] = witnessKeyring.computeRootAndKey(value);
     rootKeyring1.assertEquals(id1.commitment, 'AuthNFactor not in new ID');
 
     // set the new Manager MM based on the new data
-    const [rootManager1] = witnessManager.computeRootAndKey(id1.toValue());
+    const [rootManager1] = witnessManager.computeRootAndKey(id1.getValue());
     this.idsRoot.set(rootManager1);
 
     // set the AuthNFactor in the Keyring
     this.emitEvent('store:set', {
-      id: id1.toKey(),
+      id: id1.getKey(),
       root0: rootKeyring0,
       root1: rootKeyring1,
       key,
@@ -285,8 +285,8 @@ export class IdentityManager extends SmartContract {
       id: idsStoreId,
       root0: rootManager0,
       root1: rootManager1,
-      key: id1.toKey(),
-      value: id1.toValue(),
+      key: id1.getKey(),
+      value: id1.getValue(),
     });
   }
 }

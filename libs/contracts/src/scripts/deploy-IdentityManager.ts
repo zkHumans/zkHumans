@@ -99,8 +99,8 @@ try {
     identifier: Identifier.fromPublicKey(zkAppPublicKey, 1).toField(),
     commitment: mmIDManager.getRoot(),
   });
-  const initStoreId = zkAppIdentity.toKey();
-  const initRoot = zkAppIdentity.toValue();
+  const initStoreId = zkAppIdentity.getKey();
+  const initRoot = zkAppIdentity.getValue();
   console.log('init storeId :', initStoreId.toString());
   console.log('init root    :', initRoot.toString());
 

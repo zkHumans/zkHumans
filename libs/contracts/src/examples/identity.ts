@@ -80,21 +80,21 @@ const darcyID = new Identity({
   commitment: idKeyringMerkleMaps[3].getRoot(),
 });
 
-const Alice = aliceID.toKey();
-const Bob = bobID.toKey();
-// const Charlie = charlieID.toKey();
-const Darcy = darcyID.toKey();
+const Alice = aliceID.getKey();
+const Bob = bobID.getKey();
+// const Charlie = charlieID.getKey();
+const Darcy = darcyID.getKey();
 
 // Create an Identity Manager Merkle Map
 // And add 2 identities initially
 const idManagerMerkleMap = new MerkleMap();
-idManagerMerkleMap.set(Alice, aliceID.toValue());
-idManagerMerkleMap.set(Bob, bobID.toValue());
+idManagerMerkleMap.set(Alice, aliceID.getValue());
+idManagerMerkleMap.set(Bob, bobID.getValue());
 
 // set initial MM to confirm restoration from contract events later
 const initialIdManagerMM = new MerkleMap();
-initialIdManagerMM.set(Alice, aliceID.toValue());
-initialIdManagerMM.set(Bob, bobID.toValue());
+initialIdManagerMM.set(Alice, aliceID.getValue());
+initialIdManagerMM.set(Bob, bobID.getValue());
 
 // simulate the zkApp itself as an Identity
 // to conform its off-chain storage mechanics
@@ -102,8 +102,8 @@ const zkappIdentity = new Identity({
   identifier: Identifier.fromPublicKey(zkappAddress, 1).toField(),
   commitment: idManagerMerkleMap.getRoot(),
 });
-const initStoreId = zkappIdentity.toKey();
-const initRoot = zkappIdentity.toValue();
+const initStoreId = zkappIdentity.getKey();
+const initRoot = zkappIdentity.getValue();
 console.log('init storeId :', initStoreId.toString());
 console.log('init root    :', initRoot.toString());
 
@@ -226,7 +226,7 @@ log('...Process Events');
 
 async function addIdentity(idManagerMM: MerkleMap, identity: Identity) {
   // prove the identifier IS NOT in the Identity Manager MT
-  const witness = idManagerMM.getWitness(identity.toKey());
+  const witness = idManagerMM.getWitness(identity.getKey());
 
   log('  tx: prove() sign() send()...');
   const tx = await Mina.transaction(feePayer, () => {
@@ -237,7 +237,7 @@ async function addIdentity(idManagerMM: MerkleMap, identity: Identity) {
   log('  ...tx: prove() sign() send()');
 
   // if tx was successful, we can update our off-chain storage
-  idManagerMM.set(identity.toKey(), identity.toValue());
+  idManagerMM.set(identity.getKey(), identity.getValue());
   log('  idManagerMM.getRoot() :', idManagerMM.getRoot().toString());
   log('  zkapp.idsRoot.get()   :', zkapp.idsRoot.get().toString());
   zkapp.idsRoot.get().assertEquals(idManagerMM.getRoot());
@@ -251,7 +251,7 @@ async function addAuthNFactor(
   afData: AuthNFactorData
 ) {
   // prove the identifier IS in the Identity Manager MT
-  const witnessManager = idManagerMM.getWitness(identity.toKey());
+  const witnessManager = idManagerMM.getWitness(identity.getKey());
 
   const authNFactor = new AuthNFactor({
     protocol: {
@@ -265,7 +265,7 @@ async function addAuthNFactor(
     },
   });
 
-  const authNFactor_key = authNFactor.toKey();
+  const authNFactor_key = authNFactor.getKey();
 
   // prove the AuthNFactor IS NOT in the Identity Keyring MT
   const witnessKeyring = idKeyringMM.getWitness(authNFactor_key);
@@ -273,7 +273,7 @@ async function addAuthNFactor(
 
   const id0 = identity;
 
-  idKeyringMM.set(authNFactor_key, authNFactor.toValue());
+  idKeyringMM.set(authNFactor_key, authNFactor.getValue());
   const id1 = id0.setCommitment(idKeyringMM.getRoot());
 
   log('  tx: prove() sign() send()...');
@@ -285,7 +285,7 @@ async function addAuthNFactor(
   log('  ...tx: prove() sign() send()');
 
   // if tx was successful, we can update our off-chain storage
-  idManagerMM.set(id1.toKey(), id1.toValue());
+  idManagerMM.set(id1.getKey(), id1.getValue());
   log('  idManagerMM.getRoot() :', idManagerMM.getRoot().toString());
   log('  zkapp.idsRoot.get()   :', zkapp.idsRoot.get().toString());
   zkapp.idsRoot.get().assertEquals(idManagerMM.getRoot());
