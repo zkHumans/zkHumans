@@ -34,6 +34,15 @@
           "codeCoverage": true
         }
       }
+    },
+    "typecheck": {
+      "executor": "nx:run-commands",
+      "options": {
+        "commands": [
+          "tsc --noEmit -p libs/zkkv/tsconfig.lib.json",
+          "tsc --noEmit -p libs/zkkv/tsconfig.spec.json"
+        ]
+      }
     }
   },
   "tags": []
