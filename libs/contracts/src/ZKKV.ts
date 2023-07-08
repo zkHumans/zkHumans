@@ -12,6 +12,12 @@ import {
 } from 'snarkyjs';
 
 /**
+ * Naming Conventions
+ * - x0 : state change from; current/previous/initial
+ * - x1 : state change to; new/pending/latest
+ */
+
+/**
  * A Store.
  */
 export class Store extends Struct({
@@ -96,7 +102,7 @@ export class StoreDataTransformation extends Struct({
   data1: StoreData,
 
   /**
-   * Merkle proof of the data within the store.
+   * Merkle proof of the data within the Store.
    */
   witnessStore: MerkleMapWitness,
 
@@ -182,13 +188,6 @@ export const eventStoreDefault = {
   value: EMPTY,
   meta: [EMPTY, EMPTY, EMPTY],
 };
-
-// WIP
-export class Action extends Struct({
-  root0: Field, // the zkApp's storeCommitment
-  data0: StoreData, // current store data
-  data1: StoreData, // new store data
-}) {}
 
 export class RollupState extends Struct({
   root0: Field, // initial root
@@ -305,7 +304,7 @@ export class RollupTransformationsProof extends RollupTransformationsProof_ {}
 
 export class ZKKV extends SmartContract {
   /**
-   * Static identifier of the Store.
+   * Static identifier of the Store; the zkApp's Store of Stores.
    */
   @state(Field) storeIdentifier = State<Field>();
 
@@ -315,11 +314,8 @@ export class ZKKV extends SmartContract {
   @state(Field) storeCommitment = State<Field>();
 
   /**
-   * Accumulator of all emitted StoreData state transformations.
+   * A hash used to authenticate storage methods.
    */
-  @state(Field) accumulatedTransformations = State<Field>();
-
-  // ?: reducer = Reducer({ actionType: Action });
 
   override events = {
     // for updating off-chain data
@@ -407,7 +403,10 @@ export class ZKKV extends SmartContract {
   }
 
   /**
-   * Update data in a store that has been added to the Manager.
+   * Set data in a Store that has been added to the Manager.
+   *
+   * Support concurrent transactions:
+   * The Data transformation is emitted as pending until committed.
    *
    * To add store data, use data0 value = EMPTY
    * To del store data, use data1 value = EMPTY
@@ -439,10 +438,6 @@ export class ZKKV extends SmartContract {
       mgrStoreCommitment,
       'current StoreData assertion failed!'
     );
-
-    // WIP: ?: what should be dispatched?
-    // ?: pending record id --> settlementChecksum
-    // ?: this.reducer.dispatch({ root0: mgrRoot0, data0, data1 });
 
     this.emitEvent('store:pending', {
       commitmentPending: mgrStoreCommitment,
