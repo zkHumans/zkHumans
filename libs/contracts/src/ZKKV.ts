@@ -316,6 +316,7 @@ export class ZKKV extends SmartContract {
   /**
    * A hash used to authenticate storage methods.
    */
+  @state(Field) authHash = State<Field>();
 
   override events = {
     // for updating off-chain data
@@ -411,18 +412,24 @@ export class ZKKV extends SmartContract {
    * To add store data, use data0 value = EMPTY
    * To del store data, use data1 value = EMPTY
    *
+   * @param {Field} authToken Secret authentication token.
    * @param {StoreData} data0 The store with previosly recorded value.
    * @param {StoreData} data1 The store with new value to update.
    * @param {MerkleMapWitness} witnessStore Witness for Store within Manager.
    * @param {MerkleMapWitness} witnessManager Witness for Data within Store.
    */
   @method setStoreData(
+    authToken: Field,
     data0: StoreData,
     data1: StoreData,
     witnessStore: MerkleMapWitness,
     witnessManager: MerkleMapWitness
   ) {
+    const authHash = this.authHash.getAndAssertEquals();
     const mgrStoreCommitment = this.storeCommitment.getAndAssertEquals();
+
+    // authorize the request
+    authHash.assertEquals(Poseidon.hash([authToken]), 'Auth failed!');
 
     // assert keys (store identifiers) are the same
     data0.getKey().assertEquals(data1.getKey(), 'StoreData keys do not match!');
@@ -447,8 +454,21 @@ export class ZKKV extends SmartContract {
     });
   }
 
-  @method commitPendingTransformations(proof: RollupTransformationsProof) {
+  /**
+   * Commit pending transformations.
+   *
+   * @param {Field} authToken Secret authentication token.
+   * @param {RollupTransformationsProof} proof A recursive rollup proof of transformations
+   */
+  @method commitPendingTransformations(
+    authToken: Field,
+    proof: RollupTransformationsProof
+  ) {
+    const authHash = this.authHash.getAndAssertEquals();
     const mgrStoreCommitment = this.storeCommitment.getAndAssertEquals();
+
+    // authorize the request
+    authHash.assertEquals(Poseidon.hash([authToken]), 'Auth failed!');
 
     // ensure the proof started from the zkApp's current commitment
     proof.publicInput.root0.assertEquals(
