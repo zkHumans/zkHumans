@@ -24,7 +24,9 @@ export default function Identities() {
             <tr key={index} className="hover:bg-base-200">
               <th>{index}</th>
               <td>
-                <Link to={`./${id.id}`}>{displayAccount(id.id)}</Link>
+                <Link to={`./${id.identifier}`}>
+                  {displayAccount(id.identifier)}
+                </Link>
               </td>
             </tr>
           ))}
