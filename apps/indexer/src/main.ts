@@ -128,7 +128,7 @@ const loop = async () => {
       case 'store:new':
         {
           const x = await trpc.store.create.mutate({
-            id: es.id.toString(),
+            identifier: es.id.toString(),
             commitment: es.root1.toString(),
             meta: JSON.stringify(es.meta),
             zkapp: { address: zkappAddress },
@@ -141,7 +141,7 @@ const loop = async () => {
       case 'store:set':
         {
           const x = await trpc.store.set.mutate({
-            store: { id: es.id.toString() },
+            store: { identifier: es.id.toString() },
             key: es.key.toString(),
             value: es.value.toString(),
             meta: JSON.stringify(es.meta),
