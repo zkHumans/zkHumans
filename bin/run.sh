@@ -8,6 +8,7 @@
 
 test -z "${1}" && echo "USAGE: ${0} <path to file>" && exit 1
 test ! -f nx.json && echo "ERROR: ${0}: run from project root" && exit 1
+test ! -f "${1}" && echo "ERROR: ${0}: file not found: ${1}" && exit 1
 
 node_options=(
   # fixes ERR_MODULE_NOT_FOUND
