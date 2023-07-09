@@ -13,7 +13,7 @@ export const selectStoreData = Prisma.validator<Prisma.storeDataSelect>()({
 });
 
 export const selectStore = Prisma.validator<Prisma.storeSelect>()({
-  id: true,
+  identifier: true,
   commitment: true,
   meta: true,
   data: {
@@ -27,7 +27,7 @@ export const storeRouter = t.router({
   create: t.procedure
     .input(
       z.object({
-        id: z.string(),
+        identifier: z.string(),
         commitment: z.string(),
         meta: z.string().optional(),
         zkapp: z.object({
@@ -35,10 +35,10 @@ export const storeRouter = t.router({
         }),
       })
     )
-    .mutation(async ({ input: { zkapp, id, commitment, ...data } }) => {
+    .mutation(async ({ input: { zkapp, identifier, commitment, ...data } }) => {
       return await prisma.store.create({
         data: {
-          id,
+          identifier,
           commitment,
           zkapp: { connect: { address: zkapp.address } },
           ...data,
@@ -50,19 +50,19 @@ export const storeRouter = t.router({
   delete: t.procedure
     .input(
       z.object({
-        id: z.string(),
+        identifier: z.string(),
       })
     )
-    .mutation(async ({ input: { id } }) => {
-      return await prisma.store.delete({ where: { id } });
+    .mutation(async ({ input: { identifier } }) => {
+      return await prisma.store.delete({ where: { identifier } });
     }),
 
   // get Store by id
   byId: t.procedure
-    .input(z.object({ id: z.string() }))
-    .query(async ({ input: { id } }) => {
+    .input(z.object({ identifier: z.string() }))
+    .query(async ({ input: { identifier } }) => {
       return await prisma.store.findUnique({
-        where: { id },
+        where: { identifier },
         select: selectStore,
       });
     }),
@@ -90,7 +90,7 @@ export const storeRouter = t.router({
     .input(
       z.object({
         store: z.object({
-          id: z.string(),
+          identifier: z.string(),
         }),
         key: z.string(),
         value: z.string().optional(),
@@ -101,14 +101,14 @@ export const storeRouter = t.router({
     )
     .mutation(async ({ input: { store, key, ...data } }) => {
       return await prisma.storeData.upsert({
-        where: { key_storeId: { key, storeId: store.id } },
+        where: { key_storeId: { key, storeId: store.identifier } },
         update: {
           ...data,
         },
         create: {
           ...data,
           key,
-          store: { connect: { id: store.id } },
+          store: { connect: { identifier: store.identifier } },
         },
         select: { id: true },
       });
