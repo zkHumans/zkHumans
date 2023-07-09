@@ -35,9 +35,9 @@ export class IdentityClientUtils {
 
     const dbIdentities = [] as NonNullable<ApiStoreByIdOutput>[];
     for (const identifier of identifiers) {
-      const identity = new Identity({
-        identifier: identifier.toField(),
-        commitment: Field(0),
+      const identity = Identity.init({
+        key: identifier.toField(),
+        value: Field(0),
       });
       const id = identity.getKey().toString();
       const x = await trpc.store.byId.query({ id });
@@ -72,9 +72,9 @@ export class IdentityClientUtils {
    * Create in database if doesn't exist, restore from database if it does.
    */
   static async getKeyringMM(identifier: string) {
-    const identity = new Identity({
-      identifier: Identifier.fromBase58(identifier).toField(),
-      commitment: Field(0),
+    const identity = Identity.init({
+      key: Identifier.fromBase58(identifier).toField(),
+      value: Field(0),
     });
     const id = identity.getKey().toString();
     return this.getStoredMerkleMap(id);
@@ -98,9 +98,9 @@ export class IdentityClientUtils {
     const publicKey = PublicKey.fromBase58(account);
     for (let i = 0; i < IDENTITY_MGR_MAX_IDS_PER_ACCT; i++) {
       const identifier = Identifier.fromPublicKey(publicKey, i);
-      const identity = new Identity({
-        identifier: identifier.toField(),
-        commitment: Field(0),
+      const identity = Identity.init({
+        key: identifier.toField(),
+        value: Field(0),
       });
       const id = identity.getKey().toString();
       const x = await trpc.store.byId.query({ id });
@@ -244,9 +244,9 @@ export class IdentityClientUtils {
   ) {
     const mmIDManager = await IdentityClientUtils.getManagerMM();
 
-    const identity = new Identity({
-      identifier: Identifier.fromBase58(identifier).toField(),
-      commitment: mmIDKeyring.getRoot(),
+    const identity = Identity.init({
+      key: Identifier.fromBase58(identifier).toField(),
+      value: mmIDKeyring.getRoot(),
     });
 
     // prove the identity IS NOT in the Identity Manager MM
