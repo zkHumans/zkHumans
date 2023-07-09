@@ -6,7 +6,8 @@ import {
   fetchLastBlock,
 } from 'snarkyjs';
 import { trpc, trpcWait } from '@zkhumans/trpc-client';
-import { EventStore, IdentityManager } from '@zkhumans/contracts';
+import { IdentityManager } from '@zkhumans/contracts';
+import { EventStore } from '@zkhumans/zkkv';
 import { delay } from '@zkhumans/utils';
 
 const INDEXER_CYCLE_TIME = 1000 * +(process.env['INDEXER_CYCLE_TIME'] ?? 30);
