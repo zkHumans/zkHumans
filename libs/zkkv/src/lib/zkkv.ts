@@ -158,19 +158,34 @@ export class ZKKV {
     const meta = store.getMeta();
 
     // prove the store has not been added
-    // by asserting the "current" value for this key is empty
+    // by asserting the current value for this key is empty
     const [root0] = witnessManager.computeRootAndKey(EMPTY);
     root0.assertEquals(storeManager.getValue(), 'Store already added!');
 
-    // set the new Merkle Map root based on the new store
     const [root1] = witnessManager.computeRootAndKey(value);
 
-    return {
-      root0,
-      root1,
-      key,
-      value,
-      meta,
-    };
+    const events: { type: 'store:set' | 'store:new'; event: EventStore }[] = [
+      {
+        type: 'store:set',
+        event: new EventStore({
+          ...eventStoreDefault,
+          id: storeManager.getKey(),
+          root0,
+          root1,
+          key,
+          value,
+          meta,
+        }),
+      },
+      {
+        type: 'store:new',
+        event: new EventStore({
+          ...eventStoreDefault,
+          id: key,
+          root1: value,
+        }),
+      },
+    ];
+    return events;
   }
 }
