@@ -96,10 +96,10 @@ try {
     identifier: Identifier.fromPublicKey(zkAppPublicKey, 1).toField(),
     commitment: mmIDManager.getRoot(),
   });
-  const initStoreId = zkAppIdentity.identifier;
-  const initRoot = zkAppIdentity.commitment;
-  console.log('init storeId :', initStoreId.toString());
-  console.log('init root    :', initRoot.toString());
+  const initIdentifier = zkAppIdentity.identifier;
+  const initCommitment = zkAppIdentity.commitment;
+  console.log('init identifier :', initIdentifier.toString());
+  console.log('init commitment :', initCommitment.toString());
 
   await deploy(deployerPrivateKey, zkAppPrivateKey, config.url, () => {
     const sender = deployerPrivateKey.toPublicKey();
@@ -109,14 +109,14 @@ try {
     zkApp.deploy({ verificationKey });
 
     // set initial storage identifier and root hash
-    zkApp.idsStoreId.set(initStoreId);
-    zkApp.idsRoot.set(initRoot);
+    zkApp.identifier.set(initIdentifier);
+    zkApp.commitment.set(initCommitment);
 
     // notify off-chain storage
     zkApp.emitEvent('store:new', {
       ...eventStoreDefault,
-      id: initStoreId,
-      root1: initRoot,
+      id: initIdentifier,
+      root1: initCommitment,
     });
   });
 

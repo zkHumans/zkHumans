@@ -114,8 +114,8 @@ const tx = await Mina.transaction(feePayer, () => {
   zkapp.deploy({ zkappKey });
 
   // set initial storage identifier and root hash
-  zkapp.idsStoreId.set(initStoreIdentifier);
-  zkapp.idsRoot.set(initStoreCommitment);
+  zkapp.identifier.set(initStoreIdentifier);
+  zkapp.commitment.set(initStoreCommitment);
 
   // notify off-chain storage
   zkapp.emitEvent('store:new', {
@@ -238,8 +238,8 @@ async function addIdentity(idManagerMM: MerkleMap, identity: Identity) {
   // if tx was successful, we can update our off-chain storage
   idManagerMM.set(identity.identifier, identity.commitment);
   log('  idManagerMM root :', idManagerMM.getRoot().toString());
-  log('  storage root     :', zkapp.idsRoot.get().toString());
-  zkapp.idsRoot.get().assertEquals(idManagerMM.getRoot());
+  log('  zkapp root       :', zkapp.commitment.get().toString());
+  zkapp.commitment.get().assertEquals(idManagerMM.getRoot());
 }
 
 async function addAuthNFactor(
@@ -285,9 +285,9 @@ async function addAuthNFactor(
 
   // if tx was successful, we can update our off-chain storage
   idManagerMM.set(id1.toUnitOfStore().key, id1.toUnitOfStore().value);
-  log('  idManagerMM.getRoot() :', idManagerMM.getRoot().toString());
-  log('  zkapp.idsRoot.get()   :', zkapp.idsRoot.get().toString());
-  zkapp.idsRoot.get().assertEquals(idManagerMM.getRoot());
+  log('  idManagerMM root :', idManagerMM.getRoot().toString());
+  log('  zkapp root       :', zkapp.commitment.get().toString());
+  zkapp.commitment.get().assertEquals(idManagerMM.getRoot());
 }
 
 console.log();
