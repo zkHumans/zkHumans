@@ -10,6 +10,10 @@ export const selectStoreData = Prisma.validator<Prisma.storeDataSelect>()({
   meta: true,
   blockHeight: true,
   globalSlot: true,
+  isPending: true,
+  commitmentPending: true,
+  commitmentSettled: true,
+  settlementChecksum: true,
 });
 
 export const selectStore = Prisma.validator<Prisma.storeSelect>()({
@@ -97,6 +101,10 @@ export const storeRouter = t.router({
         meta: z.string().optional(),
         blockHeight: z.bigint().optional(),
         globalSlot: z.bigint().optional(),
+        isPending: z.boolean().optional(),
+        commitmentPending: z.string().optional(),
+        commitmentSettled: z.string().optional(),
+        settlementChecksum: z.string().optional(),
       })
     )
     .mutation(async ({ input: { store, key, ...data } }) => {
