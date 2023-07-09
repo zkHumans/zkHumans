@@ -11,6 +11,13 @@ import {
   method,
   state,
 } from 'snarkyjs';
+import {
+  EMPTY,
+  EventStore,
+  UnitOfStore,
+  ZKKV,
+  eventStoreDefault,
+} from '@zkhumans/zkkv';
 
 /**
  * Abbreviations:
@@ -126,51 +133,15 @@ export class AuthNFactor extends Struct({
 }
 
 /**
- * An individual identity. This is stored as the value element of
- * IdentityManager's Identity Manager MT.
- * - identifier: the UUID of the Identity
- * - commitment: root hash of this identity's keyring MT
+ * An individual Identity.
+ *
+ * Stored as the value element of IdentityManager's Manager MT.
+ * Contains one or more AuthNFactors.
+ * Implemented as a UnitOfStore:
+ * - key   = identifier: the UUID of the Identity
+ * - value = commitment: root hash of this identity's keyring MT
  */
-export class Identity extends Struct({
-  identifier: Field,
-  commitment: Field,
-}) {
-  getKey(): Field {
-    return Poseidon.hash(this.identifier.toFields());
-  }
-
-  getValue(): Field {
-    return this.commitment;
-  }
-
-  setCommitment(commitment: Field): Identity {
-    return new Identity({
-      identifier: this.identifier,
-      commitment,
-    });
-  }
-}
-
-export class EventStore extends Struct({
-  id: Field, // store identifier
-  root0: Field, // before
-  root1: Field, // after
-  key: Field,
-  value: Field,
-  meta: [Field, Field, Field, Field],
-}) {}
-
-// "empty" or default value for a key not within a MerkleMap
-export const EMPTY = Field(0);
-
-export const eventStoreDefault = {
-  id: EMPTY,
-  root0: EMPTY,
-  root1: EMPTY,
-  key: EMPTY,
-  value: EMPTY,
-  meta: [EMPTY, EMPTY, EMPTY, EMPTY],
-};
+export class Identity extends UnitOfStore {}
 
 export class IdentityManager extends SmartContract {
   // Identity Manager Merkle Map; off-chain storage identifier
@@ -199,7 +170,42 @@ export class IdentityManager extends SmartContract {
     });
   }
 
+  @method addIdentity(identity: Identity, witnessManager: MerkleMapWitness) {
+    // TODO: rename idsRoot commitment -- match ZKKV SmartContract
+    const mgrStoreCommitment = this.idsRoot.getAndAssertEquals();
+    const mgrStoreIdentifier = this.idsStoreId.getAndAssertEquals();
+
+    const { root0, root1, key, value, meta } = ZKKV.addStore(
+      identity,
+      UnitOfStore.init({
+        key: mgrStoreIdentifier,
+        value: mgrStoreCommitment,
+      }),
+      witnessManager
+    );
+
+    // TODO: not this! do pending
+    this.idsRoot.set(root1);
+
+    this.emitEvent('store:set', {
+      ...eventStoreDefault,
+      id: mgrStoreIdentifier,
+      root0,
+      root1,
+      key,
+      value,
+      // meta, // !!! TypeError: Cannot read properties of undefined (reading 'value')
+    });
+
+    this.emitEvent('store:new', {
+      ...eventStoreDefault,
+      id: key,
+      root1: value,
+    });
+  }
+
   // add identity; only if it has not already been added
+  /*
   @method addIdentity(identity: Identity, witnessManager: MerkleMapWitness) {
     const idsRoot = this.idsRoot.getAndAssertEquals();
     const idsStoreId = this.idsStoreId.getAndAssertEquals();
@@ -231,6 +237,7 @@ export class IdentityManager extends SmartContract {
       root1: value,
     });
   }
+  */
 
   /**
    * Add an Authentication Factor to an Identity.
@@ -251,14 +258,14 @@ export class IdentityManager extends SmartContract {
 
     // prove the AuthNFactor IS NOT in the current Keyring MM
     const [rootKeyring0] = witnessKeyring.computeRootAndKey(EMPTY);
-    rootKeyring0.assertEquals(id0.commitment, 'AuthNFactor already added!');
+    rootKeyring0.assertEquals(id0.value, 'AuthNFactor already added!');
 
     const key = authNFactor.getKey();
     const value = authNFactor.getValue();
 
     // prove the AuthNFactor IS in the new Keyring MM
     const [rootKeyring1] = witnessKeyring.computeRootAndKey(value);
-    rootKeyring1.assertEquals(id1.commitment, 'AuthNFactor not in new ID');
+    rootKeyring1.assertEquals(id1.value, 'AuthNFactor not in new ID');
 
     // set the new Manager MM based on the new data
     const [rootManager1] = witnessManager.computeRootAndKey(id1.getValue());

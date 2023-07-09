@@ -10,12 +10,11 @@ import {
   AuthNFactor,
   AuthNProvider,
   AuthNType,
-  EventStore,
   Identity,
   IdentityManager,
-  eventStoreDefault,
 } from '../IdentityManager';
 import { Identifier, strToBool } from '@zkhumans/utils';
+import { EventStore, eventStoreDefault } from '@zkhumans/zkkv';
 
 import type { AuthNFactorData, AuthNFactorProtocol } from '../IdentityManager';
 
@@ -51,33 +50,21 @@ for (let i = 0; i < 4; i++) idKeyringMerkleMaps[i] = new MerkleMap();
 Identifier.fromPublicKey(Local.testAccounts[0].publicKey, 1).toField();
 
 // Create 4 identities
-const aliceID = new Identity({
-  identifier: Identifier.fromPublicKey(
-    Local.testAccounts[0].publicKey,
-    1
-  ).toField(),
-  commitment: idKeyringMerkleMaps[0].getRoot(),
+const aliceID = Identity.init({
+  key: Identifier.fromPublicKey(Local.testAccounts[0].publicKey, 1).toField(),
+  value: idKeyringMerkleMaps[0].getRoot(),
 });
-const bobID = new Identity({
-  identifier: Identifier.fromPublicKey(
-    Local.testAccounts[1].publicKey,
-    1
-  ).toField(),
-  commitment: idKeyringMerkleMaps[1].getRoot(),
+const bobID = Identity.init({
+  key: Identifier.fromPublicKey(Local.testAccounts[1].publicKey, 1).toField(),
+  value: idKeyringMerkleMaps[1].getRoot(),
 });
-const charlieID = new Identity({
-  identifier: Identifier.fromPublicKey(
-    Local.testAccounts[2].publicKey,
-    1
-  ).toField(),
-  commitment: idKeyringMerkleMaps[2].getRoot(),
+const charlieID = Identity.init({
+  key: Identifier.fromPublicKey(Local.testAccounts[2].publicKey, 1).toField(),
+  value: idKeyringMerkleMaps[2].getRoot(),
 });
-const darcyID = new Identity({
-  identifier: Identifier.fromPublicKey(
-    Local.testAccounts[3].publicKey,
-    1
-  ).toField(),
-  commitment: idKeyringMerkleMaps[3].getRoot(),
+const darcyID = Identity.init({
+  key: Identifier.fromPublicKey(Local.testAccounts[3].publicKey, 1).toField(),
+  value: idKeyringMerkleMaps[3].getRoot(),
 });
 
 const Alice = aliceID.getKey();
@@ -98,14 +85,14 @@ initialIdManagerMM.set(Bob, bobID.getValue());
 
 // simulate the zkApp itself as an Identity
 // to conform its off-chain storage mechanics
-const zkappIdentity = new Identity({
-  identifier: Identifier.fromPublicKey(zkappAddress, 1).toField(),
-  commitment: idManagerMerkleMap.getRoot(),
+const zkappIdentity = Identity.init({
+  key: Identifier.fromPublicKey(zkappAddress, 1).toField(),
+  value: idManagerMerkleMap.getRoot(),
 });
-const initStoreId = zkappIdentity.getKey();
-const initRoot = zkappIdentity.getValue();
-console.log('init storeId :', initStoreId.toString());
-console.log('init root    :', initRoot.toString());
+const initStoreIdentifier = zkappIdentity.getKey();
+const initStoreCommitment = zkappIdentity.getValue();
+console.log('init storage identifier :', initStoreIdentifier.toString());
+console.log('init storage commitment :', initStoreCommitment.toString());
 
 // deploy
 log('Deploying IdentityManager...');
@@ -115,14 +102,14 @@ const tx = await Mina.transaction(feePayer, () => {
   zkapp.deploy({ zkappKey });
 
   // set initial storage identifier and root hash
-  zkapp.idsStoreId.set(initStoreId);
-  zkapp.idsRoot.set(initRoot);
+  zkapp.idsStoreId.set(initStoreIdentifier);
+  zkapp.idsRoot.set(initStoreCommitment);
 
   // notify off-chain storage
   zkapp.emitEvent('store:new', {
     ...eventStoreDefault,
-    id: initStoreId,
-    root1: initRoot,
+    id: initStoreIdentifier,
+    root1: initStoreCommitment,
   });
 });
 await tx.prove();
@@ -238,8 +225,8 @@ async function addIdentity(idManagerMM: MerkleMap, identity: Identity) {
 
   // if tx was successful, we can update our off-chain storage
   idManagerMM.set(identity.getKey(), identity.getValue());
-  log('  idManagerMM.getRoot() :', idManagerMM.getRoot().toString());
-  log('  zkapp.idsRoot.get()   :', zkapp.idsRoot.get().toString());
+  log('  idManagerMM root :', idManagerMM.getRoot().toString());
+  log('  storage root     :', zkapp.idsRoot.get().toString());
   zkapp.idsRoot.get().assertEquals(idManagerMM.getRoot());
 }
 
@@ -274,7 +261,7 @@ async function addAuthNFactor(
   const id0 = identity;
 
   idKeyringMM.set(authNFactor_key, authNFactor.getValue());
-  const id1 = id0.setCommitment(idKeyringMM.getRoot());
+  const id1 = id0.setValue(idKeyringMM.getRoot());
 
   log('  tx: prove() sign() send()...');
   const tx = await Mina.transaction(feePayer, () => {

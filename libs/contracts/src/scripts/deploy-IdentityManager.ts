@@ -2,11 +2,8 @@ import { basename } from 'path';
 import { promises as fs } from 'fs';
 import { AccountUpdate, MerkleMap, PrivateKey } from 'snarkyjs';
 import { Identifier, deploy, loopUntilAccountExists } from '@zkhumans/utils';
-import {
-  Identity,
-  IdentityManager,
-  eventStoreDefault,
-} from '../IdentityManager';
+import { eventStoreDefault } from '@zkhumans/zkkv';
+import { Identity, IdentityManager } from '../IdentityManager';
 
 Error.stackTraceLimit = 1000;
 
@@ -95,9 +92,9 @@ try {
 
   // simulate the zkApp itself as an Identity
   // to conform its off-chain storage mechanics
-  const zkAppIdentity = new Identity({
-    identifier: Identifier.fromPublicKey(zkAppPublicKey, 1).toField(),
-    commitment: mmIDManager.getRoot(),
+  const zkAppIdentity = Identity.init({
+    key: Identifier.fromPublicKey(zkAppPublicKey, 1).toField(),
+    value: mmIDManager.getRoot(),
   });
   const initStoreId = zkAppIdentity.getKey();
   const initRoot = zkAppIdentity.getValue();
