@@ -40,19 +40,19 @@ export class IdentityClientUtils {
         commitment: Field(0),
       });
       const id = identity.identifier.toString();
-      const x = await trpc.store.byId.query({ id });
+      const x = await trpc.store.byId.query({ identifier: id });
       if (x) dbIdentities.push(x);
     }
 
     return dbIdentities;
   }
 
-  static async getStoredMerkleMap(id: string) {
+  static async getStoredMerkleMap(identifier: string) {
     const mm = new MerkleMap();
 
     // restore MerkleMap data from database, if it exists
     // Note: db store is only created by the indexer service
-    const store = await trpc.store.byId.query({ id });
+    const store = await trpc.store.byId.query({ identifier });
     if (!store) return mm;
 
     // restore MerkleMap from db store
@@ -103,7 +103,7 @@ export class IdentityClientUtils {
         commitment: Field(0),
       });
       const id = identity.identifier.toString();
-      const x = await trpc.store.byId.query({ id });
+      const x = await trpc.store.byId.query({ identifier: id });
       if (!x) return identifier.toBase58();
     }
     return null;
