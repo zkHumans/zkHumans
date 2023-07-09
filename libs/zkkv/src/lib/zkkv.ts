@@ -120,14 +120,19 @@ export class EventStorePending extends Struct({
   settlementChecksum: Field,
 
   /**
-   * Commited store, its current state.
+   * Store identifier; which store is a key:value being set within.
    */
-  store0: UnitOfStore,
+  id: Field,
 
   /**
-   * New store.
+   * Commited Store (data), its current state.
    */
-  store1: UnitOfStore,
+  data0: UnitOfStore,
+
+  /**
+   * New Store (data).
+   */
+  data1: UnitOfStore,
 }) {}
 
 /**
@@ -280,12 +285,21 @@ export class ZKKV {
   /**
    * Add a store; only if it has not already been added.
    * A Store is StoreData to the zkApp's Store.
+   *
+   * @param {Object} params
+   * @param {UnitOfStore} params.store The store to add to the manager.
+   * @param {UnitOfStore} params.storeManager The store manager as a UnitOfStore
+   * @param {MerkleMapWitness} params.witnessManager Witness for store within manager.
    */
-  static addStore(
-    store: UnitOfStore,
-    storeManager: UnitOfStore,
-    witnessManager: MerkleMapWitness
-  ) {
+  static addStore({
+    store,
+    storeManager,
+    witnessManager,
+  }: {
+    store: UnitOfStore;
+    storeManager: UnitOfStore;
+    witnessManager: MerkleMapWitness;
+  }) {
     const key = store.getKey();
     const value = store.getValue();
     const meta = store.getMeta();
@@ -316,6 +330,62 @@ export class ZKKV {
           ...eventStoreDefault,
           id: key,
           root1: value,
+        }),
+      },
+    ];
+    return events;
+  }
+
+  /**
+   * Set data in a Store that has been added to the Manager.
+   *
+   * Support concurrent transactions:
+   * The Data transformation is emitted as pending until committed.
+   *
+   * To add store data, use data0 value = EMPTY
+   * To del store data, use data1 value = EMPTY
+   *
+   * @param {Object} params
+   * @param {UnitOfStore} params.data0 The store with previosly recorded value.
+   * @param {UnitOfStore} params.data1 The store with new value to update.
+   * @param {UnitOfStore} params.store The store to add data to.
+   * @param {UnitOfStore} params.storeManager The store manager as a UnitOfStore
+   * @param {MerkleMapWitness} params.witnessStore Witness for data within store.
+   * @param {MerkleMapWitness} params.witnessManager Witness for store within manager.
+   */
+  static setStoreData({
+    data0,
+    data1,
+    store,
+    storeManager,
+    witnessStore,
+    witnessManager,
+  }: {
+    data0: UnitOfStore;
+    data1: UnitOfStore;
+    store: UnitOfStore;
+    storeManager: UnitOfStore;
+    witnessStore: MerkleMapWitness;
+    witnessManager: MerkleMapWitness;
+  }) {
+    // assert the transformation against the current zkApp storeCommitment
+    // data in the store in the manager
+    const [storeRoot0] = witnessStore.computeRootAndKey(data0.getValue());
+    const [mgrRoot0] = witnessManager.computeRootAndKey(storeRoot0);
+    mgrRoot0.assertEquals(
+      storeManager.getValue(),
+      'current StoreData assertion failed!'
+    );
+
+    const events: { type: 'store:pending'; event: EventStorePending }[] = [
+      {
+        type: 'store:pending',
+        event: new EventStorePending({
+          commitmentPending: storeManager.getValue(),
+          settlementChecksum: data1.getChecksum(),
+          id: store.getKey(),
+          data0,
+          data1,
         }),
       },
     ];
