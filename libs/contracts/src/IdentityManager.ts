@@ -175,7 +175,7 @@ export class IdentityManager extends SmartContract {
     const mgrStoreCommitment = this.idsRoot.getAndAssertEquals();
     const mgrStoreIdentifier = this.idsStoreId.getAndAssertEquals();
 
-    const { root0, root1, key, value, meta } = ZKKV.addStore(
+    const events = ZKKV.addStore(
       identity,
       UnitOfStore.init({
         key: mgrStoreIdentifier,
@@ -184,60 +184,13 @@ export class IdentityManager extends SmartContract {
       witnessManager
     );
 
+    for (const { type, event } of events) this.emitEvent(type, event);
+
     // TODO: not this! do pending
-    this.idsRoot.set(root1);
-
-    this.emitEvent('store:set', {
-      ...eventStoreDefault,
-      id: mgrStoreIdentifier,
-      root0,
-      root1,
-      key,
-      value,
-      // meta, // !!! TypeError: Cannot read properties of undefined (reading 'value')
-    });
-
-    this.emitEvent('store:new', {
-      ...eventStoreDefault,
-      id: key,
-      root1: value,
-    });
-  }
-
-  // add identity; only if it has not already been added
-  /*
-  @method addIdentity(identity: Identity, witnessManager: MerkleMapWitness) {
-    const idsRoot = this.idsRoot.getAndAssertEquals();
-    const idsStoreId = this.idsStoreId.getAndAssertEquals();
-
-    const key = identity.getKey();
-    const value = identity.getValue();
-
-    // prove the identity has not been added
-    // by asserting the "current" value for this key is empty
-    const [root0] = witnessManager.computeRootAndKey(EMPTY);
-    root0.assertEquals(idsRoot, 'Identity already added!');
-
     // set the new Merkle Map root based on the new data
-    const [root1] = witnessManager.computeRootAndKey(value);
+    const [root1] = witnessManager.computeRootAndKey(identity.getValue());
     this.idsRoot.set(root1);
-
-    this.emitEvent('store:set', {
-      ...eventStoreDefault,
-      id: idsStoreId,
-      root0,
-      root1,
-      key,
-      value,
-    });
-
-    this.emitEvent('store:new', {
-      ...eventStoreDefault,
-      id: key,
-      root1: value,
-    });
   }
-  */
 
   /**
    * Add an Authentication Factor to an Identity.
