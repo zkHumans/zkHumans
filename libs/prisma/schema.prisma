@@ -29,7 +29,7 @@ model zkapp {
 }
 
 model store {
-  id         String @id
+  identifier String @id
   commitment String // root hash
   meta       Json?
 
@@ -48,7 +48,7 @@ model storeData {
   globalSlot  BigInt?
 
   // relations
-  store   store  @relation(fields: [storeId], references: [id], onDelete: Cascade, onUpdate: Cascade)
+  store   store  @relation(fields: [storeId], references: [identifier], onDelete: Cascade, onUpdate: Cascade)
   storeId String
 
   @@unique([key, storeId])
