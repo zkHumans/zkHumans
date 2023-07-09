@@ -1,4 +1,11 @@
-import { Field, MerkleMapWitness, Poseidon, Struct } from 'snarkyjs';
+import {
+  Experimental,
+  Field,
+  MerkleMapWitness,
+  Poseidon,
+  SelfProof,
+  Struct,
+} from 'snarkyjs';
 
 export function zkkv(): string {
   return 'zkkv';
@@ -40,6 +47,19 @@ export class UnitOfStore extends Struct({
   getChecksum() {
     return Poseidon.hash([this.getKey(), this.getValue(), ...this.getMeta()]);
   }
+
+  // obscure the identifier from the storage key
+  // ?: getIdentifier(): Field {
+  // ?:   return Poseidon.hash(this.key.toFields());
+  // ?: }
+
+  // ?: getCommitment(): Field {
+  // ?:   return this.value;
+  // ?: }
+
+  // ?: setCommitment(commitment: Field): UnitOfStore {
+  // ?:   return this.setValue(commitment);
+  // ?: }
 
   setValue(value: Field): UnitOfStore {
     return UnitOfStore.init({ key: this.key, value, meta: this.getMeta() });
@@ -142,6 +162,119 @@ export const eventStoreDefault = {
   value: EMPTY,
   meta: [EMPTY, EMPTY, EMPTY],
 };
+
+export class RollupState extends Struct({
+  root0: Field, // initial root
+  root1: Field, // latest root
+}) {
+  static createOneStep(
+    root0: Field,
+    root1: Field,
+    key: Field,
+    value0: Field,
+    value1: Field,
+    // X: witnessStore: MerkleMapWitness,
+    witnessManager: MerkleMapWitness
+  ) {
+    // X: // assert current value in the store in the manager
+    // X: const [storeRoot0, storeKey0] = witnessStore.computeRootAndKey(value0);
+    // X: const [mgrRoot0] = witnessManager.computeRootAndKey(storeRoot0);
+    // X: mgrRoot0.assertEquals(root0, 'current StoreData assertion failed!');
+    // X: storeKey0.assertEquals(key);
+    const [mgrRoot0, mgrKey0] = witnessManager.computeRootAndKey(value0);
+    root0.assertEquals(mgrRoot0);
+    mgrKey0.assertEquals(key);
+
+    // X: // assert latest root based on the new data in the store in the manager
+    // X: const [storeRoot1] = witnessStore.computeRootAndKey(value1);
+    // X: const [mgrRoot1] = witnessManager.computeRootAndKey(storeRoot1);
+    // X: root1.assertEquals(mgrRoot1);
+    const [mgrRoot1] = witnessManager.computeRootAndKey(value1);
+    root1.assertEquals(mgrRoot1);
+
+    return new RollupState({
+      root0,
+      root1,
+    });
+  }
+
+  static createMerged(state1: RollupState, state2: RollupState) {
+    return new RollupState({
+      root0: state1.root0,
+      root1: state2.root1,
+    });
+  }
+
+  static assertEquals(state1: RollupState, state2: RollupState) {
+    state1.root0.assertEquals(state2.root0);
+    state1.root1.assertEquals(state2.root1);
+  }
+}
+
+export const RollupTransformations = Experimental.ZkProgram({
+  publicInput: RollupState,
+
+  methods: {
+    oneStep: {
+      privateInputs: [
+        Field,
+        Field,
+        Field,
+        Field,
+        Field,
+        // X: MerkleMapWitness,
+        MerkleMapWitness,
+      ],
+      method(
+        state: RollupState,
+        root0: Field,
+        root1: Field,
+        key: Field,
+        value0: Field,
+        value1: Field,
+        // X: witnessStore: MerkleMapWitness,
+        witnessManager: MerkleMapWitness
+      ) {
+        const computedState = RollupState.createOneStep(
+          root0,
+          root1,
+          key,
+          value0,
+          value1,
+          // X: witnessStore,
+          witnessManager
+        );
+        RollupState.assertEquals(computedState, state);
+      },
+    },
+
+    merge: {
+      privateInputs: [SelfProof, SelfProof],
+
+      method(
+        newState: RollupState,
+        rollup1proof: SelfProof<RollupState, void>,
+        rollup2proof: SelfProof<RollupState, void>
+      ) {
+        rollup1proof.verify(); // A -> B
+        rollup2proof.verify(); // B -> C
+
+        rollup1proof.publicInput.root0.assertEquals(newState.root0);
+
+        rollup1proof.publicInput.root1.assertEquals(
+          rollup2proof.publicInput.root0
+        );
+
+        rollup2proof.publicInput.root1.assertEquals(newState.root1);
+      },
+    },
+  },
+});
+
+export const RollupTransformationsProof_ = Experimental.ZkProgram.Proof(
+  RollupTransformations
+);
+export class RollupTransformationsProof extends RollupTransformationsProof_ {}
 
 export class ZKKV {
   /**
