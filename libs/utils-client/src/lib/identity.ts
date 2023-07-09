@@ -35,11 +35,11 @@ export class IdentityClientUtils {
 
     const dbIdentities = [] as NonNullable<ApiStoreByIdOutput>[];
     for (const identifier of identifiers) {
-      const identity = Identity.init({
-        key: identifier.toField(),
-        value: Field(0),
+      const identity = new Identity({
+        identifier: identifier.toField(),
+        commitment: Field(0),
       });
-      const id = identity.getKey().toString();
+      const id = identity.identifier.toString();
       const x = await trpc.store.byId.query({ id });
       if (x) dbIdentities.push(x);
     }
@@ -72,11 +72,11 @@ export class IdentityClientUtils {
    * Create in database if doesn't exist, restore from database if it does.
    */
   static async getKeyringMM(identifier: string) {
-    const identity = Identity.init({
-      key: Identifier.fromBase58(identifier).toField(),
-      value: Field(0),
+    const identity = new Identity({
+      identifier: Identifier.fromBase58(identifier).toField(),
+      commitment: Field(0),
     });
-    const id = identity.getKey().toString();
+    const id = identity.identifier.toString();
     return this.getStoredMerkleMap(id);
   }
 
@@ -98,11 +98,11 @@ export class IdentityClientUtils {
     const publicKey = PublicKey.fromBase58(account);
     for (let i = 0; i < IDENTITY_MGR_MAX_IDS_PER_ACCT; i++) {
       const identifier = Identifier.fromPublicKey(publicKey, i);
-      const identity = Identity.init({
-        key: identifier.toField(),
-        value: Field(0),
+      const identity = new Identity({
+        identifier: identifier.toField(),
+        commitment: Field(0),
       });
-      const id = identity.getKey().toString();
+      const id = identity.identifier.toString();
       const x = await trpc.store.byId.query({ id });
       if (!x) return identifier.toBase58();
     }
@@ -244,13 +244,13 @@ export class IdentityClientUtils {
   ) {
     const mmIDManager = await IdentityClientUtils.getManagerMM();
 
-    const identity = Identity.init({
-      key: Identifier.fromBase58(identifier).toField(),
-      value: mmIDKeyring.getRoot(),
+    const identity = new Identity({
+      identifier: Identifier.fromBase58(identifier).toField(),
+      commitment: mmIDKeyring.getRoot(),
     });
 
     // prove the identity IS NOT in the Identity Manager MM
-    const witness = mmIDManager.getWitness(identity.getKey());
+    const witness = mmIDManager.getWitness(identity.identifier);
     console.log('merkle witness siblings', witness.siblings);
 
     return { identity, witness };
@@ -258,7 +258,7 @@ export class IdentityClientUtils {
 
   static async addNewIdentity(identifier: string, identity: Identity) {
     const mmIDManager = await IdentityClientUtils.getManagerMM();
-    mmIDManager.set(identity.getKey(), identity.getValue());
+    mmIDManager.set(identity.identifier, identity.commitment);
 
     // X: await trpc.smt.txn.mutate({
     // X:   id: IDENTITY_MGR_SMT_NAME,
