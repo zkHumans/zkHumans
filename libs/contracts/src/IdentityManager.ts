@@ -130,6 +130,10 @@ export class AuthNFactor extends Struct({
       },
     });
   }
+
+  toUnitOfStore(): UnitOfStore {
+    return UnitOfStore.init({ key: this.getKey(), value: this.getValue() });
+  }
 }
 
 /**
@@ -141,7 +145,25 @@ export class AuthNFactor extends Struct({
  * - key   = identifier: the UUID of the Identity
  * - value = commitment: root hash of this identity's keyring MT
  */
-export class Identity extends UnitOfStore {}
+export class Identity extends Struct({
+  identifier: Field,
+  commitment: Field,
+}) {
+  setCommitment(commitment: Field): Identity {
+    return new Identity({
+      identifier: this.identifier,
+      commitment,
+    });
+  }
+
+  toUnitOfStore(): UnitOfStore {
+    return UnitOfStore.init({ key: this.identifier, value: this.commitment });
+  }
+
+  static fromUnitOfStore(store: UnitOfStore): Identity {
+    return new Identity({ identifier: store.key, commitment: store.value });
+  }
+}
 
 export class IdentityManager extends SmartContract {
   // Identity Manager Merkle Map; off-chain storage identifier
@@ -170,13 +192,16 @@ export class IdentityManager extends SmartContract {
     });
   }
 
+  /**
+   * Add an Identity; only if it has not already been added.
+   */
   @method addIdentity(identity: Identity, witnessManager: MerkleMapWitness) {
     // TODO: rename idsRoot commitment -- match ZKKV SmartContract
     const mgrStoreCommitment = this.idsRoot.getAndAssertEquals();
     const mgrStoreIdentifier = this.idsStoreId.getAndAssertEquals();
 
     const events = ZKKV.addStore(
-      identity,
+      identity.toUnitOfStore(),
       UnitOfStore.init({
         key: mgrStoreIdentifier,
         value: mgrStoreCommitment,
@@ -188,7 +213,9 @@ export class IdentityManager extends SmartContract {
 
     // TODO: not this! do pending
     // set the new Merkle Map root based on the new data
-    const [root1] = witnessManager.computeRootAndKey(identity.getValue());
+    const [root1] = witnessManager.computeRootAndKey(
+      identity.toUnitOfStore().getValue()
+    );
     this.idsRoot.set(root1);
   }
 
@@ -206,27 +233,27 @@ export class IdentityManager extends SmartContract {
     const idsStoreId = this.idsStoreId.getAndAssertEquals();
 
     // prove the Identity has been added to the current Manager MM
-    const [rootManager0] = witnessManager.computeRootAndKey(id0.getValue());
+    const [rootManager0] = witnessManager.computeRootAndKey(id0.commitment);
     rootManager0.assertEquals(idsRoot, 'Identity not found!');
 
     // prove the AuthNFactor IS NOT in the current Keyring MM
     const [rootKeyring0] = witnessKeyring.computeRootAndKey(EMPTY);
-    rootKeyring0.assertEquals(id0.value, 'AuthNFactor already added!');
+    rootKeyring0.assertEquals(id0.commitment, 'AuthNFactor already added!');
 
     const key = authNFactor.getKey();
     const value = authNFactor.getValue();
 
     // prove the AuthNFactor IS in the new Keyring MM
     const [rootKeyring1] = witnessKeyring.computeRootAndKey(value);
-    rootKeyring1.assertEquals(id1.value, 'AuthNFactor not in new ID');
+    rootKeyring1.assertEquals(id1.commitment, 'AuthNFactor not in new ID');
 
     // set the new Manager MM based on the new data
-    const [rootManager1] = witnessManager.computeRootAndKey(id1.getValue());
+    const [rootManager1] = witnessManager.computeRootAndKey(id1.commitment);
     this.idsRoot.set(rootManager1);
 
     // set the AuthNFactor in the Keyring
     this.emitEvent('store:set', {
-      id: id1.getKey(),
+      id: id1.toUnitOfStore().getKey(),
       root0: rootKeyring0,
       root1: rootKeyring1,
       key,
@@ -245,8 +272,8 @@ export class IdentityManager extends SmartContract {
       id: idsStoreId,
       root0: rootManager0,
       root1: rootManager1,
-      key: id1.getKey(),
-      value: id1.getValue(),
+      key: id1.toUnitOfStore().getKey(),
+      value: id1.toUnitOfStore().getValue(),
     });
   }
 }

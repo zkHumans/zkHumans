@@ -50,47 +50,59 @@ for (let i = 0; i < 4; i++) idKeyringMerkleMaps[i] = new MerkleMap();
 Identifier.fromPublicKey(Local.testAccounts[0].publicKey, 1).toField();
 
 // Create 4 identities
-const aliceID = Identity.init({
-  key: Identifier.fromPublicKey(Local.testAccounts[0].publicKey, 1).toField(),
-  value: idKeyringMerkleMaps[0].getRoot(),
+const aliceID = new Identity({
+  identifier: Identifier.fromPublicKey(
+    Local.testAccounts[0].publicKey,
+    1
+  ).toField(),
+  commitment: idKeyringMerkleMaps[0].getRoot(),
 });
-const bobID = Identity.init({
-  key: Identifier.fromPublicKey(Local.testAccounts[1].publicKey, 1).toField(),
-  value: idKeyringMerkleMaps[1].getRoot(),
+const bobID = new Identity({
+  identifier: Identifier.fromPublicKey(
+    Local.testAccounts[1].publicKey,
+    1
+  ).toField(),
+  commitment: idKeyringMerkleMaps[1].getRoot(),
 });
-const charlieID = Identity.init({
-  key: Identifier.fromPublicKey(Local.testAccounts[2].publicKey, 1).toField(),
-  value: idKeyringMerkleMaps[2].getRoot(),
+const charlieID = new Identity({
+  identifier: Identifier.fromPublicKey(
+    Local.testAccounts[2].publicKey,
+    1
+  ).toField(),
+  commitment: idKeyringMerkleMaps[2].getRoot(),
 });
-const darcyID = Identity.init({
-  key: Identifier.fromPublicKey(Local.testAccounts[3].publicKey, 1).toField(),
-  value: idKeyringMerkleMaps[3].getRoot(),
+const darcyID = new Identity({
+  identifier: Identifier.fromPublicKey(
+    Local.testAccounts[3].publicKey,
+    1
+  ).toField(),
+  commitment: idKeyringMerkleMaps[3].getRoot(),
 });
 
-const Alice = aliceID.getKey();
-const Bob = bobID.getKey();
-// const Charlie = charlieID.getKey();
-const Darcy = darcyID.getKey();
+const Alice = aliceID.identifier;
+const Bob = bobID.identifier;
+// const Charlie = charlieID.identity;
+const Darcy = darcyID.identifier;
 
 // Create an Identity Manager Merkle Map
 // And add 2 identities initially
 const idManagerMerkleMap = new MerkleMap();
-idManagerMerkleMap.set(Alice, aliceID.getValue());
-idManagerMerkleMap.set(Bob, bobID.getValue());
+idManagerMerkleMap.set(Alice, aliceID.commitment);
+idManagerMerkleMap.set(Bob, bobID.commitment);
 
 // set initial MM to confirm restoration from contract events later
 const initialIdManagerMM = new MerkleMap();
-initialIdManagerMM.set(Alice, aliceID.getValue());
-initialIdManagerMM.set(Bob, bobID.getValue());
+initialIdManagerMM.set(Alice, aliceID.commitment);
+initialIdManagerMM.set(Bob, bobID.commitment);
 
 // simulate the zkApp itself as an Identity
 // to conform its off-chain storage mechanics
-const zkappIdentity = Identity.init({
-  key: Identifier.fromPublicKey(zkappAddress, 1).toField(),
-  value: idManagerMerkleMap.getRoot(),
+const zkappIdentity = new Identity({
+  identifier: Identifier.fromPublicKey(zkappAddress, 1).toField(),
+  commitment: idManagerMerkleMap.getRoot(),
 });
-const initStoreIdentifier = zkappIdentity.getKey();
-const initStoreCommitment = zkappIdentity.getValue();
+const initStoreIdentifier = zkappIdentity.identifier;
+const initStoreCommitment = zkappIdentity.commitment;
 console.log('init storage identifier :', initStoreIdentifier.toString());
 console.log('init storage commitment :', initStoreCommitment.toString());
 
@@ -213,7 +225,7 @@ log('...Process Events');
 
 async function addIdentity(idManagerMM: MerkleMap, identity: Identity) {
   // prove the identifier IS NOT in the Identity Manager MT
-  const witness = idManagerMM.getWitness(identity.getKey());
+  const witness = idManagerMM.getWitness(identity.identifier);
 
   log('  tx: prove() sign() send()...');
   const tx = await Mina.transaction(feePayer, () => {
@@ -224,7 +236,7 @@ async function addIdentity(idManagerMM: MerkleMap, identity: Identity) {
   log('  ...tx: prove() sign() send()');
 
   // if tx was successful, we can update our off-chain storage
-  idManagerMM.set(identity.getKey(), identity.getValue());
+  idManagerMM.set(identity.identifier, identity.commitment);
   log('  idManagerMM root :', idManagerMM.getRoot().toString());
   log('  storage root     :', zkapp.idsRoot.get().toString());
   zkapp.idsRoot.get().assertEquals(idManagerMM.getRoot());
@@ -238,7 +250,7 @@ async function addAuthNFactor(
   afData: AuthNFactorData
 ) {
   // prove the identifier IS in the Identity Manager MT
-  const witnessManager = idManagerMM.getWitness(identity.getKey());
+  const witnessManager = idManagerMM.getWitness(identity.identifier);
 
   const authNFactor = new AuthNFactor({
     protocol: {
@@ -261,7 +273,7 @@ async function addAuthNFactor(
   const id0 = identity;
 
   idKeyringMM.set(authNFactor_key, authNFactor.getValue());
-  const id1 = id0.setValue(idKeyringMM.getRoot());
+  const id1 = id0.setCommitment(idKeyringMM.getRoot());
 
   log('  tx: prove() sign() send()...');
   const tx = await Mina.transaction(feePayer, () => {
@@ -272,7 +284,7 @@ async function addAuthNFactor(
   log('  ...tx: prove() sign() send()');
 
   // if tx was successful, we can update our off-chain storage
-  idManagerMM.set(id1.getKey(), id1.getValue());
+  idManagerMM.set(id1.toUnitOfStore().key, id1.toUnitOfStore().value);
   log('  idManagerMM.getRoot() :', idManagerMM.getRoot().toString());
   log('  zkapp.idsRoot.get()   :', zkapp.idsRoot.get().toString());
   zkapp.idsRoot.get().assertEquals(idManagerMM.getRoot());

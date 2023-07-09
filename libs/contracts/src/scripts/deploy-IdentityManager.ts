@@ -92,12 +92,12 @@ try {
 
   // simulate the zkApp itself as an Identity
   // to conform its off-chain storage mechanics
-  const zkAppIdentity = Identity.init({
-    key: Identifier.fromPublicKey(zkAppPublicKey, 1).toField(),
-    value: mmIDManager.getRoot(),
+  const zkAppIdentity = new Identity({
+    identifier: Identifier.fromPublicKey(zkAppPublicKey, 1).toField(),
+    commitment: mmIDManager.getRoot(),
   });
-  const initStoreId = zkAppIdentity.getKey();
-  const initRoot = zkAppIdentity.getValue();
+  const initStoreId = zkAppIdentity.identifier;
+  const initRoot = zkAppIdentity.commitment;
   console.log('init storeId :', initStoreId.toString());
   console.log('init root    :', initRoot.toString());
 

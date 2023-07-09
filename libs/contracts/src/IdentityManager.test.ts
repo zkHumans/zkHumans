@@ -7,16 +7,20 @@ describe('IdentityManager', () => {
 
   // convert Identity to String and back again
   it('toJSON <--> fromJSON | Identity', () => {
-    const identity = Identity.init({
-      key: Field(1111),
-      value: Field(1111),
+    const identity = new Identity({
+      identifier: Field(1111),
+      commitment: Field(1111),
     });
 
     const toJSON = Identity.toJSON(identity);
     const fromJSON = Identity.fromJSON(toJSON);
 
-    expect(identity.key.equals(fromJSON.key).toBoolean()).toBeTruthy();
+    expect(
+      identity.identifier.equals(fromJSON.identifier).toBoolean()
+    ).toBeTruthy();
 
-    expect(identity.value.equals(fromJSON.value).toBoolean()).toBeTruthy();
+    expect(
+      identity.commitment.equals(fromJSON.commitment).toBoolean()
+    ).toBeTruthy();
   });
 });
