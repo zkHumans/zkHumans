@@ -6,6 +6,8 @@ import {
   Mina,
   Poseidon,
   PrivateKey,
+  Proof,
+  verify,
 } from 'snarkyjs';
 import {
   AuthNFactor,
@@ -18,6 +20,8 @@ import { Identifier, strToBool } from '@zkhumans/utils';
 import {
   EventStore,
   EventStorePending,
+  RollupState,
+  RollupTransformations,
   eventStoreDefault,
 } from '@zkhumans/zkkv';
 
@@ -27,8 +31,14 @@ import type { AuthNFactorData, AuthNFactorProtocol } from '../IdentityManager';
 // set config from env
 ////////////////////////////////////////////////////////////////////////
 
-const proofsEnabled = strToBool(process.env['ZK_PROOFS_ENABLED']) ?? true;
-console.log('ZK_PROOFS_ENABLED:', proofsEnabled);
+let proofsEnabled = strToBool(process.env['ZK_PROOFS_ENABLED']) ?? true;
+const recursionEnabled = strToBool(process.env['RECURSION_ENABLED']) ?? false;
+
+// recursion requires compiled contract
+if (recursionEnabled) proofsEnabled = true;
+
+console.log('ZK Proofs Enabled:', proofsEnabled);
+console.log('Recursion Enabled:', recursionEnabled);
 
 ////////////////////////////////////////////////////////////////////////
 // lil utilities
@@ -40,12 +50,6 @@ const t = () => Number(((performance.now() - t0) / 1000 / 60).toFixed(2)) + 'm';
 const log = (
   ...args: any[] /* eslint-disable-line @typescript-eslint/no-explicit-any */
 ) => console.log(`@T+${t()} |`, ...args);
-
-if (proofsEnabled) {
-  log('compile SmartContract...');
-  await IdentityManager.compile();
-  log('...compile SmartContract');
-}
 
 // log a spacer on the console between transactions
 const hr = () =>
@@ -79,6 +83,21 @@ class StorageSimulator {
 ////////////////////////////////////////////////////////////////////////
 // go!
 ////////////////////////////////////////////////////////////////////////
+
+let rollupTransformationVerificationKey: string;
+if (recursionEnabled) {
+  // compile before IdentityManager
+  log('compile ZkProgram(s)...');
+  const { verificationKey } = await RollupTransformations.compile();
+  rollupTransformationVerificationKey = verificationKey;
+  log('...compile ZkProgram(s)');
+}
+
+if (proofsEnabled) {
+  log('compile SmartContract...');
+  await IdentityManager.compile();
+  log('...compile SmartContract');
+}
 
 const Local = Mina.LocalBlockchain({ proofsEnabled });
 Mina.setActiveInstance(Local);
@@ -203,7 +222,7 @@ numEvents = await processEvents(numEvents);
 ////////////////////////////////////////////////////////////////////////
 
 hr();
-await commitPendingTransformationsWithAuthToken();
+await commitPendingTransformations();
 numEvents = await processEvents(numEvents);
 logRoots();
 
@@ -257,7 +276,7 @@ numEvents = await processEvents(numEvents);
 ////////////////////////////////////////////////////////////////////////
 
 hr();
-await commitPendingTransformationsWithAuthToken();
+await commitPendingTransformations();
 numEvents = await processEvents(numEvents);
 logRoots();
 
@@ -396,6 +415,12 @@ async function addAuthNFactor(
   log('  ...tx: prove() sign() send()');
 }
 
+async function commitPendingTransformations() {
+  return recursionEnabled
+    ? await commitPendingTransformationsWithProof()
+    : await commitPendingTransformationsWithAuthToken();
+}
+
 async function commitPendingTransformationsWithAuthToken() {
   log('commit pending store events...');
   logRoots();
@@ -427,4 +452,121 @@ async function commitPendingTransformationsWithAuthToken() {
   }
   logRoots();
   log('...commit pending store events');
+}
+
+async function commitPendingTransformationsWithProof() {
+  const managerMM = storageRunner.maps[zkappIdentifier.toString()];
+
+  hr();
+  log('computing transitions...');
+  const rollupStepInfo: any[] = [];
+  storage.pending.forEach(({ id, data1 }) => {
+    // create MerkleMaps for new stores, as needed
+    const i = id.toString();
+    if (!storageRunner.maps[i]) storageRunner.maps[i] = new MerkleMap();
+    const j = data1.key.toString();
+    if (!storageRunner.maps[j]) storageRunner.maps[j] = new MerkleMap();
+
+    const storeMM = storageRunner.maps[i];
+
+    // DO NOT get witness for data within the store
+    // this was already verified when a transformation was submitted to the zkApp
+    // now only need to prove the manager's merkle tree transformation
+    // X: const witnessStore = storesMM.getWitness(data1.getKey());
+
+    // get witness for store within the manager
+    const witnessManager = managerMM.getWitness(id);
+
+    const root0 = managerMM.getRoot();
+    const value0 = storeMM.getRoot();
+
+    storeMM.set(data1.getKey(), data1.getValue());
+    managerMM.set(id, storeMM.getRoot());
+
+    const root1 = managerMM.getRoot();
+    const value1 = storeMM.getRoot();
+    const key = id;
+
+    console.log('  root0  =', root0.toString());
+    console.log('  root1  =', root1.toString());
+    console.log('  key    =', key.toString());
+    console.log('  value0 =', value0.toString());
+    console.log('  value1 =', value1.toString());
+
+    rollupStepInfo.push({
+      root0,
+      root1,
+      key,
+      value0,
+      value1,
+      witnessManager,
+    });
+  });
+  log('...computing transitions');
+
+  hr();
+  log('making first set of proofs...');
+  const rollupProofs: Proof<RollupState, void>[] = [];
+  for (const {
+    root0,
+    root1,
+    key,
+    value0,
+    value1,
+    witnessManager,
+  } of rollupStepInfo) {
+    const rollup = RollupState.createOneStep(
+      root0,
+      root1,
+      key,
+      value0,
+      value1,
+      witnessManager
+    );
+    const proof = await RollupTransformations.oneStep(
+      rollup,
+      root0,
+      root1,
+      key,
+      value0,
+      value1,
+      witnessManager
+    );
+    rollupProofs.push(proof);
+  }
+  log('...making first set of proofs');
+
+  hr();
+  log('merging proofs...');
+  let proof: Proof<RollupState, void> = rollupProofs[0];
+  for (let i = 1; i < rollupProofs.length; i++) {
+    const rollup = RollupState.createMerged(
+      proof.publicInput,
+      rollupProofs[i].publicInput
+    );
+    const mergedProof = await RollupTransformations.merge(
+      rollup,
+      proof,
+      rollupProofs[i]
+    );
+    proof = mergedProof;
+  }
+  log('...merging proofs');
+
+  hr();
+  log('verifying rollup...');
+  console.log('  proof root0:', proof.publicInput.root0.toString());
+  console.log('  proof root1:', proof.publicInput.root1.toString());
+  const ok = await verify(proof.toJSON(), rollupTransformationVerificationKey);
+  console.log('ok', ok);
+  log('...verifying rollup');
+
+  hr();
+  log('  tx: prove() sign() send()...');
+  const tx = await Mina.transaction(feePayer, () => {
+    zkapp.commitPendingTransformations(proof);
+  });
+  await tx.prove();
+  await tx.sign([feePayerKey]).send();
+  log('  ...tx: prove() sign() send()');
 }
