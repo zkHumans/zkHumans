@@ -236,13 +236,6 @@ export class IdentityManager extends SmartContract {
     });
 
     for (const { type, event } of events) this.emitEvent(type, event);
-
-    // TODO: not this! do pending
-    // set the new Merkle Map root based on the new data
-    const [root1] = witnessManager.computeRootAndKey(
-      identity.toUnitOfStore().getValue()
-    );
-    this.commitment.set(root1);
   }
 
   /**
