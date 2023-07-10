@@ -70,8 +70,8 @@ class StorageSimulator {
   getRoot(identifier: Field): string {
     return this.maps[identifier.toString()].getRoot().toString();
   }
-  logMapKeys() {
-    console.log('storage maps identifiers:');
+  logMapKeys(label = '') {
+    console.log(label, 'storage maps identifiers:');
     Object.keys(this.maps).forEach((k) => console.log(` ${k}`));
   }
 }
@@ -86,51 +86,40 @@ Mina.setActiveInstance(Local);
 const feePayer = Local.testAccounts[0].publicKey;
 const feePayerKey = Local.testAccounts[0].privateKey;
 
-const pk = 'EKDwdC7UV4D6Nxx9PM3PiTQJmEYZWiqxR4fgbH7zHHhKnTAjKWDt';
-// const zkappKey = PrivateKey.random();
-const zkappKey = PrivateKey.fromBase58(pk);
+const zkappKey = PrivateKey.random();
 const zkappAddress = zkappKey.toPublicKey();
 
-// Create 4 Identity Keyring Merkle Maps
-const idKeyringMerkleMaps: Array<MerkleMap> = [];
-for (let i = 0; i < 4; i++) idKeyringMerkleMaps[i] = new MerkleMap();
+const emptyMMRoot = new MerkleMap().getRoot();
 
-Identifier.fromPublicKey(Local.testAccounts[0].publicKey, 1).toField();
-
-// Create 4 identities
-const aliceID = new Identity({
+// create identities
+const Alice = new Identity({
   identifier: Identifier.fromPublicKey(
     Local.testAccounts[0].publicKey,
     1
   ).toField(),
-  commitment: idKeyringMerkleMaps[0].getRoot(),
+  commitment: emptyMMRoot,
 });
-const bobID = new Identity({
+const Bob = new Identity({
   identifier: Identifier.fromPublicKey(
     Local.testAccounts[1].publicKey,
     1
   ).toField(),
-  commitment: idKeyringMerkleMaps[1].getRoot(),
+  commitment: emptyMMRoot,
 });
-// const charlieID = new Identity({
+// const Charlie = new Identity({
 //   identifier: Identifier.fromPublicKey(
 //     Local.testAccounts[2].publicKey,
 //     1
 //   ).toField(),
-//   commitment: idKeyringMerkleMaps[2].getRoot(),
+//   commitment: emptyMMRoot,
 // });
-// const darcyID = new Identity({
+// const Darcy = new Identity({
 //   identifier: Identifier.fromPublicKey(
 //     Local.testAccounts[3].publicKey,
 //     1
 //   ).toField(),
-//   commitment: idKeyringMerkleMaps[3].getRoot(),
+//   commitment: emptyMMRoot,
 // });
-
-const Alice = aliceID.identifier;
-const Bob = bobID.identifier;
-// const Charlie = charlieID.identity;
-// const Darcy = darcyID.identifier;
 
 // setup storage simulation
 const storageRunner = new StorageSimulator(); // for computing proposed state transformations
@@ -199,64 +188,35 @@ const logRoots = () => {
 
 hr();
 log('addIdentity Alice...');
-await addIdentity(storageRunner.maps[zkappIdentifier.toString()], aliceID);
+await addIdentity(storageRunner.maps[zkappIdentifier.toString()], Alice);
 log('...addIdentity Alice');
 numEvents = await processEvents(numEvents);
 
 hr();
 log('addIdentity Bob...');
-await addIdentity(storageRunner.maps[zkappIdentifier.toString()], bobID);
+await addIdentity(storageRunner.maps[zkappIdentifier.toString()], Bob);
 log('...addIdentity Bob');
 numEvents = await processEvents(numEvents);
 
 ////////////////////////////////////////////////////////////////////////
 // commit pending storage events
 ////////////////////////////////////////////////////////////////////////
+
 hr();
-log('commit pending store events...');
-logRoots();
-{
-  // update storage runner, to get the next commitment
-  for (const pe of storage.pending) {
-    const i = pe.id.toString();
-    if (!storageRunner.maps[i]) storageRunner.maps[i] = new MerkleMap();
-    storageRunner.maps[i].set(pe.data1.getKey(), pe.data1.getValue());
-
-    const j = pe.data1.key.toString();
-    if (!storageRunner.maps[j]) storageRunner.maps[j] = new MerkleMap();
-  }
-
-  const commitmentPending = zkapp.commitment.get();
-  const commitmentSettled =
-    storageRunner.maps[zkappIdentifier.toString()].getRoot();
-  log('  tx: prove() sign() send()...');
-  const tx = await Mina.transaction(feePayer, () => {
-    zkapp.commitPendingTransformationsWithAuthToken(
-      authToken,
-      commitmentPending,
-      commitmentSettled
-    );
-  });
-  await tx.prove();
-  await tx.sign([feePayerKey]).send();
-  log('  ...tx: prove() sign() send()');
-}
-logRoots();
-log('...commit pending store events');
-
+await commitPendingTransformations();
 numEvents = await processEvents(numEvents);
 logRoots();
 
 /*
 hr();
 log('addIdentity Charlie...');
-await addIdentity(storageRunner.maps[zkappIdentifier.toString()], charlieID);
+await addIdentity(storageRunner.maps[zkappIdentifier.toString()], Charlie);
 log('...addIdentity Charlie');
 numEvents = await processEvents(numEvents);
 
 hr();
 log('addIdentity Darcy...');
-await addIdentity(storageRunner.maps[zkappIdentifier.toString()], darcyID);
+await addIdentity(storageRunner.maps[zkappIdentifier.toString()], Darcy);
 log('...addIdentity Darcy');
 numEvents = await processEvents(numEvents);
 */
@@ -272,8 +232,8 @@ hr();
 log('addAuthNFactor Alice...');
 await addAuthNFactor(
   storageRunner.maps[zkappIdentifier.toString()],
-  storageRunner.maps[aliceID.identifier.toString()],
-  aliceID,
+  storageRunner.maps[Alice.identifier.toString()],
+  Alice,
   { type: AuthNType.operator, provider: AuthNProvider.self, revision: 0 },
   { salt, secret: 'secretCode' }
 );
@@ -284,31 +244,41 @@ hr();
 log('addAuthNFactor Bob...');
 await addAuthNFactor(
   storageRunner.maps[zkappIdentifier.toString()],
-  storageRunner.maps[bobID.identifier.toString()],
-  bobID,
+  storageRunner.maps[Bob.identifier.toString()],
+  Bob,
   { type: AuthNType.operator, provider: AuthNProvider.self, revision: 0 },
   { salt, secret: 'XXXXXXXXXX' }
 );
 log('...addAuthNFactor Bob');
 numEvents = await processEvents(numEvents);
 
+////////////////////////////////////////////////////////////////////////
+// commit pending storage events
+////////////////////////////////////////////////////////////////////////
+
+hr();
+await commitPendingTransformations();
+numEvents = await processEvents(numEvents);
+logRoots();
+
+hr();
+storageRunner.logMapKeys('storageRunner');
+storage.logMapKeys('storage');
+
+// confirm sync of MMs
+const witness1 = storageRunner.maps[Alice.identifier.toString()].getWitness(
+  Alice.identifier
+);
+const witness2 = storage.maps[Alice.identifier.toString()].getWitness(
+  Alice.identifier
+);
+witness1.assertEquals(witness2);
+
+// confirm sync of commitments
+const sRoot = storage.maps[zkappIdentifier.toString()].getRoot();
+zkapp.commitment.get().assertEquals(sRoot);
+
 tada();
-
-////////////////////////////////////////////////////////////////////////
-// Smart Contract Events
-////////////////////////////////////////////////////////////////////////
-
-// ?: console.log();
-// ?: log('Process Events...');
-// ?:
-// ?: console.log('MM 1:', idManagerMerkleMap.getRoot().toString());
-// ?: console.log('MM 2:', initialIdManagerMM.getRoot().toString());
-// ?:
-// ?: // check to confirm sync of MMs
-// ?: const witness1 = idManagerMerkleMap.getWitness(Darcy);
-// ?: const witness2 = initialIdManagerMM.getWitness(Darcy);
-// ?: witness1.assertEquals(witness2);
-// ?: log('...Process Events');
 
 ////////////////////////////////////////////////////////////////////////
 // helper functions
@@ -320,14 +290,12 @@ tada();
  * Use offset param and returned counter output
  * to processEvents sequentually after each txn.
  */
-async function processEvents(offset = 0, checkStorage = true) {
+async function processEvents(offset = 0) {
   let counter = 0;
 
   const events = await zkapp.fetchEvents();
 
   log('Process Events...');
-  // ?: console.log('MM 1:', storeManagerMerkleMap.getRoot().toString());
-  // ?: console.log('MM 2:', initialManagerMM.getRoot().toString());
 
   for (const event of events) {
     // skip already processed events
@@ -349,7 +317,7 @@ async function processEvents(offset = 0, checkStorage = true) {
       case 'store:set':
         {
           // off-chain storage should set the record
-          const ev = EventStore.fromJSON(js);
+          // const ev = EventStore.fromJSON(js);
         }
         break;
 
@@ -376,19 +344,42 @@ async function processEvents(offset = 0, checkStorage = true) {
     }
   }
 
-  // ?: console.log('MM 1:', storeManagerMerkleMap.getRoot().toString());
-  // ?: console.log('MM 2:', initialManagerMM.getRoot().toString());
-
-  // check to confirm sync of MMs
-  // ?: if (checkStorage) {
-  // ?:   const witness1 = storeManagerMerkleMap.getWitness(stores[3].getKey());
-  // ?:   const witness2 = initialManagerMM.getWitness(stores[3].getKey());
-  // ?:   witness1.assertEquals(witness2);
-  // ?: }
-
   log('...Process Events');
 
   return counter;
+}
+
+async function commitPendingTransformations() {
+  log('commit pending store events...');
+  logRoots();
+  {
+    // update storage runner, to get the next commitment
+    for (const pe of storage.pending) {
+      const i = pe.id.toString();
+      if (!storageRunner.maps[i]) storageRunner.maps[i] = new MerkleMap();
+      storageRunner.maps[i].set(pe.data1.getKey(), pe.data1.getValue());
+
+      const j = pe.data1.key.toString();
+      if (!storageRunner.maps[j]) storageRunner.maps[j] = new MerkleMap();
+    }
+
+    const commitmentPending = zkapp.commitment.get();
+    const commitmentSettled =
+      storageRunner.maps[zkappIdentifier.toString()].getRoot();
+    log('  tx: prove() sign() send()...');
+    const tx = await Mina.transaction(feePayer, () => {
+      zkapp.commitPendingTransformationsWithAuthToken(
+        authToken,
+        commitmentPending,
+        commitmentSettled
+      );
+    });
+    await tx.prove();
+    await tx.sign([feePayerKey]).send();
+    log('  ...tx: prove() sign() send()');
+  }
+  logRoots();
+  log('...commit pending store events');
 }
 
 async function addIdentity(idManagerMM: MerkleMap, identity: Identity) {
@@ -431,11 +422,9 @@ async function addAuthNFactor(
 
   log('  tx: prove() sign() send()...');
   const tx = await Mina.transaction(feePayer, () => {
-    zkapp.NEW_addAuthNFactor(af, identity, witnessKeyring, witnessManager);
+    zkapp.addAuthNFactor(af, identity, witnessKeyring, witnessManager);
   });
   await tx.prove();
   await tx.sign([feePayerKey]).send();
   log('  ...tx: prove() sign() send()');
 }
-
-tada();
