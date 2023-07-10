@@ -168,6 +168,16 @@ export const eventStoreDefault = {
   meta: [EMPTY, EMPTY, EMPTY],
 };
 
+export type RollupStep = {
+  root0: Field;
+  root1: Field;
+  key: Field;
+  value0: Field;
+  value1: Field;
+  // X: witnessStore: MerkleMapWitness,
+  witnessManager: MerkleMapWitness;
+};
+
 export class RollupState extends Struct({
   root0: Field, // initial root
   root1: Field, // latest root
