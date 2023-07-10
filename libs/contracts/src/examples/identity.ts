@@ -203,7 +203,7 @@ numEvents = await processEvents(numEvents);
 ////////////////////////////////////////////////////////////////////////
 
 hr();
-await commitPendingTransformations();
+await commitPendingTransformationsWithAuthToken();
 numEvents = await processEvents(numEvents);
 logRoots();
 
@@ -257,7 +257,7 @@ numEvents = await processEvents(numEvents);
 ////////////////////////////////////////////////////////////////////////
 
 hr();
-await commitPendingTransformations();
+await commitPendingTransformationsWithAuthToken();
 numEvents = await processEvents(numEvents);
 logRoots();
 
@@ -349,39 +349,6 @@ async function processEvents(offset = 0) {
   return counter;
 }
 
-async function commitPendingTransformations() {
-  log('commit pending store events...');
-  logRoots();
-  {
-    // update storage runner, to get the next commitment
-    for (const pe of storage.pending) {
-      const i = pe.id.toString();
-      if (!storageRunner.maps[i]) storageRunner.maps[i] = new MerkleMap();
-      storageRunner.maps[i].set(pe.data1.getKey(), pe.data1.getValue());
-
-      const j = pe.data1.key.toString();
-      if (!storageRunner.maps[j]) storageRunner.maps[j] = new MerkleMap();
-    }
-
-    const commitmentPending = zkapp.commitment.get();
-    const commitmentSettled =
-      storageRunner.maps[zkappIdentifier.toString()].getRoot();
-    log('  tx: prove() sign() send()...');
-    const tx = await Mina.transaction(feePayer, () => {
-      zkapp.commitPendingTransformationsWithAuthToken(
-        authToken,
-        commitmentPending,
-        commitmentSettled
-      );
-    });
-    await tx.prove();
-    await tx.sign([feePayerKey]).send();
-    log('  ...tx: prove() sign() send()');
-  }
-  logRoots();
-  log('...commit pending store events');
-}
-
 async function addIdentity(idManagerMM: MerkleMap, identity: Identity) {
   // prove the identifier IS NOT in the Identity Manager MT
   const witness = idManagerMM.getWitness(identity.identifier);
@@ -427,4 +394,37 @@ async function addAuthNFactor(
   await tx.prove();
   await tx.sign([feePayerKey]).send();
   log('  ...tx: prove() sign() send()');
+}
+
+async function commitPendingTransformationsWithAuthToken() {
+  log('commit pending store events...');
+  logRoots();
+  {
+    // update storage runner, to get the next commitment
+    for (const pe of storage.pending) {
+      const i = pe.id.toString();
+      if (!storageRunner.maps[i]) storageRunner.maps[i] = new MerkleMap();
+      storageRunner.maps[i].set(pe.data1.getKey(), pe.data1.getValue());
+
+      const j = pe.data1.key.toString();
+      if (!storageRunner.maps[j]) storageRunner.maps[j] = new MerkleMap();
+    }
+
+    const commitmentPending = zkapp.commitment.get();
+    const commitmentSettled =
+      storageRunner.maps[zkappIdentifier.toString()].getRoot();
+    log('  tx: prove() sign() send()...');
+    const tx = await Mina.transaction(feePayer, () => {
+      zkapp.commitPendingTransformationsWithAuthToken(
+        authToken,
+        commitmentPending,
+        commitmentSettled
+      );
+    });
+    await tx.prove();
+    await tx.sign([feePayerKey]).send();
+    log('  ...tx: prove() sign() send()');
+  }
+  logRoots();
+  log('...commit pending store events');
 }
