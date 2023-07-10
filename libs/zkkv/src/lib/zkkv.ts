@@ -281,10 +281,17 @@ export const RollupTransformationsProof_ = Experimental.ZkProgram.Proof(
 );
 export class RollupTransformationsProof extends RollupTransformationsProof_ {}
 
+export type ZKKVEventEmission = {
+  type: 'store:pending';
+  event: EventStorePending;
+}[];
+
 export class ZKKV {
   /**
    * Add a store; only if it has not already been added.
    * A Store is StoreData to the zkApp's Store.
+   *
+   * This method supports txn concurrency and emits an pending storage event.
    *
    * @param {Object} params
    * @param {UnitOfStore} params.store The store to add to the manager.
@@ -299,41 +306,26 @@ export class ZKKV {
     store: UnitOfStore;
     storeManager: UnitOfStore;
     witnessManager: MerkleMapWitness;
-  }) {
-    const key = store.getKey();
-    const value = store.getValue();
-    const meta = store.getMeta();
-
-    // prove the store has not been added
-    // by asserting the current value for this key is empty
+  }): ZKKVEventEmission {
+    // prove the store has not been added by asserting its current value is empty
     const [root0] = witnessManager.computeRootAndKey(EMPTY);
     root0.assertEquals(storeManager.getValue(), 'Store already added!');
 
-    const [root1] = witnessManager.computeRootAndKey(value);
-
-    const events: { type: 'store:set' | 'store:new'; event: EventStore }[] = [
+    return [
       {
-        type: 'store:set',
-        event: new EventStore({
-          ...eventStoreDefault,
+        type: 'store:pending',
+        event: new EventStorePending({
+          commitmentPending: storeManager.getValue(),
+          settlementChecksum: store.getChecksum(),
           id: storeManager.getKey(),
-          root0,
-          root1,
-          key,
-          value,
-          meta,
-        }),
-      },
-      {
-        type: 'store:new',
-        event: new EventStore({
-          ...eventStoreDefault,
-          id: key,
-          root1: value,
+          data0: UnitOfStore.init({
+            key: store.getKey(),
+            value: EMPTY, // Add
+          }),
+          data1: store,
         }),
       },
     ];
-    return events;
   }
 
   /**
@@ -367,7 +359,7 @@ export class ZKKV {
     storeManager: UnitOfStore;
     witnessStore: MerkleMapWitness;
     witnessManager: MerkleMapWitness;
-  }) {
+  }): ZKKVEventEmission {
     // assert the transformation against the current zkApp storeCommitment
     // data in the store in the manager
     const [storeRoot0] = witnessStore.computeRootAndKey(data0.getValue());
@@ -377,7 +369,7 @@ export class ZKKV {
       'current StoreData assertion failed!'
     );
 
-    const events: { type: 'store:pending'; event: EventStorePending }[] = [
+    return [
       {
         type: 'store:pending',
         event: new EventStorePending({
@@ -389,6 +381,5 @@ export class ZKKV {
         }),
       },
     ];
-    return events;
   }
 }
