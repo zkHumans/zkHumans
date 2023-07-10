@@ -70,6 +70,10 @@ class StorageSimulator {
   getRoot(identifier: Field): string {
     return this.maps[identifier.toString()].getRoot().toString();
   }
+  logMapKeys() {
+    console.log('storage maps identifiers:');
+    Object.keys(this.maps).forEach((k) => console.log(` ${k}`));
+  }
 }
 
 ////////////////////////////////////////////////////////////////////////
@@ -108,36 +112,25 @@ const bobID = new Identity({
   ).toField(),
   commitment: idKeyringMerkleMaps[1].getRoot(),
 });
-const charlieID = new Identity({
-  identifier: Identifier.fromPublicKey(
-    Local.testAccounts[2].publicKey,
-    1
-  ).toField(),
-  commitment: idKeyringMerkleMaps[2].getRoot(),
-});
-const darcyID = new Identity({
-  identifier: Identifier.fromPublicKey(
-    Local.testAccounts[3].publicKey,
-    1
-  ).toField(),
-  commitment: idKeyringMerkleMaps[3].getRoot(),
-});
+// const charlieID = new Identity({
+//   identifier: Identifier.fromPublicKey(
+//     Local.testAccounts[2].publicKey,
+//     1
+//   ).toField(),
+//   commitment: idKeyringMerkleMaps[2].getRoot(),
+// });
+// const darcyID = new Identity({
+//   identifier: Identifier.fromPublicKey(
+//     Local.testAccounts[3].publicKey,
+//     1
+//   ).toField(),
+//   commitment: idKeyringMerkleMaps[3].getRoot(),
+// });
 
 const Alice = aliceID.identifier;
 const Bob = bobID.identifier;
 // const Charlie = charlieID.identity;
-const Darcy = darcyID.identifier;
-
-// Create an Identity Manager Merkle Map
-// And add 2 identities initially
-const idManagerMerkleMap = new MerkleMap();
-idManagerMerkleMap.set(Alice, aliceID.commitment);
-idManagerMerkleMap.set(Bob, bobID.commitment);
-
-// set initial MM to confirm restoration from contract events later
-const initialIdManagerMM = new MerkleMap();
-initialIdManagerMM.set(Alice, aliceID.commitment);
-initialIdManagerMM.set(Bob, bobID.commitment);
+// const Darcy = darcyID.identifier;
 
 // setup storage simulation
 const storageRunner = new StorageSimulator(); // for computing proposed state transformations
@@ -228,6 +221,9 @@ logRoots();
     const i = pe.id.toString();
     if (!storageRunner.maps[i]) storageRunner.maps[i] = new MerkleMap();
     storageRunner.maps[i].set(pe.data1.getKey(), pe.data1.getValue());
+
+    const j = pe.data1.key.toString();
+    if (!storageRunner.maps[j]) storageRunner.maps[j] = new MerkleMap();
   }
 
   const commitmentPending = zkapp.commitment.get();
@@ -266,88 +262,53 @@ numEvents = await processEvents(numEvents);
 */
 
 ////////////////////////////////////////////////////////////////////////
-// WIP
-////////////////////////////////////////////////////////////////////////
-tada();
-
-////////////////////////////////////////////////////////////////////////
 // Personal Identity Keyring Management
 ////////////////////////////////////////////////////////////////////////
 
 const salt = 'uniqueTotheZkapp';
 
-console.log();
+storageRunner.logMapKeys();
+hr();
 log('addAuthNFactor Alice...');
 await addAuthNFactor(
-  idManagerMerkleMap,
-  idKeyringMerkleMaps[0],
+  storageRunner.maps[zkappIdentifier.toString()],
+  storageRunner.maps[aliceID.identifier.toString()],
   aliceID,
   { type: AuthNType.operator, provider: AuthNProvider.self, revision: 0 },
   { salt, secret: 'secretCode' }
 );
 log('...addAuthNFactor Alice');
+numEvents = await processEvents(numEvents);
 
-console.log();
-log('addAuthNFactor Darcy...');
+hr();
+log('addAuthNFactor Bob...');
 await addAuthNFactor(
-  idManagerMerkleMap,
-  idKeyringMerkleMaps[3],
-  darcyID,
+  storageRunner.maps[zkappIdentifier.toString()],
+  storageRunner.maps[bobID.identifier.toString()],
+  bobID,
   { type: AuthNType.operator, provider: AuthNProvider.self, revision: 0 },
   { salt, secret: 'XXXXXXXXXX' }
 );
-log('...addAuthNFactor Darcy');
+log('...addAuthNFactor Bob');
+numEvents = await processEvents(numEvents);
+
+tada();
 
 ////////////////////////////////////////////////////////////////////////
 // Smart Contract Events
 ////////////////////////////////////////////////////////////////////////
 
-const events = await zkapp.fetchEvents();
-
-console.log();
-log('Process Events...');
-console.log('MM 1:', idManagerMerkleMap.getRoot().toString());
-console.log('MM 2:', initialIdManagerMM.getRoot().toString());
-
-for (const event of events) {
-  switch (event.type) {
-    case 'store:new':
-      {
-        // TODO: a better way to access event data?
-        const js = JSON.parse(JSON.stringify(event.event.data));
-        console.log('Event: store:new', js);
-
-        // off-chain storage should create the record
-      }
-      break;
-
-    case 'store:set':
-      {
-        const js = JSON.parse(JSON.stringify(event.event.data));
-        console.log('Event: store:set', js);
-        const ev = EventStore.fromJSON(js);
-
-        // add to the MM
-        if (ev.root0.equals(initialIdManagerMM.getRoot()).toBoolean()) {
-          initialIdManagerMM.set(ev.key, ev.value);
-          const s = ev.root1.equals(initialIdManagerMM.getRoot()).toBoolean();
-          console.log(s ? '✅' : '❌', 'MerkleMap set from event');
-        }
-
-        // off-chain storage should set the record
-      }
-      break;
-  }
-}
-
-console.log('MM 1:', idManagerMerkleMap.getRoot().toString());
-console.log('MM 2:', initialIdManagerMM.getRoot().toString());
-
-// check to confirm sync of MMs
-const witness1 = idManagerMerkleMap.getWitness(Darcy);
-const witness2 = initialIdManagerMM.getWitness(Darcy);
-witness1.assertEquals(witness2);
-log('...Process Events');
+// ?: console.log();
+// ?: log('Process Events...');
+// ?:
+// ?: console.log('MM 1:', idManagerMerkleMap.getRoot().toString());
+// ?: console.log('MM 2:', initialIdManagerMM.getRoot().toString());
+// ?:
+// ?: // check to confirm sync of MMs
+// ?: const witness1 = idManagerMerkleMap.getWitness(Darcy);
+// ?: const witness2 = initialIdManagerMM.getWitness(Darcy);
+// ?: witness1.assertEquals(witness2);
+// ?: log('...Process Events');
 
 ////////////////////////////////////////////////////////////////////////
 // helper functions
@@ -388,15 +349,7 @@ async function processEvents(offset = 0, checkStorage = true) {
       case 'store:set':
         {
           // off-chain storage should set the record
-
           const ev = EventStore.fromJSON(js);
-
-          // ?: // add to the MM
-          // ?: if (ev.root0.equals(initialManagerMM.getRoot()).toBoolean()) {
-          // ?:   initialManagerMM.set(ev.key, ev.value);
-          // ?:   const s = ev.root1.equals(initialManagerMM.getRoot()).toBoolean();
-          // ?:   console.log(s ? '✅' : '❌', 'MerkleMap set from event');
-          // ?: }
         }
         break;
 
@@ -414,6 +367,9 @@ async function processEvents(offset = 0, checkStorage = true) {
             const i = pe.id.toString();
             if (!storage.maps[i]) storage.maps[i] = new MerkleMap();
             storage.maps[i].set(pe.data1.getKey(), pe.data1.getValue());
+
+            const j = pe.data1.key.toString();
+            if (!storage.maps[j]) storage.maps[j] = new MerkleMap();
           }
         }
         break;
@@ -446,13 +402,6 @@ async function addIdentity(idManagerMM: MerkleMap, identity: Identity) {
   await tx.prove();
   await tx.sign([feePayerKey]).send();
   log('  ...tx: prove() sign() send()');
-
-  // don't do this, cuz added as pending
-  // X: // if tx was successful, we can update our off-chain storage
-  // X: idManagerMM.set(identity.identifier, identity.commitment);
-  // X: log('  idManagerMM root :', idManagerMM.getRoot().toString());
-  // X: log('  zkapp root       :', zkapp.commitment.get().toString());
-  // X: zkapp.commitment.get().assertEquals(idManagerMM.getRoot());
 }
 
 async function addAuthNFactor(
@@ -462,10 +411,7 @@ async function addAuthNFactor(
   afProtocol: AuthNFactorProtocol,
   afData: AuthNFactorData
 ) {
-  // prove the identifier IS in the Identity Manager MT
-  const witnessManager = idManagerMM.getWitness(identity.identifier);
-
-  const authNFactor = new AuthNFactor({
+  const af = new AuthNFactor({
     protocol: {
       type: Field(afProtocol.type),
       provider: Field(afProtocol.provider),
@@ -477,30 +423,19 @@ async function addAuthNFactor(
     },
   });
 
-  const authNFactor_key = authNFactor.getKey();
+  // prove the identifier IS in the Identity Manager MT
+  const witnessManager = idManagerMM.getWitness(identity.identifier);
 
   // prove the AuthNFactor IS NOT in the Identity Keyring MT
-  const witnessKeyring = idKeyringMM.getWitness(authNFactor_key);
-  log('  ...idKeyringMM.getWitness()');
-
-  const id0 = identity;
-
-  idKeyringMM.set(authNFactor_key, authNFactor.getValue());
-  const id1 = id0.setCommitment(idKeyringMM.getRoot());
+  const witnessKeyring = idKeyringMM.getWitness(af.getKey());
 
   log('  tx: prove() sign() send()...');
   const tx = await Mina.transaction(feePayer, () => {
-    zkapp.addAuthNFactor(authNFactor, id0, id1, witnessManager, witnessKeyring);
+    zkapp.NEW_addAuthNFactor(af, identity, witnessKeyring, witnessManager);
   });
   await tx.prove();
   await tx.sign([feePayerKey]).send();
   log('  ...tx: prove() sign() send()');
-
-  // if tx was successful, we can update our off-chain storage
-  idManagerMM.set(id1.toUnitOfStore().key, id1.toUnitOfStore().value);
-  log('  idManagerMM root :', idManagerMM.getRoot().toString());
-  log('  zkapp root       :', zkapp.commitment.get().toString());
-  zkapp.commitment.get().assertEquals(idManagerMM.getRoot());
 }
 
 tada();
