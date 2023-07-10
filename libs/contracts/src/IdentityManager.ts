@@ -16,10 +16,9 @@ import {
   EventStore,
   EventStoreCommit,
   EventStorePending,
-  RollupTransformationsProof,
+  // 1: RollupTransformationsProof,
   UnitOfStore,
   ZKKV,
-  eventStoreDefault,
 } from '@zkhumans/zkkv';
 
 /**
@@ -168,6 +167,8 @@ export class Identity extends Struct({
   }
 
   toUnitOfStore(): UnitOfStore {
+    // ?: // obscure the identifier from the storage key
+    // ?: const key = Poseidon.hash(this.identifier.toFields());
     return UnitOfStore.init({ key: this.identifier, value: this.commitment });
   }
 
@@ -347,6 +348,7 @@ export class IdentityManager extends SmartContract {
    *
    * @param {RollupTransformationsProof} proof A recursive rollup proof of transformations
    */
+  /* 1:
   @method commitPendingTransformations(proof: RollupTransformationsProof) {
     const mgrCommitment = this.commitment.getAndAssertEquals();
 
@@ -364,6 +366,7 @@ export class IdentityManager extends SmartContract {
       commitmentSettled: proof.publicInput.root1,
     });
   }
+  */
 
   /**
    * Commit pending transformations.
@@ -396,3 +399,11 @@ export class IdentityManager extends SmartContract {
     });
   }
 }
+
+/*
+ * [1] 2023-07-10 Note: commitPendingTransformations with recursive proof
+ * disabled due to undocumented behavior fron snarkyjs.
+ * Even when the method is not called... just included within the code,
+ * proofsenabled fails on some, but not all, methods:
+ * Error: curve point must not be the point at infinity
+ */
