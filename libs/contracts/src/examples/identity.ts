@@ -21,6 +21,7 @@ import {
   EventStore,
   EventStorePending,
   RollupState,
+  RollupStep,
   RollupTransformations,
   eventStoreDefault,
 } from '@zkhumans/zkkv';
@@ -85,7 +86,7 @@ class StorageSimulator {
 ////////////////////////////////////////////////////////////////////////
 
 let rollupTransformationVerificationKey: string;
-if (recursionEnabled) {
+if (recursionEnabled || proofsEnabled) {
   // compile before IdentityManager
   log('compile ZkProgram(s)...');
   const { verificationKey } = await RollupTransformations.compile();
@@ -422,6 +423,7 @@ async function commitPendingTransformations() {
 }
 
 async function commitPendingTransformationsWithAuthToken() {
+  log('commit pending with Auth');
   log('commit pending store events...');
   logRoots();
   {
@@ -455,53 +457,105 @@ async function commitPendingTransformationsWithAuthToken() {
 }
 
 async function commitPendingTransformationsWithProof() {
-  const managerMM = storageRunner.maps[zkappIdentifier.toString()];
-
   hr();
+  log('commit pending with Proof');
   log('computing transitions...');
-  const rollupStepInfo: any[] = [];
-  storage.pending.forEach(({ id, data1 }) => {
-    // create MerkleMaps for new stores, as needed
-    const i = id.toString();
-    if (!storageRunner.maps[i]) storageRunner.maps[i] = new MerkleMap();
-    const j = data1.key.toString();
-    if (!storageRunner.maps[j]) storageRunner.maps[j] = new MerkleMap();
+  const rollupStepInfo: RollupStep[] = [];
 
-    const storeMM = storageRunner.maps[i];
+  for (const { id, data0, data1 } of storage.pending) {
+    const managerMM = storageRunner.maps[zkappIdentifier.toString()];
 
-    // DO NOT get witness for data within the store
-    // this was already verified when a transformation was submitted to the zkApp
-    // now only need to prove the manager's merkle tree transformation
-    // X: const witnessStore = storesMM.getWitness(data1.getKey());
+    // NOTE: data(0|1).store.identifier --> id
 
-    // get witness for store within the manager
-    const witnessManager = managerMM.getWitness(id);
+    ////////////////////////////////////////////////////////////////////////
+    // transformation of store in the manager
+    ////////////////////////////////////////////////////////////////////////
+    if (id.equals(zkappIdentifier).toBoolean()) {
+      console.log('⭐ pending event is addition of a store to the manager');
 
-    const root0 = managerMM.getRoot();
-    const value0 = storeMM.getRoot();
+      const key = data0.key; // == data1.key
+      const value0 = data0.value;
+      const value1 = data1.value;
 
-    storeMM.set(data1.getKey(), data1.getValue());
-    managerMM.set(id, storeMM.getRoot());
+      // create a MerkleMap for the store, if not exist
+      const i = key.toString();
+      if (!storageRunner.maps[i]) storageRunner.maps[i] = new MerkleMap();
+      const storeMM = storageRunner.maps[i];
 
-    const root1 = managerMM.getRoot();
-    const value1 = storeMM.getRoot();
-    const key = id;
+      // get witness for store within the manager
+      const witnessManager = managerMM.getWitness(key);
 
-    console.log('  root0  =', root0.toString());
-    console.log('  root1  =', root1.toString());
-    console.log('  key    =', key.toString());
-    console.log('  value0 =', value0.toString());
-    console.log('  value1 =', value1.toString());
+      const root0 = managerMM.getRoot();
+      managerMM.set(key, storeMM.getRoot());
+      // ?: managerMM.set(key, value1); // no difference
+      const root1 = managerMM.getRoot();
 
-    rollupStepInfo.push({
-      root0,
-      root1,
-      key,
-      value0,
-      value1,
-      witnessManager,
-    });
-  });
+      console.log('  root0  =', root0.toString());
+      console.log('  root1  =', root1.toString());
+      console.log('  key    =', key.toString());
+      console.log('  value0 =', value0.toString());
+      console.log('  value1 =', value1.toString());
+      console.log();
+
+      rollupStepInfo.push({
+        root0,
+        root1,
+        key,
+        value0,
+        value1,
+        witnessManager,
+      });
+    }
+
+    ////////////////////////////////////////////////////////////////////////
+    // transformation of data in a store
+    ////////////////////////////////////////////////////////////////////////
+    else {
+      console.log('⭐ pending event is addition of data to a store');
+      // ??? do this, do it here ???
+      // create MerkleMaps for new stores, as needed
+      const i = id.toString();
+      if (!storageRunner.maps[i]) storageRunner.maps[i] = new MerkleMap();
+      const j = data1.key.toString();
+      if (!storageRunner.maps[j]) storageRunner.maps[j] = new MerkleMap();
+
+      // DO NOT get witness for data within the store
+      // This was already verified when a transformation was submitted to the zkApp
+      // now only need to prove the manager's merkle tree transformation
+      // X: const witnessStore = storesMM.getWitness(data1.getKey());
+
+      const storeMM = storageRunner.maps[i];
+
+      // get witness for store within the manager
+      const witnessManager = managerMM.getWitness(id);
+
+      const root0 = managerMM.getRoot();
+      const value0 = storeMM.getRoot();
+
+      storeMM.set(data1.getKey(), data1.getValue());
+      managerMM.set(id, storeMM.getRoot());
+
+      const root1 = managerMM.getRoot();
+      const value1 = storeMM.getRoot();
+      const key = id;
+
+      console.log('  root0  =', root0.toString());
+      console.log('  root1  =', root1.toString());
+      console.log('  key    =', key.toString());
+      console.log('  value0 =', value0.toString());
+      console.log('  value1 =', value1.toString());
+      console.log();
+
+      rollupStepInfo.push({
+        root0,
+        root1,
+        key,
+        value0,
+        value1,
+        witnessManager,
+      });
+    }
+  }
   log('...computing transitions');
 
   hr();
