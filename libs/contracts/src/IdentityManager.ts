@@ -236,13 +236,6 @@ export class IdentityManager extends SmartContract {
     });
 
     for (const { type, event } of events) this.emitEvent(type, event);
-
-    // TODO: not this! do pending
-    // set the new Merkle Map root based on the new data
-    const [root1] = witnessManager.computeRootAndKey(
-      identity.toUnitOfStore().getValue()
-    );
-    this.commitment.set(root1);
   }
 
   /**
@@ -253,7 +246,7 @@ export class IdentityManager extends SmartContract {
    * @param {MerkleMapWitness} witnessKeyring Witness for AuthNFactor (data) within Identity (Store).
    * @param {MerkleMapWitness} witnessManager Witness for Identity (Store) within Manager.
    */
-  @method NEW_addAuthNFactor(
+  @method addAuthNFactor(
     authNFactor: AuthNFactor,
     identity: Identity,
     witnessKeyring: MerkleMapWitness,
@@ -288,7 +281,7 @@ export class IdentityManager extends SmartContract {
    * @param {MerkleMapWitness} witnessKeyring Witness for AuthNFactor (data) within Identity (Store).
    * @param {MerkleMapWitness} witnessManager Witness for Identity (Store) within Manager.
    */
-  @method NEW_delAuthNFactor(
+  @method delAuthNFactor(
     authNFactor: AuthNFactor,
     identity: Identity,
     witnessKeyring: MerkleMapWitness,
@@ -324,7 +317,7 @@ export class IdentityManager extends SmartContract {
    * @param {MerkleMapWitness} witnessKeyring Witness for AuthNFactor (data) within Identity (Store).
    * @param {MerkleMapWitness} witnessManager Witness for Identity (Store) within Manager.
    */
-  @method NEW_setAuthNFactor(
+  @method setAuthNFactor(
     authNFactor0: AuthNFactor,
     authNFactor1: AuthNFactor,
     identity: Identity,
@@ -400,61 +393,6 @@ export class IdentityManager extends SmartContract {
     this.emitEvent('store:commit', {
       commitmentPending,
       commitmentSettled,
-    });
-  }
-
-  @method addAuthNFactor(
-    authNFactor: AuthNFactor,
-    id0: Identity,
-    id1: Identity,
-    witnessManager: MerkleMapWitness,
-    witnessKeyring: MerkleMapWitness
-  ) {
-    const mgrIdentifier = this.identifier.getAndAssertEquals();
-    const mgrCommitment = this.commitment.getAndAssertEquals();
-
-    // prove the Identity has been added to the current Manager MM
-    const [rootManager0] = witnessManager.computeRootAndKey(id0.commitment);
-    rootManager0.assertEquals(mgrCommitment, 'Identity not found!');
-
-    // prove the AuthNFactor IS NOT in the current Keyring MM
-    const [rootKeyring0] = witnessKeyring.computeRootAndKey(EMPTY);
-    rootKeyring0.assertEquals(id0.commitment, 'AuthNFactor already added!');
-
-    const key = authNFactor.getKey();
-    const value = authNFactor.getValue();
-
-    // prove the AuthNFactor IS in the new Keyring MM
-    const [rootKeyring1] = witnessKeyring.computeRootAndKey(value);
-    rootKeyring1.assertEquals(id1.commitment, 'AuthNFactor not in new ID');
-
-    // set the new Manager MM based on the new data
-    const [rootManager1] = witnessManager.computeRootAndKey(id1.commitment);
-    this.commitment.set(rootManager1);
-
-    // set the AuthNFactor in the Keyring
-    this.emitEvent('store:set', {
-      id: id1.toUnitOfStore().getKey(),
-      root0: rootKeyring0,
-      root1: rootKeyring1,
-      key,
-      value,
-      meta: [
-        authNFactor.protocol.type,
-        authNFactor.protocol.provider,
-        authNFactor.protocol.revision,
-        EMPTY,
-      ],
-    });
-
-    // set the Identity in the Manager
-    this.emitEvent('store:set', {
-      ...eventStoreDefault,
-      id: mgrIdentifier,
-      root0: rootManager0,
-      root1: rootManager1,
-      key: id1.toUnitOfStore().getKey(),
-      value: id1.toUnitOfStore().getValue(),
     });
   }
 }
