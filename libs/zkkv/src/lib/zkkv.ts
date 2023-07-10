@@ -53,14 +53,6 @@ export class UnitOfStore extends Struct({
   // ?:   return Poseidon.hash(this.key.toFields());
   // ?: }
 
-  // ?: getCommitment(): Field {
-  // ?:   return this.value;
-  // ?: }
-
-  // ?: setCommitment(commitment: Field): UnitOfStore {
-  // ?:   return this.setValue(commitment);
-  // ?: }
-
   setValue(value: Field): UnitOfStore {
     return UnitOfStore.init({ key: this.key, value, meta: this.getMeta() });
   }
@@ -166,6 +158,16 @@ export const eventStoreDefault = {
   key: EMPTY,
   value: EMPTY,
   meta: [EMPTY, EMPTY, EMPTY],
+};
+
+export type RollupStep = {
+  root0: Field;
+  root1: Field;
+  key: Field;
+  value0: Field;
+  value1: Field;
+  // X: witnessStore: MerkleMapWitness,
+  witnessManager: MerkleMapWitness;
 };
 
 export class RollupState extends Struct({
