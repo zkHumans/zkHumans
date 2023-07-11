@@ -106,7 +106,9 @@ Mina.setActiveInstance(Local);
 const feePayer = Local.testAccounts[0].publicKey;
 const feePayerKey = Local.testAccounts[0].privateKey;
 
-const zkappKey = PrivateKey.random();
+// const zkappKey = PrivateKey.random();
+const PK = 'EKFJtXzNFt6cv2AH5TvJKvMAw8RF1nfyT9xE7kedyUUNnXrpZERn';
+const zkappKey = PrivateKey.fromBase58(PK);
 const zkappAddress = zkappKey.toPublicKey();
 
 const emptyMMRoot = new MerkleMap().getRoot();
@@ -149,6 +151,11 @@ const storage = new StorageSimulator(); // simulates storage and event-processin
 // to conform its off-chain storage mechanics
 const zkappIdentifier = Identifier.fromPublicKey(zkappAddress, 1).toField();
 storageRunner.maps[zkappIdentifier.toString()] = new MerkleMap();
+// 2: // add something to the MM so it is not empty
+// 2: storageRunner.maps[zkappIdentifier.toString()].set(
+// 2:   zkappIdentifier,
+// 2:   zkappIdentifier
+// 2: );
 const zkappIdentity = new Identity({
   identifier: zkappIdentifier,
   commitment: storageRunner.maps[zkappIdentifier.toString()].getRoot(),
@@ -331,6 +338,8 @@ async function processEvents(offset = 0) {
           // off-chain storage should create the record
           const ev = EventStore.fromJSON(js);
           storage.maps[ev.id.toString()] = new MerkleMap();
+          // 2: // something was added to init the MM
+          // 2: storage.maps[ev.id.toString()].set(ev.id, ev.id);
         }
         break;
 
@@ -370,6 +379,16 @@ async function processEvents(offset = 0) {
 }
 
 async function addIdentity(idManagerMM: MerkleMap, identity: Identity) {
+  // 2: // add something to the MM so it is not empty
+  // 2: storageRunner.maps[identity.identifier.toString()] = new MerkleMap();
+  // 2: storageRunner.maps[identity.identifier.toString()].set(
+  // 2:   identity.identifier,
+  // 2:   identity.identifier
+  // 2: );
+  // 2: identity = identity.setCommitment(
+  // 2:   storageRunner.maps[identity.identifier.toString()].getRoot()
+  // 2: );
+
   // prove the identifier IS NOT in the Identity Manager MT
   const witness = idManagerMM.getWitness(identity.identifier);
 
@@ -441,6 +460,8 @@ async function commitPendingTransformationsWithAuthToken() {
     const commitmentPending = zkapp.commitment.get();
     const commitmentSettled =
       storageRunner.maps[zkappIdentifier.toString()].getRoot();
+    console.log('  commitmentPending:', commitmentPending.toString());
+    console.log('  commitmentSettled:', commitmentSettled.toString());
     log('  tx: prove() sign() send()...');
     const tx = await Mina.transaction(feePayer, () => {
       zkapp.commitPendingTransformationsWithAuthToken(
@@ -627,3 +648,6 @@ async function commitPendingTransformationsWithProof() {
   log('  ...tx: prove() sign() send()');
 }
 */
+
+// [1]: recursive proofs disabled until upstream bug resolved
+// [2]: test non-empty store and store data additions
