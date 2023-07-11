@@ -6,8 +6,8 @@ import {
   Mina,
   Poseidon,
   PrivateKey,
-  Proof,
-  verify,
+  // 1: Proof,
+  // 1: verify,
 } from 'snarkyjs';
 import {
   AuthNFactor,
@@ -20,9 +20,9 @@ import { Identifier, strToBool } from '@zkhumans/utils';
 import {
   EventStore,
   EventStorePending,
-  RollupState,
-  RollupStep,
-  RollupTransformations,
+  // 1: RollupState,
+  // 1: RollupStep,
+  // 1: RollupTransformations,
   eventStoreDefault,
 } from '@zkhumans/zkkv';
 
@@ -85,14 +85,14 @@ class StorageSimulator {
 // go!
 ////////////////////////////////////////////////////////////////////////
 
-let rollupTransformationVerificationKey: string;
-if (recursionEnabled || proofsEnabled) {
-  // compile before IdentityManager
-  log('compile ZkProgram(s)...');
-  const { verificationKey } = await RollupTransformations.compile();
-  rollupTransformationVerificationKey = verificationKey;
-  log('...compile ZkProgram(s)');
-}
+// 1: let rollupTransformationVerificationKey: string;
+// 1: if (recursionEnabled || proofsEnabled) {
+// 1:   // compile before IdentityManager
+// 1:   log('compile ZkProgram(s)...');
+// 1:   const { verificationKey } = await RollupTransformations.compile();
+// 1:   rollupTransformationVerificationKey = verificationKey;
+// 1:   log('...compile ZkProgram(s)');
+// 1: }
 
 if (proofsEnabled) {
   log('compile SmartContract...');
@@ -223,7 +223,7 @@ numEvents = await processEvents(numEvents);
 ////////////////////////////////////////////////////////////////////////
 
 hr();
-await commitPendingTransformations();
+await commitPendingTransformationsWithAuthToken();
 numEvents = await processEvents(numEvents);
 logRoots();
 
@@ -417,9 +417,10 @@ async function addAuthNFactor(
 }
 
 async function commitPendingTransformations() {
-  return recursionEnabled
-    ? await commitPendingTransformationsWithProof()
-    : await commitPendingTransformationsWithAuthToken();
+  // 1: return recursionEnabled
+  // 1:   ? await commitPendingTransformationsWithProof()
+  // 1:   : await commitPendingTransformationsWithAuthToken();
+  await commitPendingTransformationsWithAuthToken();
 }
 
 async function commitPendingTransformationsWithAuthToken() {
@@ -456,6 +457,7 @@ async function commitPendingTransformationsWithAuthToken() {
   log('...commit pending store events');
 }
 
+/* 1:
 async function commitPendingTransformationsWithProof() {
   hr();
   log('commit pending with Proof');
@@ -624,3 +626,4 @@ async function commitPendingTransformationsWithProof() {
   await tx.sign([feePayerKey]).send();
   log('  ...tx: prove() sign() send()');
 }
+*/
