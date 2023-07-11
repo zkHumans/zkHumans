@@ -53,14 +53,6 @@ export class UnitOfStore extends Struct({
   // ?:   return Poseidon.hash(this.key.toFields());
   // ?: }
 
-  // ?: getCommitment(): Field {
-  // ?:   return this.value;
-  // ?: }
-
-  // ?: setCommitment(commitment: Field): UnitOfStore {
-  // ?:   return this.setValue(commitment);
-  // ?: }
-
   setValue(value: Field): UnitOfStore {
     return UnitOfStore.init({ key: this.key, value, meta: this.getMeta() });
   }
