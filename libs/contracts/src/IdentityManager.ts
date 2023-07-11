@@ -167,6 +167,8 @@ export class Identity extends Struct({
   }
 
   toUnitOfStore(): UnitOfStore {
+    // ?: // obscure the identifier from the storage key
+    // ?: const key = Poseidon.hash(this.identifier.toFields());
     return UnitOfStore.init({ key: this.identifier, value: this.commitment });
   }
 
