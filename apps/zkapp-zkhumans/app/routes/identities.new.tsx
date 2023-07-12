@@ -187,7 +187,13 @@ export default function NewIdentity() {
       identity.setCommitment(mmIdentity.getRoot());
       cnsl.toc('success');
 
-      // TODO: also add OP Key AF as Identity meta for init by indexer
+      // Add OP Key AF as Identity meta for init by indexer
+      // Note: This approach piggy-back-rides on UnitOfStore's metadata that
+      // every stored element, including Identity, has. Consider a better way.
+      // This is then read by the indexer, so that an AF maybe created at same
+      // time as an Identity, within the common pattern. The commitment (key)
+      // as first meta data is what triggers this behavior within the indexer.
+      identity.setMeta([identity.commitment, af.getKey(), af.getValue()]);
 
       ////////////////////////////////////////////////////////////////////////
       // add BioAuth as AuthNFactor to Identity Keyring
