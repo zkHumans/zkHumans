@@ -1,6 +1,12 @@
 import { basename } from 'path';
 import { promises as fs } from 'fs';
-import { AccountUpdate, MerkleMap, PrivateKey } from 'snarkyjs';
+import {
+  AccountUpdate,
+  CircuitString,
+  MerkleMap,
+  Poseidon,
+  PrivateKey,
+} from 'snarkyjs';
 import { Identifier, deploy, loopUntilAccountExists } from '@zkhumans/utils';
 import { eventStoreDefault } from '@zkhumans/zkkv';
 import { Identity, IdentityManager } from '../IdentityManager';
@@ -8,6 +14,15 @@ import { Identity, IdentityManager } from '../IdentityManager';
 Error.stackTraceLimit = 1000;
 
 const EXE = basename(process.argv[1], '.js');
+
+process.chdir(process.cwd() + '/libs/contracts');
+
+// check env for auth
+const authStr = process.env['ZKAPP_SECRET_AUTH'];
+if (!authStr) {
+  console.error(`ERROR: env ZKAPP_SECRET_AUTH undefined`);
+  process.exit(1);
+}
 
 // check script args
 const deployAlias = process.argv[2];
@@ -101,6 +116,10 @@ try {
   console.log('init identifier :', initIdentifier.toString());
   console.log('init commitment :', initCommitment.toString());
 
+  // setup auth
+  const authToken = Poseidon.hash(CircuitString.fromString(authStr).toFields());
+  const authHash = Poseidon.hash([authToken]);
+
   await deploy(deployerPrivateKey, zkAppPrivateKey, config.url, () => {
     const sender = deployerPrivateKey.toPublicKey();
     AccountUpdate.fundNewAccount(sender);
@@ -111,6 +130,7 @@ try {
     // set initial storage identifier and root hash
     zkApp.identifier.set(initIdentifier);
     zkApp.commitment.set(initCommitment);
+    zkApp.authHash.set(authHash);
 
     // notify off-chain storage
     zkApp.emitEvent('store:new', {
