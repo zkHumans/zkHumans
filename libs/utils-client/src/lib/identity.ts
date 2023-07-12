@@ -35,7 +35,7 @@ export class IdentityClientUtils {
 
     const dbIdentities = [] as NonNullable<ApiStoreByIdOutput>[];
     for (const identifier of identifiers) {
-      const identity = new Identity({
+      const identity = Identity.init({
         identifier: identifier.toField(),
         commitment: Field(0),
       });
@@ -75,7 +75,7 @@ export class IdentityClientUtils {
    */
   /*
   static async getKeyringMM(identifier: string) {
-    const identity = new Identity({
+    const identity = Identity.init({
       identifier: Identifier.fromBase58(identifier).toField(),
       commitment: Field(0),
     });
@@ -104,7 +104,7 @@ export class IdentityClientUtils {
     const publicKey = PublicKey.fromBase58(account);
     for (let i = 0; i < this.IDENTITY_MGR_MAX_IDS_PER_ACCT; i++) {
       const identifier = Identifier.fromPublicKey(publicKey, i);
-      const identity = new Identity({
+      const identity = Identity.init({
         identifier: identifier.toField(),
         commitment: Field(0),
       });
@@ -258,7 +258,7 @@ export class IdentityClientUtils {
   ) {
     const mmIDManager = await IdentityClientUtils.getManagerMM();
 
-    const identity = new Identity({
+    const identity = Identity.init({
       identifier: Identifier.fromBase58(identifier).toField(),
       commitment: mmIDKeyring.getRoot(),
     });
