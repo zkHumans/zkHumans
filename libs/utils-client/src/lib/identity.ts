@@ -14,10 +14,6 @@ import type { AuthNFactorProtocol } from '@zkhumans/contracts';
 import type { SignedData } from '@aurowallet/mina-provider/dist/TSTypes';
 type WalletSignedData = SignedData;
 
-const IDENTITY_MGR_MAX_IDS_PER_ACCT = 10;
-const IDENTITY_MGR_SMT_NAME = '_IdentityManager_';
-const IDENTITY_MGR_SALT = 'TODO:somethingUniqueTotheZkapp';
-
 /**
  * Collection of client utility functions for Identities.
  *
@@ -25,12 +21,16 @@ const IDENTITY_MGR_SALT = 'TODO:somethingUniqueTotheZkapp';
  * in-browser.
  */
 export class IdentityClientUtils {
+  static IDENTITY_MGR_MAX_IDS_PER_ACCT = 10;
+  static IDENTITY_MGR_NAME = '_IdentityManager_';
+  static IDENTITY_MGR_SALT = 'TODO:somethingUniqueTotheZkapp';
+
   static async getIdentities(account: string) {
     const publicKey = PublicKey.fromBase58(account);
 
     const identifiers = generateIdentifiers(
       publicKey,
-      IDENTITY_MGR_MAX_IDS_PER_ACCT
+      this.IDENTITY_MGR_MAX_IDS_PER_ACCT
     );
 
     const dbIdentities = [] as NonNullable<ApiStoreByIdOutput>[];
@@ -47,11 +47,13 @@ export class IdentityClientUtils {
     return dbIdentities;
   }
 
+  // Restore MerkleMap data from database, if it exists
+  // otherwise return new MerkleMap()
+  //
+  // Note: db store is only created by the indexer service
   static async getStoredMerkleMap(identifier: string) {
     const mm = new MerkleMap();
 
-    // restore MerkleMap data from database, if it exists
-    // Note: db store is only created by the indexer service
     const store = await trpc.store.byId.query({ identifier });
     if (!store) return mm;
 
@@ -69,8 +71,9 @@ export class IdentityClientUtils {
 
   /**
    * Get the MerkleMap for an Identity Keyring by the given identifier.
-   * Create in database if doesn't exist, restore from database if it does.
+   * Restore from database if it exists.
    */
+  /*
   static async getKeyringMM(identifier: string) {
     const identity = new Identity({
       identifier: Identifier.fromBase58(identifier).toField(),
@@ -79,14 +82,17 @@ export class IdentityClientUtils {
     const id = identity.identifier.toString();
     return this.getStoredMerkleMap(id);
   }
+  */
 
   /**
    * Get MerkleMap for an Identity Manager.
    * Create in database if doesn't exist, restore from database if it does.
    */
+  /*
   static async getManagerMM(idMgr: string = IDENTITY_MGR_SMT_NAME) {
     return this.getStoredMerkleMap(idMgr);
   }
+  */
 
   /**
    * Return next unused (available) identifier for the given account,
@@ -96,7 +102,7 @@ export class IdentityClientUtils {
    */
   static async getNextUnusedIdentifier(account: string) {
     const publicKey = PublicKey.fromBase58(account);
-    for (let i = 0; i < IDENTITY_MGR_MAX_IDS_PER_ACCT; i++) {
+    for (let i = 0; i < this.IDENTITY_MGR_MAX_IDS_PER_ACCT; i++) {
       const identifier = Identifier.fromPublicKey(publicKey, i);
       const identity = new Identity({
         identifier: identifier.toField(),
@@ -109,6 +115,7 @@ export class IdentityClientUtils {
     return null;
   }
 
+  // TODO: make AuthNFactorOperatorKey
   static getOperatorKeySecret(
     identifier: string,
     data: WalletSignedData | null
@@ -141,6 +148,7 @@ export class IdentityClientUtils {
     return bioAuthOracle.getBioAuthLink(bioAuthId);
   }
 
+  /*
   static async addAuthNFactorOperatorKey(
     mmKeyring: MerkleMap,
     identifier: string,
@@ -167,7 +175,9 @@ export class IdentityClientUtils {
     );
     return true;
   }
+  */
 
+  /*
   static async addAuthNFactorBioAuth(
     mmKeyring: MerkleMap,
     identifier: string,
@@ -197,7 +207,9 @@ export class IdentityClientUtils {
       return false;
     }
   }
+  */
 
+  /*
   static async addAuthNFactorToKeyring(
     mmKeyring: MerkleMap,
     identifier: string, // TODO: remove
@@ -218,6 +230,7 @@ export class IdentityClientUtils {
     // X:   value: smtValueToString(af, AuthNFactor),
     // X: });
   }
+  */
 
   static async getAuthNFactorsFromKeyring(identifier: string) {
     const authNFactors = {} as { [key: string]: AuthNFactorProtocol };
@@ -238,6 +251,7 @@ export class IdentityClientUtils {
     return authNFactors;
   }
 
+  /*
   static async prepareAddNewIdentity(
     identifier: string,
     mmIDKeyring: MerkleMap
@@ -255,7 +269,9 @@ export class IdentityClientUtils {
 
     return { identity, witness };
   }
+  */
 
+  /*
   static async addNewIdentity(identifier: string, identity: Identity) {
     const mmIDManager = await IdentityClientUtils.getManagerMM();
     mmIDManager.set(identity.identifier, identity.commitment);
@@ -269,6 +285,7 @@ export class IdentityClientUtils {
 
     return mmIDManager;
   }
+  */
 
   static humanReadableAuthNFactor(afp: AuthNFactorProtocol) {
     const x = { type: '', provider: '', revision: Number(afp.revision) };
