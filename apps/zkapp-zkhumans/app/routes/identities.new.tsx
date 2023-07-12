@@ -3,7 +3,6 @@ import { useAppContext } from '../root';
 import { useEffect, useState } from 'react';
 import { Modal } from '../components';
 import { Link } from '@remix-run/react';
-import { delay } from '@zkhumans/utils';
 
 import type { WalletSignedData } from '../hooks';
 
@@ -54,6 +53,7 @@ export default function NewIdentity() {
   // continually check a pending BioAuth when there is a link for it
   useEffect(() => {
     (async () => {
+      const { delay } = await import('@zkhumans/utils');
       if (identifier && bioAuthState.link && !bioAuthState.auth) {
         const { IdentityClientUtils } = await import('@zkhumans/utils-client');
         const [id, auth] = await IdentityClientUtils.getBioAuth(identifier);
@@ -117,16 +117,20 @@ export default function NewIdentity() {
       return;
     }
 
-    if (!bioAuthState.auth) {
-      cnsl.toc('error', 'ERROR: no bioauth');
-      return;
-    }
+    // WIP: add identity first, then add bioauth authNFactor later
+    // X: if (!bioAuthState.auth) {
+    // X:   cnsl.toc('error', 'ERROR: no bioauth');
+    // X:   return;
+    // X: }
 
     if (!signature) {
       cnsl.toc('error', 'ERROR: no operator key signature');
       return;
     }
 
+    ////////////////////////////////////////////////////////////////////////
+    // ensure API is available
+    ////////////////////////////////////////////////////////////////////////
     try {
       const r = await trpc.health.check.query();
       if (r !== 1) throw new Error('API not available');
@@ -138,42 +142,79 @@ export default function NewIdentity() {
       return;
     }
 
+    ////////////////////////////////////////////////////////////////////////
     // dynamically load libs for in-browser only, avoid ERR_REQUIRE_ESM
+    ////////////////////////////////////////////////////////////////////////
+    const { MerkleMap } = await import('snarkyjs');
+    const { AuthNFactor, AuthNType, AuthNProvider, Identity } = await import(
+      '@zkhumans/contracts'
+    );
+    const { Identifier } = await import('@zkhumans/utils');
     const { IdentityClientUtils } = await import('@zkhumans/utils-client');
     const IDUtils = IdentityClientUtils;
 
-    // create Identity Keyring MM
-    const mmIDKeyring = await IDUtils.getKeyringMM(identifier);
-
-    // add Operator Key as AuthNFactor to Identity Keyring
-    cnsl.tic('> Adding Operator Key as Authentication Factor...');
-    const statusOpKey = await IDUtils.addAuthNFactorOperatorKey(
-      mmIDKeyring,
-      identifier,
-      signature
-    );
-    cnsl.toc(statusOpKey ? 'success' : 'error');
-    if (!statusOpKey) return;
-
-    // add BioAuth as AuthNFactor to Identity Keyring
-    cnsl.tic('> Adding BioAuth as Authentication Factor...');
-    const statusBioAuth = await IDUtils.addAuthNFactorBioAuth(
-      mmIDKeyring,
-      identifier,
-      bioAuthState.auth
-    );
-    cnsl.toc(statusBioAuth ? 'success' : 'error');
-    if (!statusBioAuth) return;
-
-    // get proof that new Identity can be added to Identity Manager
-    cnsl.tic('> Create New Identity Merkle proof...');
-    const { identity, witness } = await IDUtils.prepareAddNewIdentity(
-      identifier,
-      mmIDKeyring
-    );
-    cnsl.toc('success', `witness=${JSON.stringify(witness.toJSON())}`);
-
     try {
+      ////////////////////////////////////////////////////////////////////////
+      // create new Identity
+      ////////////////////////////////////////////////////////////////////////
+      const mmIdentity = new MerkleMap();
+      const identity = new Identity({
+        identifier: Identifier.fromBase58(identifier).toField(),
+        commitment: mmIdentity.getRoot(),
+      });
+
+      ////////////////////////////////////////////////////////////////////////
+      // add Operator Key as AuthNFactor to Identity Keyring
+      ////////////////////////////////////////////////////////////////////////
+      cnsl.tic('> Add Operator Key as Authentication Factor...');
+      // get operator key secret from identifier signed by operator key (wallet)
+      const secret = IDUtils.getOperatorKeySecret(identifier, signature);
+      if (!secret || secret === '')
+        throw new Error('secret from op key failed');
+
+      // init auth factor
+      const af = AuthNFactor.init({
+        protocol: {
+          type: AuthNType.operator,
+          provider: AuthNProvider.zkhumans,
+          revision: 0,
+        },
+        data: { salt: IDUtils.IDENTITY_MGR_SALT, secret },
+      });
+
+      // add auth factor to MerkleMap
+      mmIdentity.set(af.getKey(), af.getValue());
+      identity.setCommitment(mmIdentity.getRoot());
+      cnsl.toc('success');
+
+      // TODO: also add OP Key AF as Identity meta for init by indexer
+
+      ////////////////////////////////////////////////////////////////////////
+      // add BioAuth as AuthNFactor to Identity Keyring
+      // Note: not adding BioAuth as AF, but rather make optional
+      ////////////////////////////////////////////////////////////////////////
+      // X: // add BioAuth as AuthNFactor to Identity Keyring
+      // X: cnsl.tic('> Adding BioAuth as Authentication Factor...');
+      // X: const statusBioAuth = await IDUtils.addAuthNFactorBioAuth(
+      // X:   mmIDKeyring,
+      // X:   identifier,
+      // X:   bioAuthState.auth
+      // X: );
+      // X: cnsl.toc(statusBioAuth ? 'success' : 'error');
+      // X: if (!statusBioAuth) return;
+
+      ////////////////////////////////////////////////////////////////////////
+      // get proof that new Identity can be added to Identity Manager
+      ////////////////////////////////////////////////////////////////////////
+      cnsl.tic('> Create New Identity Merkle proof...');
+      const mmMgr = await IDUtils.getStoredMerkleMap(IDUtils.IDENTITY_MGR_NAME);
+      // prove the identity IS NOT in the Identity Manager MM
+      const witness = mmMgr.getWitness(identity.identifier);
+      cnsl.toc('success', `witness=${JSON.stringify(witness.toJSON())}`);
+
+      ////////////////////////////////////////////////////////////////////////
+      // prepare transaction
+      ////////////////////////////////////////////////////////////////////////
       cnsl.tic('> Preparing transaction...');
       const zks = zk.getReadyState();
       if (!zks) throw new Error('zkApp not ready for transaction');
@@ -183,6 +224,9 @@ export default function NewIdentity() {
       });
       cnsl.toc('success');
 
+      ////////////////////////////////////////////////////////////////////////
+      // generate transaction proof
+      ////////////////////////////////////////////////////////////////////////
       cnsl.tic('> Generating transaction proof...');
       await tx.prove();
       cnsl.toc('success');
