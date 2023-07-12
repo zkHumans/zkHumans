@@ -158,7 +158,7 @@ export default function NewIdentity() {
       // create new Identity
       ////////////////////////////////////////////////////////////////////////
       const mmIdentity = new MerkleMap();
-      const identity = new Identity({
+      const identity = Identity.init({
         identifier: Identifier.fromBase58(identifier).toField(),
         commitment: mmIdentity.getRoot(),
       });
