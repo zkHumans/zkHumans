@@ -158,22 +158,64 @@ export class AuthNFactor extends Struct({
 export class Identity extends Struct({
   identifier: Field,
   commitment: Field,
+  meta0: Field,
+  meta1: Field,
+  meta2: Field,
 }) {
   setCommitment(commitment: Field): Identity {
     return new Identity({
       identifier: this.identifier,
       commitment,
+      meta0: this.meta0,
+      meta1: this.meta1,
+      meta2: this.meta2,
+    });
+  }
+
+  setMeta(meta: [Field, Field, Field]): Identity {
+    return Identity.init({
+      identifier: this.identifier,
+      commitment: this.commitment,
+      meta,
     });
   }
 
   toUnitOfStore(): UnitOfStore {
     // ?: // obscure the identifier from the storage key
     // ?: const key = Poseidon.hash(this.identifier.toFields());
-    return UnitOfStore.init({ key: this.identifier, value: this.commitment });
+    return UnitOfStore.init({
+      key: this.identifier,
+      value: this.commitment,
+      meta: [this.meta0, this.meta1, this.meta2],
+    });
   }
 
   static fromUnitOfStore(store: UnitOfStore): Identity {
-    return new Identity({ identifier: store.key, commitment: store.value });
+    return new Identity({
+      identifier: store.key,
+      commitment: store.value,
+      meta0: store.meta0,
+      meta1: store.meta1,
+      meta2: store.meta2,
+    });
+  }
+
+  static init(params: {
+    identifier: Field;
+    commitment: Field;
+    meta?: [Field, Field, Field];
+  }): Identity {
+    const defaults = {
+      meta: [EMPTY, EMPTY, EMPTY],
+    };
+    const p = { ...defaults, ...params };
+    return new Identity({
+      identifier: p.identifier,
+      commitment: p.commitment,
+      meta0: p.meta[0],
+      meta1: p.meta[1],
+      meta2: p.meta[2],
+    });
   }
 }
 

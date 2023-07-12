@@ -143,7 +143,7 @@ try {
 
   // simulate the zkApp itself as an Identity
   // to conform its off-chain storage mechanics
-  const zkAppIdentity = new Identity({
+  const zkAppIdentity = Identity.init({
     identifier: Identifier.fromPublicKey(zkAppPublicKey, 1).toField(),
     commitment: mmIDManager.getRoot(),
   });

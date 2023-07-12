@@ -114,28 +114,28 @@ const zkappAddress = zkappKey.toPublicKey();
 const emptyMMRoot = new MerkleMap().getRoot();
 
 // create identities
-const Alice = new Identity({
+const Alice = Identity.init({
   identifier: Identifier.fromPublicKey(
     Local.testAccounts[0].publicKey,
     1
   ).toField(),
   commitment: emptyMMRoot,
 });
-const Bob = new Identity({
+const Bob = Identity.init({
   identifier: Identifier.fromPublicKey(
     Local.testAccounts[1].publicKey,
     1
   ).toField(),
   commitment: emptyMMRoot,
 });
-// const Charlie = new Identity({
+// const Charlie = Identity.init({
 //   identifier: Identifier.fromPublicKey(
 //     Local.testAccounts[2].publicKey,
 //     1
 //   ).toField(),
 //   commitment: emptyMMRoot,
 // });
-// const Darcy = new Identity({
+// const Darcy = Identity.init({
 //   identifier: Identifier.fromPublicKey(
 //     Local.testAccounts[3].publicKey,
 //     1
@@ -156,7 +156,7 @@ storageRunner.maps[zkappIdentifier.toString()] = new MerkleMap();
 // 2:   zkappIdentifier,
 // 2:   zkappIdentifier
 // 2: );
-const zkappIdentity = new Identity({
+const zkappIdentity = Identity.init({
   identifier: zkappIdentifier,
   commitment: storageRunner.maps[zkappIdentifier.toString()].getRoot(),
 });
