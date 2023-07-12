@@ -1,20 +1,11 @@
 {
   "version": 1,
   "deployAliases": {
-    "berkeley-bioauth": {
-      "url": "https://proxy.berkeley.minaexplorer.com/graphql",
-      "keyPath": "keys/berkeley-bioauth.json",
-      "fee": "0.1",
-      "smartContract": "BioAuth"
-    },
-    "berkeley-feepayer": {
-      "url": "https://proxy.berkeley.minaexplorer.com/graphql",
-      "keyPath": "keys/berkeley-feepayer.json",
-      "fee": "0.1"
-    },
     "berkeley-identity": {
       "url": "https://proxy.berkeley.minaexplorer.com/graphql",
       "keyPath": "keys/berkeley-identity.json",
+      "feepayerKeyPath": "keys/berkeley-feepayer.json",
+      "feepayerAlias": "berkeley-feepayer",
       "fee": "0.1",
       "smartContract": "IdentityManager"
     }
