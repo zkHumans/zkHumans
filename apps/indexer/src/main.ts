@@ -5,7 +5,7 @@ import {
   fetchAccount,
   fetchLastBlock,
 } from 'snarkyjs';
-import { trpc, trpcWait } from '@zkhumans/trpc-client';
+import { ApiInputStoreCreate, trpc, trpcWait } from '@zkhumans/trpc-client';
 import {
   AuthNFactor,
   AuthNProvider,
@@ -137,6 +137,7 @@ const loop = async () => {
 
     // TODO: a better way to access event data?
     const js = JSON.parse(JSON.stringify(event.event.data));
+    console.log();
     console.log('Event:', js);
 
     switch (event.type) {
@@ -144,54 +145,13 @@ const loop = async () => {
       case 'store:new':
         {
           const es = EventStore.fromJSON(js);
-
-          // if the store commitment (key) equals first meta data
-          if (es.meta[0].equals(es.root1).toBoolean()) {
-            // set the remaining meta data as key:value data within the store.
-            // This enables a store to be created with an initial key:value data.
-            // Hack! Consider a better way.
-            // Used when creating an Identity with an initial AuthNFactor Op Key
-            // and only then...
-
-            // create the store with default/empty meta data
-            const x = await trpc.store.create.mutate({
-              identifier: es.id.toString(),
-              commitment: es.root1.toString(),
-              meta: JSON.stringify(eventStoreDefault.meta),
-              zkapp: { address: zkappAddress },
-            });
-            console.log('[store:new] (with data) created store:', x);
-
-            // create an AF of type Operator Key to get it's meta
-            const af = AuthNFactor.init({
-              protocol: {
-                type: AuthNType.operator,
-                provider: AuthNProvider.zkhumans,
-                revision: 0,
-              },
-              data: { salt: '', secret: '' }, // !matters
-            });
-            const meta = af.toUnitOfStore().getMeta();
-
-            // set store data from the meta data
-            const y = await trpc.store.set.mutate({
-              store: {
-                identifier: es.id.toString(),
-              },
-              key: es.meta[1].toString(),
-              value: es.meta[2].toString(),
-              meta: JSON.stringify(meta),
-            });
-            console.log('[store:new] (with data) set data:', y);
-          } else {
-            const x = await trpc.store.create.mutate({
-              identifier: es.id.toString(),
-              commitment: es.root1.toString(),
-              meta: JSON.stringify(es.meta),
-              zkapp: { address: zkappAddress },
-            });
-            console.log('[store:new] created store:', x);
-          }
+          const x = await trpc.store.create.mutate({
+            identifier: es.id.toString(),
+            commitment: es.root1.toString(),
+            meta: JSON.stringify(es.meta),
+            zkapp: { address: zkappAddress },
+          });
+          console.log('[store:new] created store:', x);
         }
         break;
 
@@ -215,15 +175,59 @@ const loop = async () => {
       case 'store:pending':
         {
           const es = EventStorePending.fromJSON(js);
-          // ?: const x = await trpc.store.set.mutate({
-          // ?:   store: { id: es.id.toString() },
-          // ?:   key: es.key.toString(),
-          // ?:   value: es.value.toString(),
-          // ?:   meta: JSON.stringify(es.meta),
-          // ?:   isPending: true,
-          // ?:   // commitmentPending:
-          // ?: });
-          // ?: console.log('[store:set] create or update key:value:', x);
+
+          const store: ApiInputStoreCreate = {
+            identifier: es.data1.getKey().toString(),
+            commitment: es.data1.getValue().toString(),
+            meta: JSON.stringify(es.data1.getMeta()),
+            zkapp: { address: zkappAddress },
+          };
+
+          // if the store commitment (value) equals first meta data
+          if (es.data1.meta0.equals(es.data1.value).toBoolean()) {
+            // set the remaining meta data as key:value data within the store.
+            // This enables a store to be created with an initial key:value data.
+            // Hack! Consider a better way.
+            // Used when creating an Identity with an initial AuthNFactor Op Key
+            // and only then...
+
+            // create the store with default/empty meta data
+            const x = await trpc.store.create.mutate({
+              ...store,
+              meta: JSON.stringify(eventStoreDefault.meta),
+            });
+            console.log('[store:pending] (with data) created store:', x);
+
+            // create an AF of type Operator Key to get it's meta
+            const af = AuthNFactor.init({
+              protocol: {
+                type: AuthNType.operator,
+                provider: AuthNProvider.zkhumans,
+                revision: 0,
+              },
+              data: { salt: '', secret: '' }, // !matters
+            });
+            const meta = af.toUnitOfStore().getMeta();
+
+            // set store data from the meta data
+            const y = await trpc.store.set.mutate({
+              store: {
+                identifier: store.identifier,
+              },
+              key: es.data1.meta1.toString(),
+              value: es.data1.meta2.toString(),
+              meta: JSON.stringify(meta),
+              isPending: true,
+              settlementChecksum: es.settlementChecksum.toString(),
+              commitmentPending: es.commitmentPending.toString(),
+              blockHeight,
+              globalSlot,
+            });
+            console.log('[store:pending] (with data) set data:', y);
+          } else {
+            const x = await trpc.store.create.mutate(store);
+            console.log('[store:pending] created store:', x);
+          }
         }
         break;
 
@@ -257,7 +261,6 @@ const loop = async () => {
 const main = async () => {
   try {
     await loop();
-    console.log();
 
     if (STOP) {
       console.log('Exiting upon request');
