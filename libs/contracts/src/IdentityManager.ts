@@ -324,6 +324,7 @@ export class IdentityManager extends SmartContract {
    * @param {MerkleMapWitness} witnessKeyring Witness for AuthNFactor (data) within Identity (Store).
    * @param {MerkleMapWitness} witnessManager Witness for Identity (Store) within Manager.
    */
+  /*
   @method delAuthNFactor(
     authNFactor: AuthNFactor,
     identity: Identity,
@@ -350,6 +351,7 @@ export class IdentityManager extends SmartContract {
 
     for (const { type, event } of events) this.emitEvent(type, event);
   }
+  */
 
   /**
    * Set an Authentication Factor within an Identity.
@@ -360,6 +362,7 @@ export class IdentityManager extends SmartContract {
    * @param {MerkleMapWitness} witnessKeyring Witness for AuthNFactor (data) within Identity (Store).
    * @param {MerkleMapWitness} witnessManager Witness for Identity (Store) within Manager.
    */
+  /*
   @method setAuthNFactor(
     authNFactor0: AuthNFactor,
     authNFactor1: AuthNFactor,
@@ -384,6 +387,7 @@ export class IdentityManager extends SmartContract {
 
     for (const { type, event } of events) this.emitEvent(type, event);
   }
+  */
 
   /**
    * Commit pending transformations with a recursive proof of state transformation.
