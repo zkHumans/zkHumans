@@ -104,61 +104,42 @@ export default function NewIdentity() {
   }
 
   async function handlePrepareCreateIdentityProof() {
-    cnsl.tic('Preparing Create Identity Proof...');
-
-    const snarkyjs = zk.state.snarkyjs;
-    if (!snarkyjs || !zk.state.account) {
-      cnsl.toc('error', 'ERROR: snarkyjs and/or account not ready!');
-      return;
-    }
-
-    if (!identifier) {
-      cnsl.toc('error', 'ERROR: no available identifier');
-      return;
-    }
-
-    // WIP: add identity first, then add bioauth authNFactor later
-    // X: if (!bioAuthState.auth) {
-    // X:   cnsl.toc('error', 'ERROR: no bioauth');
-    // X:   return;
-    // X: }
-
-    if (!signature) {
-      cnsl.toc('error', 'ERROR: no operator key signature');
-      return;
-    }
-
-    ////////////////////////////////////////////////////////////////////////
-    // ensure API is available
-    ////////////////////////////////////////////////////////////////////////
     try {
+      cnsl.tic('Preparing Create Identity Proof...');
+
+      const zkstate = zk.getReadyState();
+      if (!zkstate) throw new Error('zkApp not ready for transaction');
+
+      const { zkApp, snarkyjs } = zkstate;
+
+      if (!identifier) throw new Error('ERROR: no available identifier');
+
+      if (!signature) throw new Error('no operator key signature');
+
       const r = await trpc.health.check.query();
       if (r !== 1) throw new Error('API not available');
-    } catch (
-      err: any // eslint-disable-line @typescript-eslint/no-explicit-any
-    ) {
-      cnsl.toc('error', 'ERROR: API not available');
-      console.log('ERROR', err.message, err.code);
-      return;
-    }
 
-    ////////////////////////////////////////////////////////////////////////
-    // dynamically load libs for in-browser only, avoid ERR_REQUIRE_ESM
-    ////////////////////////////////////////////////////////////////////////
-    const { MerkleMap } = await import('snarkyjs');
-    const { AuthNFactor, AuthNType, AuthNProvider, Identity } = await import(
-      '@zkhumans/contracts'
-    );
-    const { Identifier } = await import('@zkhumans/utils');
-    const { IdentityClientUtils } = await import('@zkhumans/utils-client');
-    const IDUtils = IdentityClientUtils;
+      // WIP: add identity first, then add bioauth authNFactor later
+      // X: if (!bioAuthState.auth) {
+      // X:   cnsl.toc('error', 'ERROR: no bioauth');
+      // X:   return;
+      // X: }
 
-    try {
+      ////////////////////////////////////////////////////////////////////////
+      // dynamically load libs for in-browser only, avoid ERR_REQUIRE_ESM
+      ////////////////////////////////////////////////////////////////////////
+      const { AuthNFactor, AuthNType, AuthNProvider, Identity } = await import(
+        '@zkhumans/contracts'
+      );
+      const { Identifier } = await import('@zkhumans/utils');
+      const { IdentityClientUtils } = await import('@zkhumans/utils-client');
+      const IDUtils = IdentityClientUtils;
+
       ////////////////////////////////////////////////////////////////////////
       // create new Identity
       ////////////////////////////////////////////////////////////////////////
-      const mmIdentity = new MerkleMap();
-      const identity = Identity.init({
+      const mmIdentity = new snarkyjs.MerkleMap();
+      let identity = Identity.init({
         identifier: Identifier.fromBase58(identifier).toField(),
         commitment: mmIdentity.getRoot(),
       });
@@ -184,7 +165,7 @@ export default function NewIdentity() {
 
       // add auth factor to MerkleMap
       mmIdentity.set(af.getKey(), af.getValue());
-      identity.setCommitment(mmIdentity.getRoot());
+      identity = identity.setCommitment(mmIdentity.getRoot());
       cnsl.toc('success');
 
       // Add OP Key AF as Identity meta for init by indexer
@@ -193,7 +174,11 @@ export default function NewIdentity() {
       // This is then read by the indexer, so that an AF maybe created at same
       // time as an Identity, within the common pattern. The commitment (key)
       // as first meta data is what triggers this behavior within the indexer.
-      identity.setMeta([identity.commitment, af.getKey(), af.getValue()]);
+      identity = identity.setMeta([
+        identity.commitment,
+        af.getKey(),
+        af.getValue(),
+      ]);
 
       ////////////////////////////////////////////////////////////////////////
       // add BioAuth as AuthNFactor to Identity Keyring
@@ -213,7 +198,11 @@ export default function NewIdentity() {
       // get proof that new Identity can be added to Identity Manager
       ////////////////////////////////////////////////////////////////////////
       cnsl.tic('> Create New Identity Merkle proof...');
-      const mmMgr = await IDUtils.getStoredMerkleMap(IDUtils.IDENTITY_MGR_NAME);
+      // this is strange... TODO fix this!
+      const idMgr = Identifier.fromPublicKey(zkApp.identityManager.address, 1)
+        .toField()
+        .toString();
+      const mmMgr = await IDUtils.getStoredMerkleMap(idMgr);
       // prove the identity IS NOT in the Identity Manager MM
       const witness = mmMgr.getWitness(identity.identifier);
       cnsl.toc('success', `witness=${JSON.stringify(witness.toJSON())}`);
@@ -222,9 +211,6 @@ export default function NewIdentity() {
       // prepare transaction
       ////////////////////////////////////////////////////////////////////////
       cnsl.tic('> Preparing transaction...');
-      const zks = zk.getReadyState();
-      if (!zks) throw new Error('zkApp not ready for transaction');
-      const { zkApp, snarkyjs } = zks;
       const tx = await snarkyjs.Mina.transaction(() => {
         zkApp.identityManager.addIdentity(identity, witness);
       });
