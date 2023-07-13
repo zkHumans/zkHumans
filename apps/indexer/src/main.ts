@@ -6,11 +6,27 @@ import {
   fetchLastBlock,
 } from 'snarkyjs';
 import { trpc, trpcWait } from '@zkhumans/trpc-client';
-import { IdentityManager } from '@zkhumans/contracts';
-import { EventStore } from '@zkhumans/zkkv';
+import {
+  AuthNFactor,
+  AuthNProvider,
+  AuthNType,
+  IdentityManager,
+} from '@zkhumans/contracts';
+import {
+  EventStore,
+  EventStoreCommit,
+  EventStorePending,
+  eventStoreDefault,
+} from '@zkhumans/zkkv';
 import { delay } from '@zkhumans/utils';
 
 const INDEXER_CYCLE_TIME = 1000 * +(process.env['INDEXER_CYCLE_TIME'] ?? 30);
+const ZKAPP_SECRET_AUTH = process.env['ZKAPP_SECRET_AUTH'];
+
+if (!ZKAPP_SECRET_AUTH) {
+  console.log('ERROR: ZKAPP_SECRET_AUTH not defined');
+  process.exit(1);
+}
 
 console.log('API_URL            :', process.env['API_URL']);
 console.log('INDEXER_CYCLE_TIME :', INDEXER_CYCLE_TIME);
@@ -121,25 +137,68 @@ const loop = async () => {
 
     // TODO: a better way to access event data?
     const js = JSON.parse(JSON.stringify(event.event.data));
-    const es = EventStore.fromJSON(js);
+    console.log('Event:', js);
 
     switch (event.type) {
       // off-chain storage: create store
       case 'store:new':
         {
-          const x = await trpc.store.create.mutate({
-            identifier: es.id.toString(),
-            commitment: es.root1.toString(),
-            meta: JSON.stringify(es.meta),
-            zkapp: { address: zkappAddress },
-          });
-          console.log('[store:new] created store:', x);
+          const es = EventStore.fromJSON(js);
+
+          // if the store commitment (key) equals first meta data
+          if (es.meta[0].equals(es.root1).toBoolean()) {
+            // set the remaining meta data as key:value data within the store.
+            // This enables a store to be created with an initial key:value data.
+            // Hack! Consider a better way.
+            // Used when creating an Identity with an initial AuthNFactor Op Key
+            // and only then...
+
+            // create the store with default/empty meta data
+            const x = await trpc.store.create.mutate({
+              identifier: es.id.toString(),
+              commitment: es.root1.toString(),
+              meta: JSON.stringify(eventStoreDefault.meta),
+              zkapp: { address: zkappAddress },
+            });
+            console.log('[store:new] (with data) created store:', x);
+
+            // create an AF of type Operator Key to get it's meta
+            const af = AuthNFactor.init({
+              protocol: {
+                type: AuthNType.operator,
+                provider: AuthNProvider.zkhumans,
+                revision: 0,
+              },
+              data: { salt: '', secret: '' }, // !matters
+            });
+            const meta = af.toUnitOfStore().getMeta();
+
+            // set store data from the meta data
+            const y = await trpc.store.set.mutate({
+              store: {
+                identifier: es.id.toString(),
+              },
+              key: es.meta[1].toString(),
+              value: es.meta[2].toString(),
+              meta: JSON.stringify(meta),
+            });
+            console.log('[store:new] (with data) set data:', y);
+          } else {
+            const x = await trpc.store.create.mutate({
+              identifier: es.id.toString(),
+              commitment: es.root1.toString(),
+              meta: JSON.stringify(es.meta),
+              zkapp: { address: zkappAddress },
+            });
+            console.log('[store:new] created store:', x);
+          }
         }
         break;
 
       // off-chain storage: set (create or update) the record
       case 'store:set':
         {
+          const es = EventStore.fromJSON(js);
           const x = await trpc.store.set.mutate({
             store: { identifier: es.id.toString() },
             key: es.key.toString(),
@@ -149,6 +208,38 @@ const loop = async () => {
             globalSlot,
           });
           console.log('[store:set] create or update key:value:', x);
+        }
+        break;
+
+      // off-chain storage: create pending record
+      case 'store:pending':
+        {
+          const es = EventStorePending.fromJSON(js);
+          // ?: const x = await trpc.store.set.mutate({
+          // ?:   store: { id: es.id.toString() },
+          // ?:   key: es.key.toString(),
+          // ?:   value: es.value.toString(),
+          // ?:   meta: JSON.stringify(es.meta),
+          // ?:   isPending: true,
+          // ?:   // commitmentPending:
+          // ?: });
+          // ?: console.log('[store:set] create or update key:value:', x);
+        }
+        break;
+
+      // off-chain storage: create pending record
+      case 'store:commit':
+        {
+          const es = EventStoreCommit.fromJSON(js);
+          // ?: const x = await trpc.store.set.mutate({
+          // ?:   store: { id: es.id.toString() },
+          // ?:   key: es.key.toString(),
+          // ?:   value: es.value.toString(),
+          // ?:   meta: JSON.stringify(es.meta),
+          // ?:   isPending: true,
+          // ?:   // commitmentPending:
+          // ?: });
+          // ?: console.log('[store:set] create or update key:value:', x);
         }
         break;
     }
