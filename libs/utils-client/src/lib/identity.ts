@@ -9,7 +9,7 @@ import { BioAuthOracle, BioAuthorizedMessage } from '@zkhumans/snarky-bioauth';
 import { CircuitString, Field, MerkleMap, Poseidon, PublicKey } from 'snarkyjs';
 import { Identifier, generateIdentifiers } from '@zkhumans/utils';
 
-import type { ApiStoreByIdOutput } from '@zkhumans/trpc-client';
+import type { ApiOutputStoreById } from '@zkhumans/trpc-client';
 import type { AuthNFactorProtocol } from '@zkhumans/contracts';
 import type { SignedData } from '@aurowallet/mina-provider/dist/TSTypes';
 type WalletSignedData = SignedData;
@@ -33,7 +33,7 @@ export class IdentityClientUtils {
       this.IDENTITY_MGR_MAX_IDS_PER_ACCT
     );
 
-    const dbIdentities = [] as NonNullable<ApiStoreByIdOutput>[];
+    const dbIdentities = [] as NonNullable<ApiOutputStoreById>[];
     for (const identifier of identifiers) {
       const identity = Identity.init({
         identifier: identifier.toField(),
