@@ -118,7 +118,7 @@ export const storeRouter = t.router({
           key,
           store: { connect: { identifier: store.identifier } },
         },
-        select: { id: true },
+        select: selectStoreData,
       });
     }),
 });
