@@ -1,10 +1,5 @@
 import { trpc } from '@zkhumans/trpc-client';
-import {
-  AuthNFactor,
-  AuthNProvider,
-  AuthNType,
-  Identity,
-} from '@zkhumans/contracts';
+import { AuthNProvider, AuthNType, Identity } from '@zkhumans/contracts';
 import { BioAuthOracle, BioAuthorizedMessage } from '@zkhumans/snarky-bioauth';
 import { CircuitString, Field, MerkleMap, Poseidon, PublicKey } from 'snarkyjs';
 import { Identifier, generateIdentifiers } from '@zkhumans/utils';
@@ -232,23 +227,26 @@ export class IdentityClientUtils {
   }
   */
 
-  static async getAuthNFactorsFromKeyring(identifier: string) {
-    const authNFactors = {} as { [key: string]: AuthNFactorProtocol };
+  static async getAuthNFactors(identifier: string) {
+    const factors = {} as {
+      [key: string]: AuthNFactorProtocol & { isPending: boolean };
+    };
 
-    // X: const dbSmtKeyring = await trpc.smt.get.query({ id: identifier });
-    // X: if (!dbSmtKeyring) return authnFactors;
-    // X: for (const txn of dbSmtKeyring.txns) {
-    // X:   if (txn.value) {
-    // X:     const af: AuthNFactor = smtStringToValue(txn.value, AuthNFactor);
-    // X:     authnFactors[txn.key] = {
-    // X:       type: Number(af.type.toString()),
-    // X:       provider: Number(af.provider.toString()),
-    // X:       revision: Number(af.revision.toString()),
-    // X:     };
-    // X:   }
-    // X: }
+    const store = await trpc.store.byId.query({ identifier });
+    console.log('store', JSON.stringify(store, null, 2));
+    if (!store) return factors;
 
-    return authNFactors;
+    for (const data of store.data) {
+      const meta: any = JSON.parse(data.meta?.toString() ?? '');
+      factors[data.key] = {
+        type: Number(meta[0]),
+        provider: Number(meta[1]),
+        revision: Number(meta[2]),
+        isPending: data.isPending,
+      };
+    }
+
+    return factors;
   }
 
   /*
