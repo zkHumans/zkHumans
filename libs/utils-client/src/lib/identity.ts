@@ -232,8 +232,9 @@ export class IdentityClientUtils {
       [key: string]: AuthNFactorProtocol & { isPending: boolean };
     };
 
-    const store = await trpc.store.byId.query({ identifier });
-    console.log('store', JSON.stringify(store, null, 2));
+    const store = await trpc.store.byId.query({
+      identifier: Identifier.fromBase58(identifier).toField().toString(),
+    });
     if (!store) return factors;
 
     for (const data of store.data) {
