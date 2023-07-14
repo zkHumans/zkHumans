@@ -8,8 +8,6 @@ export const selectStoreData = Prisma.validator<Prisma.storeDataSelect>()({
   key: true,
   value: true,
   meta: true,
-  blockHeight: true,
-  globalSlot: true,
   isPending: true,
   commitmentPending: true,
   commitmentSettled: true,
@@ -37,19 +35,25 @@ export const storeRouter = t.router({
         zkapp: z.object({
           address: z.string(),
         }),
+        event: z.object({
+          id: z.number(),
+        }),
       })
     )
-    .mutation(async ({ input: { zkapp, identifier, commitment, ...data } }) => {
-      return await prisma.store.create({
-        data: {
-          identifier,
-          commitment,
-          zkapp: { connect: { address: zkapp.address } },
-          ...data,
-        },
-        select: selectStore,
-      });
-    }),
+    .mutation(
+      async ({ input: { zkapp, event, identifier, commitment, ...data } }) => {
+        return await prisma.store.create({
+          data: {
+            identifier,
+            commitment,
+            zkapp: { connect: { address: zkapp.address } },
+            event: { connect: { id: event.id } },
+            ...data,
+          },
+          select: selectStore,
+        });
+      }
+    ),
 
   delete: t.procedure
     .input(
@@ -96,18 +100,19 @@ export const storeRouter = t.router({
         store: z.object({
           identifier: z.string(),
         }),
+        event: z.object({
+          id: z.number(),
+        }),
         key: z.string(),
         value: z.string().optional(),
         meta: z.string().optional(),
-        blockHeight: z.bigint().optional(),
-        globalSlot: z.bigint().optional(),
         isPending: z.boolean().optional(),
         commitmentPending: z.string().optional(),
         commitmentSettled: z.string().optional(),
         settlementChecksum: z.string().optional(),
       })
     )
-    .mutation(async ({ input: { store, key, ...data } }) => {
+    .mutation(async ({ input: { store, event, key, ...data } }) => {
       return await prisma.storeData.upsert({
         where: { key_storeId: { key, storeId: store.identifier } },
         update: {
@@ -117,6 +122,7 @@ export const storeRouter = t.router({
           ...data,
           key,
           store: { connect: { identifier: store.identifier } },
+          event: { connect: { id: event.id } },
         },
         select: selectStoreData,
       });
