@@ -19,6 +19,7 @@ import {
   eventStoreDefault,
 } from '@zkhumans/zkkv';
 import { delay } from '@zkhumans/utils';
+import SuperJSON from 'superjson';
 
 const INDEXER_CYCLE_TIME = 1000 * +(process.env['INDEXER_CYCLE_TIME'] ?? 30);
 const ZKAPP_SECRET_AUTH = process.env['ZKAPP_SECRET_AUTH'];
@@ -121,22 +122,35 @@ const loop = async () => {
 
   // wait for blocks on the network as needed
   // (consider increasing INDEXER_CYCLE_TIME)
-  if (startFetchEvents > blockchainLength) return;
+  if (startFetchEvents && startFetchEvents > blockchainLength) return;
 
   ////////////////////////////////////
   // fetch and process events
   ////////////////////////////////////
   console.log(`Fetching events ${startFetchEvents} ⇾ ${blockchainLength}`);
   const events = await zkapp.fetchEvents(startFetchEvents, blockchainLength);
+
+  ////////////////////////////////////
+  // record events in the database then retrieve to ensure order by blockHeight,createdAt
+  ////////////////////////////////////
   for (const event of events) {
-    const globalSlot = event.globalSlot.toBigint();
-    const blockHeight = event.blockHeight.toBigint();
+    await trpc.event.create.mutate({
+      type: event.type,
+      data: SuperJSON.stringify(event.event.data),
+      transactionInfo: SuperJSON.stringify(event.event.transactionInfo),
+      blockHeight: event.blockHeight.toBigint(),
+      globalSlot: event.globalSlot.toBigint(),
+    });
 
     // if zkapp's first block was unknown, use the first event's block
-    if (!startFetchEvents) startFetchEvents = UInt32.from(blockHeight);
+    if (!startFetchEvents) startFetchEvents = UInt32.from(event.blockHeight);
+  }
 
+  const eventsToProcess = await trpc.event.getUnprocessed.query();
+
+  for (const event of eventsToProcess) {
     // TODO: a better way to access event data?
-    const js = JSON.parse(JSON.stringify(event.event.data));
+    const js: any = SuperJSON.parse(event.data?.toString() ?? '');
     console.log();
     console.log('Event:', js);
 
@@ -150,6 +164,7 @@ const loop = async () => {
             commitment: es.root1.toString(),
             meta: JSON.stringify(es.meta),
             zkapp: { address: zkappAddress },
+            event: { id: event.id },
           });
           console.log('[store:new] created store:', x);
         }
@@ -164,8 +179,7 @@ const loop = async () => {
             key: es.key.toString(),
             value: es.value.toString(),
             meta: JSON.stringify(es.meta),
-            blockHeight,
-            globalSlot,
+            event: { id: event.id },
           });
           console.log('[store:set] create or update key:value:', x);
         }
@@ -181,6 +195,7 @@ const loop = async () => {
             commitment: es.data1.getValue().toString(),
             meta: JSON.stringify(es.data1.getMeta()),
             zkapp: { address: zkappAddress },
+            event: { id: event.id },
           };
 
           // if the store commitment (value) equals first meta data
@@ -220,8 +235,7 @@ const loop = async () => {
               isPending: true,
               settlementChecksum: es.settlementChecksum.toString(),
               commitmentPending: es.commitmentPending.toString(),
-              blockHeight,
-              globalSlot,
+              event: { id: event.id },
             });
             console.log('[store:pending] (with data) set data:', y);
           } else {
@@ -247,6 +261,8 @@ const loop = async () => {
         }
         break;
     }
+
+    await trpc.event.markProcessed.mutate({ id: event.id });
   }
 
   // after all events (or none for this cycle) are processed
@@ -254,7 +270,7 @@ const loop = async () => {
   dbZkapp = await trpc.zkapp.update.mutate({
     address: zkappAddress,
     blockLast: blockchainLength.toBigint(),
-    blockInit: dbZkapp.blockInit ? undefined : startFetchEvents.toBigint(),
+    blockInit: dbZkapp.blockInit ? undefined : startFetchEvents?.toBigint(),
   });
 };
 
