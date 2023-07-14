@@ -34,16 +34,16 @@ export default function Identity() {
       const { IdentityClientUtils } = await import('@zkhumans/utils-client');
       const IDUtils = IdentityClientUtils;
 
-      // X: if (identity) {
-      // X:   const afs_ = await IDUtils.getAuthNFactorsFromKeyring(identity.id);
-      // X:   const afs = [] as AFS;
-      // X:   for (const af of Object.keys(afs_))
-      // X:     afs.push({
-      // X:       key: af,
-      // X:       value: IDUtils.humanReadableAuthNFactor(afs_[af]),
-      // X:     });
-      // X:   setAuthNFactors(() => afs);
-      // X: }
+      if (identifier) {
+        const afs_ = await IDUtils.getAuthNFactors(identifier);
+        const afs = [] as AFS;
+        for (const af of Object.keys(afs_))
+          afs.push({
+            key: af,
+            value: IDUtils.humanReadableAuthNFactor(afs_[af]),
+          });
+        setAuthNFactors(() => afs);
+      }
     })();
   }, [identifier]);
 
