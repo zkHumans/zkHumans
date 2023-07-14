@@ -37,15 +37,15 @@ model store {
   data         storeData[]
   zkapp        zkapp       @relation(fields: [zkappAddress], references: [address], onDelete: Cascade, onUpdate: Cascade)
   zkappAddress String
+  event        event       @relation(fields: [eventId], references: [id])
+  eventId      Int
 }
 
 model storeData {
-  id          Int     @id @default(autoincrement())
-  key         String
-  value       String?
-  meta        Json?
-  blockHeight BigInt?
-  globalSlot  BigInt?
+  id    Int     @id @default(autoincrement())
+  key   String
+  value String?
+  meta  Json?
 
   // for pending data
   isPending          Boolean @default(true)
@@ -56,6 +56,25 @@ model storeData {
   // relations
   store   store  @relation(fields: [storeId], references: [identifier], onDelete: Cascade, onUpdate: Cascade)
   storeId String
+  event   event  @relation(fields: [eventId], references: [id])
+  eventId Int
 
   @@unique([key, storeId])
+}
+
+model event {
+  id          Int      @id @default(autoincrement())
+  isProcessed Boolean  @default(false)
+  createdAt   DateTime @default(now())
+
+  // from the event
+  type            String
+  data            Json? // event.data
+  transactionInfo Json // event.transactionInfo
+  blockHeight     BigInt
+  globalSlot      BigInt
+
+  // relations
+  storeData storeData[]
+  store     store[]
 }
