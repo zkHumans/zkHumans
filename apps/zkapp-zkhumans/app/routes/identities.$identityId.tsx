@@ -7,8 +7,6 @@ import { useEffect, useState } from 'react';
 
 export const loader = async ({ params }: LoaderArgs) => {
   const identifier = params.identityId;
-  // X: const identity = id ? await trpc.smt.get.query({ id }) : null;
-  // X: return json({ identity });
   return json({ identifier });
 };
 
