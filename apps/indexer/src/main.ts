@@ -20,7 +20,16 @@ import {
 } from '@zkhumans/zkkv';
 import { delay } from '@zkhumans/utils';
 import SuperJSON from 'superjson';
+import crypto from 'crypto';
 
+// simple hash for unique event identifier
+// https://medium.com/@chris_72272/what-is-the-fastest-node-js-hashing-algorithm-c15c1a0e164e
+const hash = (data: crypto.BinaryLike) =>
+  crypto.createHash('sha1').update(data).digest('base64');
+
+////////////////////////////////////
+// configure from env
+////////////////////////////////////
 const INDEXER_CYCLE_TIME = 1000 * +(process.env['INDEXER_CYCLE_TIME'] ?? 30);
 const ZKAPP_SECRET_AUTH = process.env['ZKAPP_SECRET_AUTH'];
 
@@ -130,20 +139,26 @@ const loop = async () => {
   console.log(`Fetching events ${startFetchEvents} ⇾ ${blockchainLength}`);
   const events = await zkapp.fetchEvents(startFetchEvents, blockchainLength);
 
-  ////////////////////////////////////
-  // record events in the database then retrieve to ensure order by blockHeight,createdAt
-  ////////////////////////////////////
+  ////////////////////////////////////////////////////////////////////////
+  // Record events in the database then retrieve to ensure order
+  // Hash each event to a unique identifier to ensure no-duplicate
+  ////////////////////////////////////////////////////////////////////////
   for (const event of events) {
-    await trpc.event.create.mutate({
-      type: event.type,
-      data: SuperJSON.stringify(event.event.data),
-      transactionInfo: SuperJSON.stringify(event.event.transactionInfo),
-      blockHeight: event.blockHeight.toBigint(),
-      globalSlot: event.globalSlot.toBigint(),
-    });
+    const id = hash(SuperJSON.stringify(event));
+    const e = await trpc.event.byId.query({ id });
+    if (!e) {
+      await trpc.event.create.mutate({
+        id,
+        type: event.type,
+        data: SuperJSON.stringify(event.event.data),
+        transactionInfo: SuperJSON.stringify(event.event.transactionInfo),
+        blockHeight: event.blockHeight.toBigint(),
+        globalSlot: event.globalSlot.toBigint(),
+      });
 
-    // if zkapp's first block was unknown, use the first event's block
-    if (!startFetchEvents) startFetchEvents = UInt32.from(event.blockHeight);
+      // if zkapp's first block was unknown, use the first event's block
+      if (!startFetchEvents) startFetchEvents = UInt32.from(event.blockHeight);
+    }
   }
 
   const eventsToProcess = await trpc.event.getUnprocessed.query();
