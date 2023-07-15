@@ -18,6 +18,7 @@ export const eventRouter = t.router({
   create: t.procedure
     .input(
       z.object({
+        id: z.string(),
         type: z.string(),
         data: z.string(),
         transactionInfo: z.string(),
@@ -27,10 +28,11 @@ export const eventRouter = t.router({
     )
     .mutation(
       async ({
-        input: { type, data, transactionInfo, blockHeight, globalSlot },
+        input: { id, type, data, transactionInfo, blockHeight, globalSlot },
       }) => {
         return await prisma.event.create({
           data: {
+            id,
             type,
             data,
             transactionInfo,
@@ -42,10 +44,19 @@ export const eventRouter = t.router({
       }
     ),
 
+  byId: t.procedure
+    .input(z.object({ id: z.string() }))
+    .query(async ({ input: { id } }) => {
+      return await prisma.event.findUnique({
+        where: { id },
+        select: selectEvent,
+      });
+    }),
+
   delete: t.procedure
     .input(
       z.object({
-        id: z.number(),
+        id: z.string(),
       })
     )
     .mutation(async ({ input: { id } }) => {
@@ -63,7 +74,7 @@ export const eventRouter = t.router({
   markProcessed: t.procedure
     .input(
       z.object({
-        id: z.number(),
+        id: z.string(),
       })
     )
     .mutation(async ({ input: { id } }) => {

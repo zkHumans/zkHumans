@@ -36,7 +36,7 @@ export const storeRouter = t.router({
           address: z.string(),
         }),
         event: z.object({
-          id: z.number(),
+          id: z.string(),
         }),
       })
     )
@@ -101,7 +101,7 @@ export const storeRouter = t.router({
           identifier: z.string(),
         }),
         event: z.object({
-          id: z.number(),
+          id: z.string(),
         }),
         key: z.string(),
         value: z.string().optional(),
