@@ -38,7 +38,7 @@ model store {
   zkapp        zkapp       @relation(fields: [zkappAddress], references: [address], onDelete: Cascade, onUpdate: Cascade)
   zkappAddress String
   event        event       @relation(fields: [eventId], references: [id])
-  eventId      Int
+  eventId      String
 }
 
 model storeData {
@@ -57,13 +57,13 @@ model storeData {
   store   store  @relation(fields: [storeId], references: [identifier], onDelete: Cascade, onUpdate: Cascade)
   storeId String
   event   event  @relation(fields: [eventId], references: [id])
-  eventId Int
+  eventId String
 
   @@unique([key, storeId])
 }
 
 model event {
-  id          Int      @id @default(autoincrement())
+  id          String   @id
   isProcessed Boolean  @default(false)
   createdAt   DateTime @default(now())
 
