@@ -4,7 +4,7 @@ import { BioAuthOracle, BioAuthorizedMessage } from '@zkhumans/snarky-bioauth';
 import { CircuitString, Field, MerkleMap, Poseidon, PublicKey } from 'snarkyjs';
 import { Identifier, generateIdentifiers } from '@zkhumans/utils';
 
-import type { ApiOutputStoreById } from '@zkhumans/trpc-client';
+import type { ApiOutputStorageByKey } from '@zkhumans/trpc-client';
 import type { AuthNFactorProtocol } from '@zkhumans/contracts';
 import type { SignedData } from '@aurowallet/mina-provider/dist/TSTypes';
 type WalletSignedData = SignedData;
@@ -28,14 +28,14 @@ export class IdentityClientUtils {
       this.IDENTITY_MGR_MAX_IDS_PER_ACCT
     );
 
-    const dbIdentities = [] as NonNullable<ApiOutputStoreById>[];
+    const dbIdentities = [] as NonNullable<ApiOutputStorageByKey>[];
     for (const identifier of identifiers) {
       const identity = Identity.init({
         identifier: identifier.toField(),
         commitment: Field(0),
       });
-      const id = identity.identifier.toString();
-      const x = await trpc.store.byId.query({ identifier: id });
+      const key = identity.identifier.toString();
+      const x = await trpc.storage.byKey.query({ key });
       if (x) dbIdentities.push(x);
     }
 
@@ -49,11 +49,11 @@ export class IdentityClientUtils {
   static async getStoredMerkleMap(identifier: string) {
     const mm = new MerkleMap();
 
-    const store = await trpc.store.byId.query({ identifier });
-    if (!store) return mm;
+    const storage = await trpc.storage.byKeyWithData.query({ key: identifier });
+    if (!storage) return mm;
 
     // restore MerkleMap from db store
-    for (const data of store.data) {
+    for (const data of storage.data) {
       try {
         mm.set(Field(data.key), Field(data.value ?? 0));
       } catch (e: any) {
@@ -103,8 +103,8 @@ export class IdentityClientUtils {
         identifier: identifier.toField(),
         commitment: Field(0),
       });
-      const id = identity.identifier.toString();
-      const x = await trpc.store.byId.query({ identifier: id });
+      const key = identity.identifier.toString();
+      const x = await trpc.storage.byKey.query({ key });
       if (!x) return identifier.toBase58();
     }
     return null;
@@ -232,12 +232,12 @@ export class IdentityClientUtils {
       [key: string]: AuthNFactorProtocol & { isPending: boolean };
     };
 
-    const store = await trpc.store.byId.query({
-      identifier: Identifier.fromBase58(identifier).toField().toString(),
+    const storage = await trpc.storage.byKeyWithData.query({
+      key: Identifier.fromBase58(identifier).toField().toString(),
     });
-    if (!store) return factors;
+    if (!storage) return factors;
 
-    for (const data of store.data) {
+    for (const data of storage.data) {
       const meta: any = JSON.parse(data.meta?.toString() ?? '');
       factors[data.key] = {
         type: Number(meta[0]),
