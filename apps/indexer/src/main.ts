@@ -120,7 +120,7 @@ const loop = async () => {
   // or start from the "beginning"
   ////////////////////////////////////
   let startFetchEvents = dbZkapp.blockLast
-    ? UInt32.from(dbZkapp.blockLast).add(1)
+    ? UInt32.from(dbZkapp.blockLast)
     : undefined;
 
   ////////////////////////////////////
@@ -134,10 +134,11 @@ const loop = async () => {
   if (startFetchEvents && startFetchEvents > blockchainLength) return;
 
   ////////////////////////////////////
-  // fetch and process events
+  // fetch new events from the network
   ////////////////////////////////////
-  console.log(`Fetching events ${startFetchEvents} ⇾ ${blockchainLength}`);
-  const events = await zkapp.fetchEvents(startFetchEvents, blockchainLength);
+  const startFetch = startFetchEvents?.sub(1);
+  console.log(`Fetching events ${startFetch} ⇾ ${blockchainLength}`);
+  const events = await zkapp.fetchEvents(startFetch, blockchainLength);
 
   ////////////////////////////////////////////////////////////////////////
   // Record events in the database then retrieve to ensure order
