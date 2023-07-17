@@ -5,7 +5,7 @@ import {
   fetchAccount,
   fetchLastBlock,
 } from 'snarkyjs';
-import { ApiInputStoreCreate, trpc, trpcWait } from '@zkhumans/trpc-client';
+import { ApiInputStorageSet, trpc, trpcWait } from '@zkhumans/trpc-client';
 import {
   AuthNFactor,
   AuthNProvider,
@@ -18,7 +18,7 @@ import {
   EventStorePending,
   eventStoreDefault,
 } from '@zkhumans/zkkv';
-import { delay } from '@zkhumans/utils';
+import { delay, hr } from '@zkhumans/utils';
 import SuperJSON from 'superjson';
 import crypto from 'crypto';
 
@@ -124,13 +124,12 @@ const loop = async () => {
     : undefined;
 
   ////////////////////////////////////
-  // fetch events to the network's last block
+  // fetch the network's last block
   ////////////////////////////////////
   const { blockchainLength } = await fetchLastBlock(graphqlEndpoints.mina[0]);
   console.log('last network block:', blockchainLength.toBigint());
 
-  // wait for blocks on the network as needed
-  // (consider increasing INDEXER_CYCLE_TIME)
+  // wait for blocks on the network
   if (startFetchEvents && startFetchEvents > blockchainLength) return;
 
   ////////////////////////////////////
@@ -174,6 +173,9 @@ const loop = async () => {
     }
   }
 
+  ////////////////////////////////////
+  // get unprocessed events from the database
+  ////////////////////////////////////
   const eventsToProcess = await trpc.event.getUnprocessed.query();
 
   for (const event of eventsToProcess) {
@@ -187,12 +189,27 @@ const loop = async () => {
       case 'store:new':
         {
           const es = EventStore.fromJSON(js);
-          const x = await trpc.store.create.mutate({
-            identifier: es.id.toString(),
-            commitment: es.root1.toString(),
+
+          // TODO: what it should be, with fresh deployment:
+          // O: const x = await trpc.storage.create.mutate({
+          // O:   key: es.key.toString(),
+          // O:   value: es.value.toString(),
+          // O:   meta: JSON.stringify(es.meta),
+          // O:   isPending: false,
+          // O:   commitmentSettled: es.value.toString(),
+          // O:   event: { id: event.id },
+          // O:   zkapp: { address: zkappAddress },
+          // O: });
+
+          // TODO: what it is for current deployment:
+          const x = await trpc.storage.create.mutate({
+            key: es.id.toString(),
+            value: es.root1.toString(),
             meta: JSON.stringify(es.meta),
-            zkapp: { address: zkappAddress },
+            isPending: false,
+            commitmentSettled: es.root1.toString(),
             event: { id: event.id },
+            zkapp: { address: zkappAddress },
           });
           console.log('[store:new] created store:', x);
         }
@@ -218,12 +235,16 @@ const loop = async () => {
         {
           const es = EventStorePending.fromJSON(js);
 
-          const store: ApiInputStoreCreate = {
-            identifier: es.data1.getKey().toString(),
-            commitment: es.data1.getValue().toString(),
+          const storage: ApiInputStorageSet = {
+            key: es.data1.getKey().toString(),
+            value: es.data1.getValue().toString(),
             meta: JSON.stringify(es.data1.getMeta()),
-            zkapp: { address: zkappAddress },
+            isPending: true,
+            settlementChecksum: es.settlementChecksum.toString(),
+            commitmentPending: es.commitmentPending.toString(),
             event: { id: event.id },
+            storage: { key: es.id.toString() },
+            zkapp: { address: zkappAddress },
           };
 
           // if the store commitment (value) equals first meta data
@@ -235,8 +256,8 @@ const loop = async () => {
             // and only then...
 
             // create the store with default/empty meta data
-            const x = await trpc.store.create.mutate({
-              ...store,
+            const x = await trpc.storage.set.mutate({
+              ...storage,
               meta: JSON.stringify(eventStoreDefault.meta),
             });
             console.log('[store:pending] (with data) created store:', x);
@@ -253,21 +274,16 @@ const loop = async () => {
             const meta = af.toUnitOfStore().getMeta();
 
             // set store data from the meta data
-            const y = await trpc.store.set.mutate({
-              store: {
-                identifier: store.identifier,
-              },
+            const y = await trpc.storage.set.mutate({
+              ...storage,
               key: es.data1.meta1.toString(),
               value: es.data1.meta2.toString(),
               meta: JSON.stringify(meta),
-              isPending: true,
-              settlementChecksum: es.settlementChecksum.toString(),
-              commitmentPending: es.commitmentPending.toString(),
-              event: { id: event.id },
+              storage: { key: storage.key },
             });
             console.log('[store:pending] (with data) set data:', y);
           } else {
-            const x = await trpc.store.create.mutate(store);
+            const x = await trpc.storage.set.mutate(storage);
             console.log('[store:pending] created store:', x);
           }
         }
@@ -300,11 +316,22 @@ const loop = async () => {
     blockLast: blockchainLength.toBigint(),
     blockInit: dbZkapp.blockInit ? undefined : startFetchEvents?.toBigint(),
   });
+
+  ////////////////////////////////////////////////////////////////////////
+  // get pending (uncommitted) storage data from the database
+  ////////////////////////////////////////////////////////////////////////
+  const pendingStorage = await trpc.storage.pending.query();
+
+  console.log();
+  for (const data of pendingStorage) {
+    console.log('TODO: pending storage data', data);
+  }
 };
 
 const main = async () => {
   try {
     await loop();
+    hr();
 
     if (STOP) {
       console.log('Exiting upon request');
