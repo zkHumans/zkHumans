@@ -18,6 +18,7 @@ export default function NewIdentity() {
   const [identifier, setIdentifier] = useState(null as null | string);
   const [signature, setSignature] = useState(null as null | WalletSignedData);
   const [transaction, setTransaction] = useState(null as null | string);
+  const [transactionHash, setTransactionHash] = useState(null as null | string);
 
   const [bioAuthState, setBioAuthState] = useState({
     auth: null as null | string,
@@ -259,21 +260,7 @@ export default function NewIdentity() {
         `See transaction at https://berkeley.minaexplorer.com/transaction/${hash}`
       );
 
-      /*
-      // const commitment = await zkApp.identityManager.commitment.fetch();
-      // TODO: update tx in db with pending state, then confirmed state
-      cnsl.tic('Updating off-chain data...');
-      const { IdentityClientUtils } = await import('@zkhumans/utils-client');
-      const smtIDManager = await IdentityClientUtils.addNewIdentity(
-        identifier,
-        identity
-      );
-      // zkapp.commitment.get().assertEquals(smtIDManager.getRoot());
-      cnsl.toc(
-        'success',
-        `Identity Manager new root: ${smtIDManager.getRoot()}`
-      );
-      */
+      setTransactionHash(() => hash);
     } catch (
       err: any // eslint-disable-line @typescript-eslint/no-explicit-any
     ) {
