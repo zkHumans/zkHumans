@@ -8,3 +8,9 @@ export function strToBool(s: string | undefined): boolean | undefined {
 // Show first 6 and last 4 characters of user's Mina account.
 export const displayAccount = (account: string) =>
   `${account.slice(0, 6)}...${account.slice(-4)}`;
+
+// log a "horizontal rule" (spacer) on the console
+export const hr = () =>
+  console.log(
+    '━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━'
+  );
