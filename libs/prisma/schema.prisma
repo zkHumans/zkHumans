@@ -25,7 +25,8 @@ model zkapp {
   updatedAt DateTime @default(now()) @updatedAt
 
   // relations
-  stores store[]
+  stores  store[]
+  storage storage[]
 }
 
 model store {
@@ -62,6 +63,45 @@ model storeData {
   @@unique([key, storeId])
 }
 
+// An individual unit of key:value store.
+//
+// It can be a Store and/or data within a Store.
+//
+// Recursive in nature as it may be an element within another which is itself a
+// unit of store whereby:
+// - key   = unique identifier as a key within another Store
+// - value = commitment (root hash) representing contents
+//
+// WIP: this replaces `store` and `storeData`
+model storage {
+  // TODO: to ensure key uniqueness, consider hashing its meta identifier (storeKey) with it
+  key   String  @id
+  value String?
+  meta  Json?
+
+  // pending storage
+  isPending          Boolean @default(true)
+  commitmentPending  String? // zkApp's root hash this data proved against
+  commitmentSettled  String? // zkApp's root hash this data settled within
+  settlementChecksum String? // hashed expression of the data for validity
+
+  // relations
+  data         storage[] @relation("storage")
+  storage      storage?  @relation("storage", fields: [storageKey], references: [key], onDelete: Cascade, onUpdate: Cascade)
+  storageKey   String? // undefined only for top-level storage
+  event        event     @relation(fields: [eventId], references: [id])
+  eventId      String
+  zkapp        zkapp     @relation(fields: [zkappAddress], references: [address], onDelete: Cascade, onUpdate: Cascade)
+  zkappAddress String
+
+  // other
+  createdAt DateTime @default(now())
+  updatedAt DateTime @default(now()) @updatedAt
+
+  // ???
+  @@unique([key, storageKey])
+}
+
 model event {
   id          String   @id
   isProcessed Boolean  @default(false)
@@ -77,4 +117,5 @@ model event {
   // relations
   storeData storeData[]
   store     store[]
+  storage   storage[]
 }
