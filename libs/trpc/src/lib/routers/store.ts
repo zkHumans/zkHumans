@@ -93,6 +93,14 @@ export const storeRouter = t.router({
       });
     }),
 
+  getPending: t.procedure.query(async () => {
+    return await prisma.storeData.findMany({
+      where: { isPending: true },
+      orderBy: [{ id: 'asc' }],
+      select: selectStoreData,
+    });
+  }),
+
   // set a key:value pair in a Store
   set: t.procedure
     .input(
