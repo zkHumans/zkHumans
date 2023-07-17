@@ -7,13 +7,23 @@ type RouterOutput = inferRouterOutputs<AppRouter>;
 
 // input
 
+export type ApiInputEventById = RouterInput['event']['byId'];
+export type ApiInputEventCreate = RouterInput['event']['create'];
+export type ApiInputEventDelete = RouterInput['event']['delete'];
+export type ApiInputEventGetUnprocessed =
+  RouterInput['event']['getUnprocessed'];
+export type ApiInputEventMarkProcessed = RouterInput['event']['markProcessed'];
+
 export type ApiInputMeta = RouterInput['meta'];
 
-export type ApiInputStoreById = RouterInput['store']['byId'];
-export type ApiInputStoreCreate = RouterInput['store']['create'];
-export type ApiInputStoreDelete = RouterInput['store']['delete'];
-export type ApiInputStoreGet = RouterInput['store']['get'];
-export type ApiInputStoreSet = RouterInput['store']['set'];
+export type ApiInputStorageByKey = RouterInput['storage']['byKey'];
+export type ApiInputStorageByKeyWithData =
+  RouterInput['storage']['byKeyWithData'];
+export type ApiInputStorageCreate = RouterInput['storage']['create'];
+export type ApiInputStorageDelete = RouterInput['storage']['delete'];
+export type ApiInputStorageGet = RouterInput['storage']['get'];
+export type ApiInputStoragePending = RouterInput['storage']['pending'];
+export type ApiInputStorageSet = RouterInput['storage']['set'];
 
 export type ApiInputZkappByAddress = RouterInput['zkapp']['byAddress'];
 export type ApiInputZkappCreate = RouterInput['zkapp']['create'];
@@ -22,13 +32,24 @@ export type ApiInputZkappUpdate = RouterInput['zkapp']['update'];
 
 // output
 
+export type ApiOutputEventById = RouterOutput['event']['byId'];
+export type ApiOutputEventCreate = RouterOutput['event']['create'];
+export type ApiOutputEventDelete = RouterOutput['event']['delete'];
+export type ApiOutputEventGetUnprocessed =
+  RouterOutput['event']['getUnprocessed'];
+export type ApiOutputEventMarkProcessed =
+  RouterOutput['event']['markProcessed'];
+
 export type ApiOutputMeta = RouterOutput['meta'];
 
-export type ApiOutputStoreById = RouterOutput['store']['byId'];
-export type ApiOutputStoreCreate = RouterOutput['store']['create'];
-export type ApiOutputStoreDelete = RouterOutput['store']['delete'];
-export type ApiOutputStoreGet = RouterOutput['store']['get'];
-export type ApiOutputStoreSet = RouterOutput['store']['set'];
+export type ApiOutputStorageByKey = RouterOutput['storage']['byKey'];
+export type ApiOutputStorageByKeyWithData =
+  RouterOutput['storage']['byKeyWithData'];
+export type ApiOutputStorageCreate = RouterOutput['storage']['create'];
+export type ApiOutputStorageDelete = RouterOutput['storage']['delete'];
+export type ApiOutputStorageGet = RouterOutput['storage']['get'];
+export type ApiOutputStoragePending = RouterOutput['storage']['pending'];
+export type ApiOutputStorageSet = RouterOutput['storage']['set'];
 
 export type ApiOutputZkappByAddress = RouterOutput['zkapp']['byAddress'];
 export type ApiOutputZkappCreate = RouterOutput['zkapp']['create'];
