@@ -142,10 +142,22 @@ const loop = async () => {
 
   ////////////////////////////////////////////////////////////////////////
   // Record events in the database then retrieve to ensure order
-  // Hash each event to a unique identifier to ensure no-duplicate
+  // Use a unique identifier for each event to ensure no-duplicate
   ////////////////////////////////////////////////////////////////////////
   for (const event of events) {
-    const id = hash(SuperJSON.stringify(event));
+    // get a unique identifier for the event
+    let id = '';
+    if (event.type == 'store:pending') {
+      const js: any = SuperJSON.parse(SuperJSON.stringify(event.event.data));
+      const es = EventStorePending.fromJSON(js);
+      id = hash(
+        es.settlementChecksum.toString() +
+          event.event.transactionInfo.transactionHash
+      );
+    } else {
+      id = hash(event.event.transactionInfo.transactionHash);
+    }
+
     const e = await trpc.event.byId.query({ id });
     if (!e) {
       await trpc.event.create.mutate({
