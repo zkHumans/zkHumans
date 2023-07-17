@@ -16,7 +16,7 @@ import {
   Identity,
   IdentityManager,
 } from '../IdentityManager';
-import { Identifier, strToBool } from '@zkhumans/utils';
+import { Identifier, hr, strToBool } from '@zkhumans/utils';
 import {
   EventStore,
   EventStorePending,
@@ -51,12 +51,6 @@ const t = () => Number(((performance.now() - t0) / 1000 / 60).toFixed(2)) + 'm';
 const log = (
   ...args: any[] /* eslint-disable-line @typescript-eslint/no-explicit-any */
 ) => console.log(`@T+${t()} |`, ...args);
-
-// log a spacer on the console between transactions
-const hr = () =>
-  console.log(
-    '━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━'
-  );
 
 // celebrate success!
 const tada = () => {
