@@ -182,8 +182,8 @@ const tx = await Mina.transaction(feePayer, () => {
   // notify off-chain storage
   zkapp.emitEvent('store:new', {
     ...eventStoreDefault,
-    id: initStoreIdentifier,
-    root1: initStoreCommitment,
+    key: initStoreIdentifier,
+    value: initStoreCommitment,
   });
 });
 await tx.prove();
