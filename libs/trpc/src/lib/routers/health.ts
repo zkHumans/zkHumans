@@ -4,7 +4,7 @@ import { t } from '../server';
 export const healthRouter = t.router({
   check: t.procedure.query(async () => {
     // ensure a database connection can be established
-    await prisma.store.count();
+    await prisma.storage.count();
     return 1;
   }),
 });
