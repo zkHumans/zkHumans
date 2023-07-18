@@ -2,7 +2,7 @@ import { jest } from '@jest/globals';
 import { Field, MerkleMap } from 'snarkyjs';
 import { ApiInputEventCreate, trpc } from '@zkhumans/trpc-client';
 
-describe('Store', () => {
+describe('Storage', () => {
   jest.setTimeout(1000 * 100);
 
   ////////////////////////////////////
@@ -58,6 +58,7 @@ describe('Store', () => {
     let dbMM = await trpc.storage.create.mutate({
       key,
       value: '',
+      isPending: false,
       event: { id: event.id },
       zkapp: { address },
     });
@@ -67,6 +68,7 @@ describe('Store', () => {
     ////////////////////////////////////
 
     const data = {
+      isPending: false,
       event: { id: event.id },
       storage: { key },
       zkapp: { address },
