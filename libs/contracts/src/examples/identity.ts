@@ -224,7 +224,7 @@ numEvents = await processEvents(numEvents);
 ////////////////////////////////////////////////////////////////////////
 
 hr();
-await commitPendingTransformationsWithAuthToken();
+await commitPendingTransformations();
 numEvents = await processEvents(numEvents);
 logRoots();
 
@@ -331,9 +331,9 @@ async function processEvents(offset = 0) {
         {
           // off-chain storage should create the record
           const ev = EventStorageCreate.fromJSON(js);
-          storage.maps[ev.id.toString()] = new MerkleMap();
+          storage.maps[ev.key.toString()] = new MerkleMap();
           // 2: // something was added to init the MM
-          // 2: storage.maps[ev.id.toString()].set(ev.id, ev.id);
+          // 2: storage.maps[ev.key.toString()].set(ev.key, ev.value);
         }
         break;
 
