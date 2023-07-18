@@ -22,7 +22,7 @@ CREATE TABLE "zkapp" (
 -- CreateTable
 CREATE TABLE "storage" (
     "key" TEXT NOT NULL,
-    "value" TEXT,
+    "value" TEXT NOT NULL,
     "meta" JSONB,
     "isPending" BOOLEAN NOT NULL DEFAULT true,
     "commitmentPending" TEXT,

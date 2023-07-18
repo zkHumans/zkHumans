@@ -37,8 +37,8 @@ model zkapp {
 // - key   = unique identifier as a key within another Store
 // - value = commitment (root hash) representing contents
 model storage {
-  key   String  @id
-  value String?
+  key   String @id
+  value String
   meta  Json?
 
   // pending storage
