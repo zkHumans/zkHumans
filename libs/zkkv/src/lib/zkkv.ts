@@ -43,7 +43,7 @@ export class UnitOfStore extends Struct({
   getMeta() {
     return [this.meta0, this.meta1, this.meta2];
   }
-  // TODO: ? accept store identifier (key), add to checksum
+
   getChecksum() {
     return Poseidon.hash([this.getKey(), this.getValue(), ...this.getMeta()]);
   }
@@ -79,9 +79,9 @@ export class UnitOfStore extends Struct({
 }
 
 /**
- * Emitted by events: 'store:set' 'store:new'
+ * Emitted by event `storage:create`
  */
-export class EventStore extends Struct({
+export class EventStorageCreate extends Struct({
   id: Field, // store identifier
   root0: Field, // before state change
   root1: Field, // after state change
@@ -98,9 +98,9 @@ export class EventStore extends Struct({
 }) {}
 
 /**
- * Emitted by event 'store:pending'
+ * Emitted by event `storage:pending`
  */
-export class EventStorePending extends Struct({
+export class EventStoragePending extends Struct({
   /**
    * zkApp's store commitment at the time of the event.
    */
@@ -128,9 +128,9 @@ export class EventStorePending extends Struct({
 }) {}
 
 /**
- * Emitted by event 'store:commit'
+ * Emitted by event `storage:commit`
  */
-export class EventStoreCommit extends Struct({
+export class EventStorageCommit extends Struct({
   /**
    * zkApp's store commitment that was pending and is being settled.
    *
@@ -284,8 +284,8 @@ export const RollupTransformationsProof_ = Experimental.ZkProgram.Proof(
 export class RollupTransformationsProof extends RollupTransformationsProof_ {}
 
 export type ZKKVEventEmission = {
-  type: 'store:pending';
-  event: EventStorePending;
+  type: 'storage:pending';
+  event: EventStoragePending;
 }[];
 
 export class ZKKV {
@@ -315,8 +315,8 @@ export class ZKKV {
 
     return [
       {
-        type: 'store:pending',
-        event: new EventStorePending({
+        type: 'storage:pending',
+        event: new EventStoragePending({
           commitmentPending: storeManager.getValue(),
           settlementChecksum: store.getChecksum(),
           id: storeManager.getKey(),
@@ -373,8 +373,8 @@ export class ZKKV {
 
     return [
       {
-        type: 'store:pending',
-        event: new EventStorePending({
+        type: 'storage:pending',
+        event: new EventStoragePending({
           commitmentPending: storeManager.getValue(),
           settlementChecksum: data1.getChecksum(),
           id: store.getKey(),
