@@ -17,7 +17,6 @@ type WalletSignedData = SignedData;
  */
 export class IdentityClientUtils {
   static IDENTITY_MGR_MAX_IDS_PER_ACCT = 10;
-  static IDENTITY_MGR_NAME = '_IdentityManager_';
   static IDENTITY_MGR_SALT = 'TODO:somethingUniqueTotheZkapp';
 
   static async getIdentities(account: string) {
@@ -42,10 +41,13 @@ export class IdentityClientUtils {
     return dbIdentities;
   }
 
-  // Restore MerkleMap data from database, if it exists
-  // otherwise return new MerkleMap()
-  //
-  // Note: db store is only created by the indexer service
+  /**
+   * Restore MerkleMap data from database, if it exists
+   * otherwise return new MerkleMap().
+   *
+   * Only committed (non-pending) data is used to restore the MerkleMap as only
+   * it may be used to produce an acceptable witness.
+   */
   static async getStoredMerkleMap(identifier: string) {
     const mm = new MerkleMap();
 
@@ -55,6 +57,7 @@ export class IdentityClientUtils {
     // restore MerkleMap from db store
     for (const data of storage.data) {
       try {
+        if (data.isPending) continue;
         mm.set(Field(data.key), Field(data.value ?? 0));
       } catch (e: any) {
         console.log('Error', e.message);
@@ -80,14 +83,19 @@ export class IdentityClientUtils {
   */
 
   /**
-   * Get MerkleMap for an Identity Manager.
-   * Create in database if doesn't exist, restore from database if it does.
+   * Get Identity Manager MerkleMap from the zkApp's PublicKey.
    */
-  /*
-  static async getManagerMM(idMgr: string = IDENTITY_MGR_SMT_NAME) {
-    return this.getStoredMerkleMap(idMgr);
+  static async getManagerMM(zkappAddress: PublicKey) {
+    const idMgr = this.getManagerIdentfier(zkappAddress);
+    return await this.getStoredMerkleMap(idMgr);
   }
-  */
+
+  /**
+   * Get Identity Manager's Identifier.
+   */
+  static getManagerIdentfier(zkappAddress: PublicKey) {
+    return Identifier.fromPublicKey(zkappAddress, 1).toField().toString();
+  }
 
   /**
    * Return next unused (available) identifier for the given account,
