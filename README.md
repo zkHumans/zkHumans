@@ -1,24 +1,36 @@
 # zkHumans
 
-[![Commitizen friendly](https://img.shields.io/badge/commitizen-friendly-brightgreen.svg)](http://commitizen.github.io/cz-cli/)
+Zero-Knowledge Self-Sovereign Crypto-Biometric Decentralized Identity,
+Collective Association, and Access Control Platform.
 
 ## The Stack
 
+- [SnarkyJS](https://github.com/o1-labs/SnarkyJS): TypeScript framework for
+  zk-SNARKs and zkApps
 - [Nx](https://nx.dev/): Next generation build system with first class monorepo
   support and powerful integrations
-- [snarkyjs](https://github.com/o1-labs/snarkyjs): TypeScript framework for
-  zk-SNARKs and zkApps
-- [remix](https://github.com/remix-run/remix): Create modern, resilient user
-  experiences with web fundamentals
 - [tRPC](https://trpc.io/): End-to-end typesafe APIs made easy
+  - [zod](https://github.com/colinhacks/zod): TypeScript-first schema validation
+    with static type inference
 - [Prisma](https://www.prisma.io/): Next-generation Node.js and TypeScript ORM
+- [Jest](https://github.com/jestjs/jest): Delightful JavaScript Testing
+- [Traefik](https://github.com/traefik/traefik): The Cloud Native Application
+  Proxy
 
 ## Contributing
+
+[![Commitizen friendly](https://img.shields.io/badge/commitizen-friendly-brightgreen.svg)](http://commitizen.github.io/cz-cli/)
 
 - Follow
   [`commitizen's conventional-changelog`](https://github.com/commitizen/cz-cli)
   commit message format
-  - Use `npm run commit` for a prompt for writing the commit message properly
+- Use `npm run commit` or `npx cz` for a prompt to assist writing the commit
+  message properly
+- The conventional commit scope (the type of change) typically corresponds to Nx
+  project; ie "contracts" or "api"
+  - when possible, keep git commits project- and context- specific (ok to
+    deviate for some broad refactors/migrations)
+  - refer to `git log <filename>` for current conventions
 
 ## Nx Workspace
 
