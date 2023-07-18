@@ -196,15 +196,11 @@ export default function NewIdentity() {
       // X: if (!statusBioAuth) return;
 
       ////////////////////////////////////////////////////////////////////////
-      // get proof that new Identity can be added to Identity Manager
+      // prove the new Identity can be added to Identity Manager
+      // by proving the identity IS NOT in the Identity Manager MM
       ////////////////////////////////////////////////////////////////////////
       cnsl.tic('> Create New Identity Merkle proof...');
-      // this is strange... TODO fix this!
-      const idMgr = Identifier.fromPublicKey(zkApp.identityManager.address, 1)
-        .toField()
-        .toString();
-      const mmMgr = await IDUtils.getStoredMerkleMap(idMgr);
-      // prove the identity IS NOT in the Identity Manager MM
+      const mmMgr = await IDUtils.getManagerMM(zkApp.identityManager.address);
       const witness = mmMgr.getWitness(identity.identifier);
       cnsl.toc('success', `witness=${JSON.stringify(witness.toJSON())}`);
 
