@@ -13,9 +13,9 @@ import {
 } from 'snarkyjs';
 import {
   EMPTY,
-  EventStore,
-  EventStoreCommit,
-  EventStorePending,
+  EventStorageCommit,
+  EventStorageCreate,
+  EventStoragePending,
   // 1: RollupTransformationsProof,
   UnitOfStore,
   ZKKV,
@@ -238,13 +238,9 @@ export class IdentityManager extends SmartContract {
   @state(Field) authHash = State<Field>();
 
   override events = {
-    // for updating off-chain data
-    'store:new': EventStore,
-    'store:set': EventStore,
-    'store:pending': EventStorePending,
-
-    // triggers pending events to be committed
-    'store:commit': EventStoreCommit,
+    'storage:create': EventStorageCreate,
+    'storage:pending': EventStoragePending,
+    'storage:commit': EventStorageCommit,
   };
 
   override init() {
@@ -407,7 +403,7 @@ export class IdentityManager extends SmartContract {
     this.commitment.set(proof.publicInput.root1);
 
     // inform storage to commit pending transformations proven on the initial commitment
-    this.emitEvent('store:commit', {
+    this.emitEvent('storage:commit', {
       commitmentPending: proof.publicInput.root0,
       commitmentSettled: proof.publicInput.root1,
     });
@@ -439,7 +435,7 @@ export class IdentityManager extends SmartContract {
     this.commitment.set(commitmentSettled);
 
     // inform storage to commit pending transformations proven on the initial commitment
-    this.emitEvent('store:commit', {
+    this.emitEvent('storage:commit', {
       commitmentPending,
       commitmentSettled,
     });

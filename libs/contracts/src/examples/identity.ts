@@ -18,8 +18,8 @@ import {
 } from '../IdentityManager';
 import { Identifier, hr, strToBool } from '@zkhumans/utils';
 import {
-  EventStore,
-  EventStorePending,
+  EventStorageCreate,
+  EventStoragePending,
   // 1: RollupState,
   // 1: RollupStep,
   // 1: RollupTransformations,
@@ -61,7 +61,7 @@ const tada = () => {
 
 class StorageSimulator {
   maps: { [key: string]: MerkleMap };
-  pending: Array<EventStorePending>;
+  pending: Array<EventStoragePending>;
   constructor() {
     this.maps = {};
     this.pending = [];
@@ -180,7 +180,7 @@ const tx = await Mina.transaction(feePayer, () => {
   zkapp.authHash.set(authHash);
 
   // notify off-chain storage
-  zkapp.emitEvent('store:new', {
+  zkapp.emitEvent('storage:create', {
     ...eventStoreDefault,
     key: initStoreIdentifier,
     value: initStoreCommitment,
@@ -327,31 +327,24 @@ async function processEvents(offset = 0) {
     console.log(`Event: ${event.type}`, js);
 
     switch (event.type) {
-      case 'store:new':
+      case 'storage:create':
         {
           // off-chain storage should create the record
-          const ev = EventStore.fromJSON(js);
+          const ev = EventStorageCreate.fromJSON(js);
           storage.maps[ev.id.toString()] = new MerkleMap();
           // 2: // something was added to init the MM
           // 2: storage.maps[ev.id.toString()].set(ev.id, ev.id);
         }
         break;
 
-      case 'store:set':
-        {
-          // off-chain storage should set the record
-          // const ev = EventStore.fromJSON(js);
-        }
-        break;
-
-      case 'store:pending':
+      case 'storage:pending':
         {
           // off-chain storage should create the record as pending
-          storage.pending.push(EventStorePending.fromJSON(js));
+          storage.pending.push(EventStoragePending.fromJSON(js));
         }
         break;
 
-      case 'store:commit':
+      case 'storage:commit':
         {
           // off-chain storage should update pending records
           for (const pe of storage.pending) {

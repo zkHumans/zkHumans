@@ -176,10 +176,10 @@ try {
       zkApp.authHash.set(authHash);
 
       // notify off-chain storage
-      zkApp.emitEvent('store:new', {
+      zkApp.emitEvent('storage:create', {
         ...eventStoreDefault,
-        id: initIdentifier,
-        root1: initCommitment,
+        key: initIdentifier,
+        value: initCommitment,
       });
     }
   );
