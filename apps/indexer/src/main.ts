@@ -13,9 +13,9 @@ import {
   IdentityManager,
 } from '@zkhumans/contracts';
 import {
-  EventStore,
-  EventStoreCommit,
-  EventStorePending,
+  EventStorageCommit,
+  EventStorageCreate,
+  EventStoragePending,
   eventStoreDefault,
 } from '@zkhumans/zkkv';
 import { delay, hr } from '@zkhumans/utils';
@@ -146,9 +146,9 @@ const loop = async () => {
   for (const event of events) {
     // get a unique identifier for the event
     let id = '';
-    if (event.type == 'store:pending') {
+    if (event.type == 'storage:pending') {
       const js: any = SuperJSON.parse(SuperJSON.stringify(event.event.data));
-      const es = EventStorePending.fromJSON(js);
+      const es = EventStoragePending.fromJSON(js);
       id = hash(
         es.settlementChecksum.toString() +
           event.event.transactionInfo.transactionHash
@@ -186,9 +186,9 @@ const loop = async () => {
 
     switch (event.type) {
       // off-chain storage: create store
-      case 'store:new':
+      case 'storage:create':
         {
-          const es = EventStore.fromJSON(js);
+          const es = EventStorageCreate.fromJSON(js);
 
           // TODO: what it should be, with fresh deployment:
           // O: const x = await trpc.storage.create.mutate({
@@ -211,29 +211,14 @@ const loop = async () => {
             event: { id: event.id },
             zkapp: { address: zkappAddress },
           });
-          console.log('[store:new] created store:', x);
-        }
-        break;
-
-      // off-chain storage: set (create or update) the record
-      case 'store:set':
-        {
-          const es = EventStore.fromJSON(js);
-          const x = await trpc.store.set.mutate({
-            store: { identifier: es.id.toString() },
-            key: es.key.toString(),
-            value: es.value.toString(),
-            meta: JSON.stringify(es.meta),
-            event: { id: event.id },
-          });
-          console.log('[store:set] create or update key:value:', x);
+          console.log('[storage:create] created store:', x);
         }
         break;
 
       // off-chain storage: create pending record
-      case 'store:pending':
+      case 'storage:pending':
         {
-          const es = EventStorePending.fromJSON(js);
+          const es = EventStoragePending.fromJSON(js);
 
           const storage: ApiInputStorageSet = {
             key: es.data1.getKey().toString(),
@@ -260,7 +245,7 @@ const loop = async () => {
               ...storage,
               meta: JSON.stringify(eventStoreDefault.meta),
             });
-            console.log('[store:pending] (with data) created store:', x);
+            console.log('[storage:pending] (with data) created store:', x);
 
             // create an AF of type Operator Key to get it's meta
             const af = AuthNFactor.init({
@@ -281,27 +266,19 @@ const loop = async () => {
               meta: JSON.stringify(meta),
               storage: { key: storage.key },
             });
-            console.log('[store:pending] (with data) set data:', y);
+            console.log('[storage:pending] (with data) set data:', y);
           } else {
             const x = await trpc.storage.set.mutate(storage);
-            console.log('[store:pending] created store:', x);
+            console.log('[storage:pending] created store:', x);
           }
         }
         break;
 
-      // off-chain storage: create pending record
-      case 'store:commit':
+      // off-chain storage: commit pending records
+      case 'storage:commit':
         {
-          const es = EventStoreCommit.fromJSON(js);
-          // ?: const x = await trpc.store.set.mutate({
-          // ?:   store: { id: es.id.toString() },
-          // ?:   key: es.key.toString(),
-          // ?:   value: es.value.toString(),
-          // ?:   meta: JSON.stringify(es.meta),
-          // ?:   isPending: true,
-          // ?:   // commitmentPending:
-          // ?: });
-          // ?: console.log('[store:set] create or update key:value:', x);
+          const es = EventStorageCommit.fromJSON(js);
+          // ?: console.log('[storage:commit]');
         }
         break;
     }
