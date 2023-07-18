@@ -1,4 +1,6 @@
 import {
+  Field,
+  MerkleMap,
   Mina,
   PublicKey,
   UInt32,
@@ -18,6 +20,7 @@ import {
   EventStoragePending,
   eventStoreDefault,
 } from '@zkhumans/zkkv';
+import { IdentityClientUtils as IDUtils } from '@zkhumans/utils-client';
 import { delay, hr } from '@zkhumans/utils';
 import SuperJSON from 'superjson';
 import crypto from 'crypto';
@@ -173,11 +176,10 @@ const loop = async () => {
     }
   }
 
-  ////////////////////////////////////
-  // get unprocessed events from the database
-  ////////////////////////////////////
+  ////////////////////////////////////////////////////////////////////////
+  // process unprocessed events from the database
+  ////////////////////////////////////////////////////////////////////////
   const eventsToProcess = await trpc.event.getUnprocessed.query();
-
   for (const event of eventsToProcess) {
     // TODO: a better way to access event data?
     const js: any = SuperJSON.parse(event.data?.toString() ?? '');
@@ -270,8 +272,10 @@ const loop = async () => {
     await trpc.event.markProcessed.mutate({ id: event.id });
   }
 
-  // after all events (or none for this cycle) are processed
+  ////////////////////////////////////////////////////////////////////////
+  // after all events (or none for this cycle) are processed,
   // db-record the processed block heights
+  ////////////////////////////////////////////////////////////////////////
   dbZkapp = await trpc.zkapp.update.mutate({
     address: zkappAddress,
     blockLast: blockchainLength.toBigint(),
@@ -279,14 +283,42 @@ const loop = async () => {
   });
 
   ////////////////////////////////////////////////////////////////////////
-  // get pending (uncommitted) storage data from the database
+  // process pending (uncommitted) storage
   ////////////////////////////////////////////////////////////////////////
   const pendingStorage = await trpc.storage.pending.query();
+  if (!pendingStorage.length) return;
 
   console.log();
-  for (const data of pendingStorage) {
-    console.log('TODO: pending storage data', data);
+  const zkappIdentifier = IDUtils.getManagerIdentfier(zkappPublicKey);
+  const maps: { [key: string]: MerkleMap } = {};
+
+  for (const ps of pendingStorage) console.log('Pending storage:', ps);
+
+  // storage levels:
+  // 1: primary storage, zkapp @state
+  // 2: key:value (identifier:commitment) within level-1
+  // 3: key:value within level-2
+
+  // first process level-3 storage to update level-2
+  for (const { key, value, storageKey: s } of pendingStorage) {
+    // if storage (data) is not level-1 and not directly within it
+    if (s && s !== zkappIdentifier) {
+      // restore the level-2 MerkleMap from database (or create new if not exist)
+      if (!maps[s]) maps[s] = await IDUtils.getStoredMerkleMap(s);
+      // add level-3 K:V data to the level-2 MerkleMap
+      maps[s].set(Field(key), Field(value));
+    }
   }
+
+  // then process level-2 storage updates to update level-1
+  const mmMgr = await IDUtils.getManagerMM(zkappPublicKey);
+  Object.keys(maps).forEach((k) => mmMgr.set(Field(k), maps[k].getRoot()));
+
+  const commitmentPending = zkapp.commitment.get();
+  const commitmentSettled = mmMgr.getRoot();
+  console.log('zkapp.commitPendingTransformations');
+  console.log('  commitmentPending:', commitmentPending.toBigInt());
+  console.log('  commitmentSettled:', commitmentSettled.toBigInt());
 };
 
 const main = async () => {
