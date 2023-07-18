@@ -185,29 +185,15 @@ const loop = async () => {
     console.log('Event:', js);
 
     switch (event.type) {
-      // off-chain storage: create store
       case 'storage:create':
         {
           const es = EventStorageCreate.fromJSON(js);
-
-          // TODO: what it should be, with fresh deployment:
-          // O: const x = await trpc.storage.create.mutate({
-          // O:   key: es.key.toString(),
-          // O:   value: es.value.toString(),
-          // O:   meta: JSON.stringify(es.meta),
-          // O:   isPending: false,
-          // O:   commitmentSettled: es.value.toString(),
-          // O:   event: { id: event.id },
-          // O:   zkapp: { address: zkappAddress },
-          // O: });
-
-          // TODO: what it is for current deployment:
           const x = await trpc.storage.create.mutate({
-            key: es.id.toString(),
-            value: es.root1.toString(),
+            key: es.key.toString(),
+            value: es.value.toString(),
             meta: JSON.stringify(es.meta),
             isPending: false,
-            commitmentSettled: es.root1.toString(),
+            commitmentSettled: es.value.toString(),
             event: { id: event.id },
             zkapp: { address: zkappAddress },
           });
@@ -215,7 +201,6 @@ const loop = async () => {
         }
         break;
 
-      // off-chain storage: create pending record
       case 'storage:pending':
         {
           const es = EventStoragePending.fromJSON(js);
@@ -274,7 +259,6 @@ const loop = async () => {
         }
         break;
 
-      // off-chain storage: commit pending records
       case 'storage:commit':
         {
           const es = EventStorageCommit.fromJSON(js);
