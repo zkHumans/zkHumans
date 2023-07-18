@@ -25,42 +25,7 @@ model zkapp {
   updatedAt DateTime @default(now()) @updatedAt
 
   // relations
-  stores  store[]
   storage storage[]
-}
-
-model store {
-  identifier String @id
-  commitment String // root hash
-  meta       Json?
-
-  // relations
-  data         storeData[]
-  zkapp        zkapp       @relation(fields: [zkappAddress], references: [address], onDelete: Cascade, onUpdate: Cascade)
-  zkappAddress String
-  event        event       @relation(fields: [eventId], references: [id])
-  eventId      String
-}
-
-model storeData {
-  id    Int     @id @default(autoincrement())
-  key   String
-  value String?
-  meta  Json?
-
-  // for pending data
-  isPending          Boolean @default(true)
-  commitmentPending  String? // zkApp's root hash this data proved against
-  commitmentSettled  String? // zkApp's root hash this data settled within
-  settlementChecksum String? // hashed expression of the data for validity
-
-  // relations
-  store   store  @relation(fields: [storeId], references: [identifier], onDelete: Cascade, onUpdate: Cascade)
-  storeId String
-  event   event  @relation(fields: [eventId], references: [id])
-  eventId String
-
-  @@unique([key, storeId])
 }
 
 // An individual unit of key:value store.
@@ -71,10 +36,7 @@ model storeData {
 // unit of store whereby:
 // - key   = unique identifier as a key within another Store
 // - value = commitment (root hash) representing contents
-//
-// WIP: this replaces `store` and `storeData`
 model storage {
-  // TODO: to ensure key uniqueness, consider hashing its meta identifier (storeKey) with it
   key   String  @id
   value String?
   meta  Json?
@@ -98,7 +60,6 @@ model storage {
   createdAt DateTime @default(now())
   updatedAt DateTime @default(now()) @updatedAt
 
-  // ???
   @@unique([key, storageKey])
 }
 
@@ -115,7 +76,5 @@ model event {
   globalSlot      BigInt
 
   // relations
-  storeData storeData[]
-  store     store[]
-  storage   storage[]
+  storage storage[]
 }
