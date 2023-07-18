@@ -46,7 +46,7 @@ export const storageRouter = t.router({
     .input(
       z.object({
         key: z.string(),
-        value: z.string().optional(),
+        value: z.string(),
         meta: z.string().optional(),
         isPending: z.boolean().optional(),
         commitmentPending: z.string().optional(),
@@ -60,10 +60,11 @@ export const storageRouter = t.router({
         }),
       })
     )
-    .mutation(async ({ input: { key, event, zkapp, ...data } }) => {
+    .mutation(async ({ input: { key, value, event, zkapp, ...data } }) => {
       return await prisma.storage.create({
         data: {
           key,
+          value,
           event: { connect: { id: event.id } },
           zkapp: { connect: { address: zkapp.address } },
           ...data,
@@ -114,7 +115,7 @@ export const storageRouter = t.router({
     .input(
       z.object({
         key: z.string(),
-        value: z.string().optional(),
+        value: z.string(),
         meta: z.string().optional(),
         isPending: z.boolean().optional(),
         commitmentPending: z.string().optional(),
@@ -131,20 +132,24 @@ export const storageRouter = t.router({
         }),
       })
     )
-    .mutation(async ({ input: { key, event, storage, zkapp, ...data } }) => {
-      return await prisma.storage.upsert({
-        where: { key },
-        update: {
-          ...data,
-        },
-        create: {
-          ...data,
-          key,
-          event: { connect: { id: event.id } },
-          storage: { connect: { key: storage.key } },
-          zkapp: { connect: { address: zkapp.address } },
-        },
-        select: selectStorage,
-      });
-    }),
+    .mutation(
+      async ({ input: { key, value, event, storage, zkapp, ...data } }) => {
+        return await prisma.storage.upsert({
+          where: { key },
+          update: {
+            value,
+            ...data,
+          },
+          create: {
+            key,
+            value,
+            event: { connect: { id: event.id } },
+            storage: { connect: { key: storage.key } },
+            zkapp: { connect: { address: zkapp.address } },
+            ...data,
+          },
+          select: selectStorage,
+        });
+      }
+    ),
 });
