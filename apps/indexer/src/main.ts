@@ -1,6 +1,6 @@
+import SuperJSON from 'superjson';
+import crypto from 'crypto';
 import {
-  Field,
-  MerkleMap,
   Mina,
   PublicKey,
   UInt32,
@@ -20,26 +20,17 @@ import {
   EventStoragePending,
   eventStoreDefault,
 } from '@zkhumans/zkkv';
-import { IdentityClientUtils as IDUtils } from '@zkhumans/utils-client';
-import { delay, hr } from '@zkhumans/utils';
-import SuperJSON from 'superjson';
-import crypto from 'crypto';
+import { delay, graphqlEndpoints, hr } from '@zkhumans/utils';
 
 // simple hash for unique event identifier
 // https://medium.com/@chris_72272/what-is-the-fastest-node-js-hashing-algorithm-c15c1a0e164e
-const hash = (data: crypto.BinaryLike) =>
+const hashid = (data: crypto.BinaryLike) =>
   crypto.createHash('sha1').update(data).digest('base64');
 
 ////////////////////////////////////
 // configure from env
 ////////////////////////////////////
 const INDEXER_CYCLE_TIME = 1000 * +(process.env['INDEXER_CYCLE_TIME'] ?? 30);
-const ZKAPP_SECRET_AUTH = process.env['ZKAPP_SECRET_AUTH'];
-
-if (!ZKAPP_SECRET_AUTH) {
-  console.log('ERROR: ZKAPP_SECRET_AUTH not defined');
-  process.exit(1);
-}
 
 console.log('API_URL            :', process.env['API_URL']);
 console.log('INDEXER_CYCLE_TIME :', INDEXER_CYCLE_TIME);
@@ -67,16 +58,6 @@ console.log('meta', meta);
 ////////////////////////////////////
 // configure Mina GraphQL endpoints
 ////////////////////////////////////
-const graphqlEndpoints = {
-  mina: [
-    'https://proxy.berkeley.minaexplorer.com/graphql',
-    'https://api.minascan.io/node/berkeley/v1/graphql',
-  ],
-  archive: [
-    'https://archive.berkeley.minaexplorer.com/',
-    'https://api.minascan.io/archive/berkeley/v1/graphql/',
-  ],
-};
 Mina.setActiveInstance(Mina.Network(graphqlEndpoints));
 
 ////////////////////////////////////
@@ -152,12 +133,12 @@ const loop = async () => {
     if (event.type == 'storage:pending') {
       const js: any = SuperJSON.parse(SuperJSON.stringify(event.event.data));
       const es = EventStoragePending.fromJSON(js);
-      id = hash(
+      id = hashid(
         es.settlementChecksum.toString() +
           event.event.transactionInfo.transactionHash
       );
     } else {
-      id = hash(event.event.transactionInfo.transactionHash);
+      id = hashid(event.event.transactionInfo.transactionHash);
     }
 
     const e = await trpc.event.byId.query({ id });
@@ -281,44 +262,6 @@ const loop = async () => {
     blockLast: blockchainLength.toBigint(),
     blockInit: dbZkapp.blockInit ? undefined : startFetchEvents?.toBigint(),
   });
-
-  ////////////////////////////////////////////////////////////////////////
-  // process pending (uncommitted) storage
-  ////////////////////////////////////////////////////////////////////////
-  const pendingStorage = await trpc.storage.pending.query();
-  if (!pendingStorage.length) return;
-
-  console.log();
-  const zkappIdentifier = IDUtils.getManagerIdentfier(zkappPublicKey);
-  const maps: { [key: string]: MerkleMap } = {};
-
-  for (const ps of pendingStorage) console.log('Pending storage:', ps);
-
-  // storage levels:
-  // 1: primary storage, zkapp @state
-  // 2: key:value (identifier:commitment) within level-1
-  // 3: key:value within level-2
-
-  // first process level-3 storage to update level-2
-  for (const { key, value, storageKey: s } of pendingStorage) {
-    // if storage (data) is not level-1 and not directly within it
-    if (s && s !== zkappIdentifier) {
-      // restore the level-2 MerkleMap from database (or create new if not exist)
-      if (!maps[s]) maps[s] = await IDUtils.getStoredMerkleMap(s);
-      // add level-3 K:V data to the level-2 MerkleMap
-      maps[s].set(Field(key), Field(value));
-    }
-  }
-
-  // then process level-2 storage updates to update level-1
-  const mmMgr = await IDUtils.getManagerMM(zkappPublicKey);
-  Object.keys(maps).forEach((k) => mmMgr.set(Field(k), maps[k].getRoot()));
-
-  const commitmentPending = zkapp.commitment.get();
-  const commitmentSettled = mmMgr.getRoot();
-  console.log('zkapp.commitPendingTransformations');
-  console.log('  commitmentPending:', commitmentPending.toBigInt());
-  console.log('  commitmentSettled:', commitmentSettled.toBigInt());
 };
 
 const main = async () => {
