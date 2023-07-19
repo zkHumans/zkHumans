@@ -108,6 +108,21 @@ services:
     command: >
       npx nx run indexer:serve:production
 
+  prover:
+    profiles: ['run']
+    extends:
+      service: base-service
+    container_name: prover
+    depends_on:
+      api:
+        condition: service_healthy
+    environment:
+      - FEEPAYER_PRIVATEKEY
+      - PROVER_CYCLE_TIME
+      - ZKAPP_SECRET_AUTH
+    command: >
+      npx nx run prover:serve:production
+
   prisma-studio:
     profiles: ['run', 'maintenance']
     extends:
