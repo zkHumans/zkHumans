@@ -1,3 +1,14 @@
+export const graphqlEndpoints = {
+  mina: [
+    'https://proxy.berkeley.minaexplorer.com/graphql',
+    'https://api.minascan.io/node/berkeley/v1/graphql',
+  ],
+  archive: [
+    'https://archive.berkeley.minaexplorer.com/',
+    'https://api.minascan.io/archive/berkeley/v1/graphql/',
+  ],
+};
+
 // for base58 checksum, modeled after snarkyjs
 // https://github.com/o1-labs/snarkyjs-bindings/blob/main/crypto/constants.ts
 export const versionBytes = {
