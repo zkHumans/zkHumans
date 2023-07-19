@@ -245,7 +245,12 @@ const loop = async () => {
       case 'storage:commit':
         {
           const es = EventStorageCommit.fromJSON(js);
-          // ?: console.log('[storage:commit]');
+          const x = await trpc.storage.commit.mutate({
+            commitmentPending: es.commitmentPending.toString(),
+            commitmentSettled: es.commitmentSettled.toString(),
+            zkapp: { address: zkappAddress },
+          });
+          console.log('[storage:commit] # updated records:', x.count);
         }
         break;
     }
