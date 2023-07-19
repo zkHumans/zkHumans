@@ -39,6 +39,32 @@ export const storageRouter = t.router({
       });
     }),
 
+  commit: t.procedure
+    .input(
+      z.object({
+        commitmentPending: z.string(),
+        commitmentSettled: z.string(),
+        zkapp: z.object({
+          address: z.string(),
+        }),
+      })
+    )
+    .mutation(
+      async ({ input: { commitmentPending, commitmentSettled, zkapp } }) => {
+        return await prisma.storage.updateMany({
+          where: {
+            isPending: true,
+            commitmentPending,
+            zkappAddress: zkapp.address,
+          },
+          data: {
+            isPending: false,
+            commitmentSettled,
+          },
+        });
+      }
+    ),
+
   // create a unit of key:value storage
   // use when storage.key is not known
   // use set when storage.key exists
