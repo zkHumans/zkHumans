@@ -1,15 +1,18 @@
 import { basename } from 'path';
-import { promises as fs } from 'fs';
 import {
   AccountUpdate,
   CircuitString,
   MerkleMap,
   Mina,
   Poseidon,
-  PrivateKey,
   fetchAccount,
 } from 'snarkyjs';
-import { Identifier, loopUntilAccountExists } from '@zkhumans/utils';
+import {
+  Identifier,
+  graphqlEndpoints,
+  loopUntilAccountExists,
+  parseConfig,
+} from '@zkhumans/utils';
 import { eventStoreDefault } from '@zkhumans/zkkv';
 import { Identity, IdentityManager } from '../IdentityManager';
 
@@ -36,74 +39,14 @@ if (!deployAlias) {
 
 console.log('deployAlias =', deployAlias);
 
-type ZKConfig = {
-  version: number;
-  deployAliases: Record<
-    string,
-    {
-      url: string;
-      keyPath: string;
-      fee: string;
-      smartContract: string;
-      feepayerKeyPath: string;
-      feepayerAlias: string;
-    }
-  >;
-};
-
-async function parseConfig(deployAlias: string) {
-  try {
-    // parse config file
-    const configJson: ZKConfig = JSON.parse(
-      await fs.readFile('config.json', 'utf8')
-    );
-    const config = configJson.deployAliases[deployAlias];
-    if (!config) throw new Error(`deployAlias not found: ${deployAlias}`);
-
-    // parse feepayer key path from config file
-    const feepayerKeyPath =
-      configJson.deployAliases[deployAlias].feepayerKeyPath;
-    console.log('feepayerKeyPath =', feepayerKeyPath);
-
-    // parse feepayer private key from file
-    const feepayerKey: { privateKey: string } = JSON.parse(
-      await fs.readFile(config.feepayerKeyPath, 'utf8')
-    );
-
-    // parse zkapp private key from file
-    const zkAppKey: { privateKey: string } = JSON.parse(
-      await fs.readFile(config.keyPath, 'utf8')
-    );
-
-    return {
-      feepayerPrivateKey: PrivateKey.fromBase58(feepayerKey.privateKey),
-      zkAppPrivateKey: PrivateKey.fromBase58(zkAppKey.privateKey),
-      configUrl: config.url,
-    };
-  } catch (e) {
-    console.log(`${EXE}: ERROR:`, e);
-    process.exit(1);
-  }
-}
-
 try {
-  const { feepayerPrivateKey, zkAppPrivateKey, configUrl } = await parseConfig(
+  const { feepayerPrivateKey, zkAppPrivateKey, config } = await parseConfig(
     deployAlias
   );
 
   const feepayerPublicKey = feepayerPrivateKey.toPublicKey();
   const zkAppPublicKey = zkAppPrivateKey.toPublicKey();
 
-  const graphqlEndpoints = {
-    mina: [
-      'https://proxy.berkeley.minaexplorer.com/graphql',
-      'https://api.minascan.io/node/berkeley/v1/graphql',
-    ],
-    archive: [
-      'https://archive.berkeley.minaexplorer.com/',
-      'https://api.minascan.io/archive/berkeley/v1/graphql/',
-    ],
-  };
   Mina.setActiveInstance(Mina.Network(graphqlEndpoints));
 
   console.log(`
@@ -122,7 +65,7 @@ try {
       );
     },
     isZkAppAccount: false,
-    network: configUrl,
+    network: config.url,
   });
   if (!account) throw new Error(`${EXE}: ERROR: feepayer account not funded.`);
   console.log(
@@ -211,7 +154,7 @@ try {
     eachTimeNotExist: () =>
       console.log('waiting for zkApp account to exist...'),
     isZkAppAccount: true,
-    network: configUrl,
+    network: config.url,
   });
   if (!zkAppAccount) throw new Error('zkAppAccount: account not deployed(?)');
 
