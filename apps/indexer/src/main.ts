@@ -128,17 +128,16 @@ const loop = async () => {
   // Use a unique identifier for each event to ensure no-duplicate
   ////////////////////////////////////////////////////////////////////////
   for (const event of events) {
+    const transactionHash = event.event.transactionInfo.transactionHash;
+
     // get a unique identifier for the event
     let id = '';
     if (event.type == 'storage:pending') {
       const js: any = SuperJSON.parse(SuperJSON.stringify(event.event.data));
       const es = EventStoragePending.fromJSON(js);
-      id = hashid(
-        es.settlementChecksum.toString() +
-          event.event.transactionInfo.transactionHash
-      );
+      id = hashid(es.settlementChecksum.toString() + transactionHash);
     } else {
-      id = hashid(event.event.transactionInfo.transactionHash);
+      id = hashid(transactionHash);
     }
 
     const e = await trpc.event.byId.query({ id });
@@ -147,7 +146,7 @@ const loop = async () => {
         id,
         type: event.type,
         data: SuperJSON.stringify(event.event.data),
-        transactionInfo: SuperJSON.stringify(event.event.transactionInfo),
+        transactionHash,
         blockHeight: event.blockHeight.toBigint(),
         globalSlot: event.globalSlot.toBigint(),
         zkapp: { address: zkappAddress },

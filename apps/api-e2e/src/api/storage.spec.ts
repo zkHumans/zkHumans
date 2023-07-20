@@ -17,7 +17,7 @@ describe('Storage', () => {
     id: t,
     type: t,
     data: t,
-    transactionInfo: t,
+    transactionHash: t,
     blockHeight: BigInt(0),
     globalSlot: BigInt(0),
     zkapp: { address },

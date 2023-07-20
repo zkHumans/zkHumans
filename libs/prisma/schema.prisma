@@ -71,7 +71,7 @@ model event {
   // from the event
   type            String
   data            Json? // event.data
-  transactionInfo Json // event.transactionInfo
+  transactionHash String // event.transactionInfo.transactionHash
   blockHeight     BigInt
   globalSlot      BigInt
 
