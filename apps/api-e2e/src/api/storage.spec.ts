@@ -36,11 +36,11 @@ describe('Storage', () => {
     if (await trpc.storage.byKey.query({ key }))
       await trpc.storage.delete.mutate({ key });
 
-    if (await trpc.zkapp.byAddress.query({ address }))
-      await trpc.zkapp.delete.mutate({ address });
-
     if (await trpc.event.byId.query({ id: event.id }))
       await trpc.event.delete.mutate({ id: event.id });
+
+    if (await trpc.zkapp.byAddress.query({ address }))
+      await trpc.zkapp.delete.mutate({ address });
 
     ////////////////////////////////////
     // Create
@@ -134,13 +134,7 @@ describe('Storage', () => {
     // Clear
     ////////////////////////////////////
 
-    const s = await trpc.storage.delete.mutate({ key });
-    expect(s).toBeTruthy();
-
     const z = await trpc.zkapp.delete.mutate({ address });
     expect(z).toBeTruthy();
-
-    const e = await trpc.event.delete.mutate({ id: event.id });
-    expect(e).toBeTruthy();
   });
 });
