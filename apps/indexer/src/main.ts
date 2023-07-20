@@ -150,6 +150,7 @@ const loop = async () => {
         transactionInfo: SuperJSON.stringify(event.event.transactionInfo),
         blockHeight: event.blockHeight.toBigint(),
         globalSlot: event.globalSlot.toBigint(),
+        zkapp: { address: zkappAddress },
       });
 
       // if zkapp's first block was unknown, use the first event's block

@@ -12,6 +12,7 @@ export const selectEvent = Prisma.validator<Prisma.eventSelect>()({
   transactionInfo: true,
   blockHeight: true,
   globalSlot: true,
+  zkappAddress: true,
 });
 
 export const eventRouter = t.router({
@@ -24,11 +25,22 @@ export const eventRouter = t.router({
         transactionInfo: z.string(),
         blockHeight: z.bigint(),
         globalSlot: z.bigint(),
+        zkapp: z.object({
+          address: z.string(),
+        }),
       })
     )
     .mutation(
       async ({
-        input: { id, type, data, transactionInfo, blockHeight, globalSlot },
+        input: {
+          id,
+          type,
+          data,
+          transactionInfo,
+          blockHeight,
+          globalSlot,
+          zkapp,
+        },
       }) => {
         return await prisma.event.create({
           data: {
@@ -38,6 +50,7 @@ export const eventRouter = t.router({
             transactionInfo,
             blockHeight,
             globalSlot,
+            zkapp: { connect: { address: zkapp.address } },
           },
           select: selectEvent,
         });

@@ -26,6 +26,7 @@ model zkapp {
 
   // relations
   storage storage[]
+  events  event[]
 }
 
 // An individual unit of key:value store.
@@ -75,5 +76,7 @@ model event {
   globalSlot      BigInt
 
   // relations
-  storage storage[] @relation("event-storage")
+  storage      storage[] @relation("event-storage")
+  zkapp        zkapp?    @relation(fields: [zkappAddress], references: [address], onDelete: Cascade, onUpdate: Cascade)
+  zkappAddress String?
 }

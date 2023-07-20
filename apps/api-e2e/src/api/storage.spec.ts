@@ -20,6 +20,7 @@ describe('Storage', () => {
     transactionInfo: t,
     blockHeight: BigInt(0),
     globalSlot: BigInt(0),
+    zkapp: { address },
   };
 
   const k1 = Field(100);
