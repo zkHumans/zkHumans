@@ -95,7 +95,7 @@ export const eventRouter = t.router({
         where: { id },
         data: {
           isProcessed: true,
-          data: undefined, // don't need data anymore
+          data: '', // don't need data anymore
         },
         select: selectEvent,
       });
