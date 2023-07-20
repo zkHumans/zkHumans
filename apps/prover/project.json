@@ -40,7 +40,9 @@
       "executor": "@nx/js:node",
       "defaultConfiguration": "development",
       "options": {
-        "buildTarget": "prover:build"
+        "buildTarget": "prover:build",
+        "inspect": false,
+        "watch": false
       },
       "configurations": {
         "development": {

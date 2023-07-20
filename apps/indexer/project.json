@@ -40,7 +40,9 @@
       "executor": "@nx/js:node",
       "defaultConfiguration": "development",
       "options": {
-        "buildTarget": "indexer:build"
+        "buildTarget": "indexer:build",
+        "inspect": false,
+        "watch": false
       },
       "configurations": {
         "development": {

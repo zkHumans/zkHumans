@@ -40,7 +40,9 @@
       "executor": "@nx/js:node",
       "defaultConfiguration": "development",
       "options": {
-        "buildTarget": "oracle-auth-test:build"
+        "buildTarget": "oracle-auth-test:build",
+        "inspect": false,
+        "watch": false
       },
       "configurations": {
         "development": {
