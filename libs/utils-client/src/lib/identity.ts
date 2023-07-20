@@ -1,5 +1,5 @@
 import { trpc } from '@zkhumans/trpc-client';
-import { AuthNProvider, AuthNType, Identity } from '@zkhumans/contracts';
+import { Identity } from '@zkhumans/contracts';
 import { BioAuthOracle, BioAuthorizedMessage } from '@zkhumans/snarky-bioauth';
 import { CircuitString, Field, MerkleMap, Poseidon, PublicKey } from 'snarkyjs';
 import { Identifier, generateIdentifiers } from '@zkhumans/utils';
@@ -295,44 +295,26 @@ export class IdentityClientUtils {
   */
 
   static humanReadableAuthNFactor(afp: AuthNFactorProtocol) {
-    const x = { type: '', provider: '', revision: Number(afp.revision) };
-
-    switch (afp.type) {
-      case AuthNType.operator:
-        x.type = 'Operator Key';
-        break;
-      case AuthNType.password:
-        x.type = 'Password';
-        break;
-      case AuthNType.facescan:
-        x.type = 'Facescan';
-        break;
-      case AuthNType.fingerprint:
-        x.type = 'Fingerprint';
-        break;
-      case AuthNType.retina:
-        x.type = 'Retina';
-        break;
-      case AuthNType.proofOfPerson:
-        x.type = 'Proof of Unique Living Human';
-        break;
-    }
-
-    switch (afp.provider) {
-      case AuthNProvider.self:
-        x.provider = 'Self';
-        break;
-      case AuthNProvider.zkhumans:
-        x.provider = 'zkHumans';
-        break;
-      case AuthNProvider.humanode:
-        x.provider = 'Humanode';
-        break;
-      case AuthNProvider.webauthn:
-        x.type = 'WebAuthn';
-        break;
-    }
-
-    return x;
+    return {
+      type: this.humanReadableAuthNTypes[afp.type],
+      provider: this.humanReadableAuthNProviders[afp.provider],
+      revision: Number(afp.revision),
+    };
   }
+
+  static humanReadableAuthNProviders = {
+    '1': 'Self',
+    '2': 'zkHumans',
+    '3': 'Humanode',
+    '4': 'WebAuthn',
+  };
+
+  static humanReadableAuthNTypes = {
+    '1': 'Operator Key',
+    '2': 'Password',
+    '3': 'Facescan',
+    '4': 'Fingerprint',
+    '5': 'Retina',
+    '6': 'Proof of Person',
+  };
 }
