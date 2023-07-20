@@ -248,6 +248,7 @@ const loop = async () => {
           const x = await trpc.storage.commit.mutate({
             commitmentPending: es.commitmentPending.toString(),
             commitmentSettled: es.commitmentSettled.toString(),
+            event: { id: event.id },
             zkapp: { address: zkappAddress },
           });
           console.log('[storage:commit] # updated records:', x.count);

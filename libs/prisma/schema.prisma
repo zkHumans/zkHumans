@@ -51,8 +51,7 @@ model storage {
   data         storage[] @relation("storage")
   storage      storage?  @relation("storage", fields: [storageKey], references: [key], onDelete: Cascade, onUpdate: Cascade)
   storageKey   String? // undefined only for top-level storage
-  event        event     @relation(fields: [eventId], references: [id])
-  eventId      String
+  events       event[]   @relation("event-storage")
   zkapp        zkapp     @relation(fields: [zkappAddress], references: [address], onDelete: Cascade, onUpdate: Cascade)
   zkappAddress String
 
@@ -76,5 +75,5 @@ model event {
   globalSlot      BigInt
 
   // relations
-  storage storage[]
+  storage storage[] @relation("event-storage")
 }

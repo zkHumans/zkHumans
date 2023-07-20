@@ -11,7 +11,6 @@ export const selectStorage = Prisma.validator<Prisma.storageSelect>()({
   commitmentPending: true,
   commitmentSettled: true,
   settlementChecksum: true,
-  eventId: true,
   storageKey: true,
   zkappAddress: true,
   createdAt: true,
@@ -44,14 +43,19 @@ export const storageRouter = t.router({
       z.object({
         commitmentPending: z.string(),
         commitmentSettled: z.string(),
+        event: z.object({
+          id: z.string(),
+        }),
         zkapp: z.object({
           address: z.string(),
         }),
       })
     )
     .mutation(
-      async ({ input: { commitmentPending, commitmentSettled, zkapp } }) => {
-        return await prisma.storage.updateMany({
+      async ({
+        input: { commitmentPending, commitmentSettled, event, zkapp },
+      }) => {
+        const x = await prisma.storage.updateMany({
           where: {
             isPending: true,
             commitmentPending,
@@ -62,6 +66,26 @@ export const storageRouter = t.router({
             commitmentSettled,
           },
         });
+
+        // update event-storage relation, must be done individually
+        // https://github.com/prisma/prisma/issues/3143
+        const storage = await prisma.storage.findMany({
+          where: {
+            commitmentPending,
+            commitmentSettled,
+            zkappAddress: zkapp.address,
+          },
+        });
+        await Promise.all(
+          storage.map((s) => {
+            return prisma.storage.update({
+              where: { key: s.key },
+              data: { events: { connect: { id: event.id } } },
+            });
+          })
+        );
+
+        return x;
       }
     ),
 
@@ -91,7 +115,7 @@ export const storageRouter = t.router({
         data: {
           key,
           value,
-          event: { connect: { id: event.id } },
+          events: { connect: { id: event.id } },
           zkapp: { connect: { address: zkapp.address } },
           ...data,
         },
@@ -169,7 +193,7 @@ export const storageRouter = t.router({
           create: {
             key,
             value,
-            event: { connect: { id: event.id } },
+            events: { connect: { id: event.id } },
             storage: { connect: { key: storage.key } },
             zkapp: { connect: { address: zkapp.address } },
             ...data,
