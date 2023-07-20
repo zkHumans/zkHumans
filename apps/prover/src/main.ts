@@ -11,7 +11,7 @@ import {
 } from 'snarkyjs';
 import { trpc, trpcWait } from '@zkhumans/trpc-client';
 import { IdentityManager } from '@zkhumans/contracts';
-import { IdentityClientUtils as IDUtils } from '@zkhumans/utils-client';
+import { IDUtils } from '@zkhumans/utils-client';
 import { delay, graphqlEndpoints, hr } from '@zkhumans/utils';
 
 ////////////////////////////////////

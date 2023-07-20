@@ -30,7 +30,7 @@ export default function NewIdentity() {
   // get next available identifier
   useEffect(() => {
     (async () => {
-      const { IdentityClientUtils } = await import('@zkhumans/utils-client');
+      const { IDUtils } = await import('@zkhumans/utils-client');
 
       if (!zk.state.account) {
         cnsl.log('error', 'ERROR: account not ready');
@@ -38,9 +38,7 @@ export default function NewIdentity() {
       }
 
       // use MINA account to get next available identifier
-      const idr = await IdentityClientUtils.getNextUnusedIdentifier(
-        zk.state.account
-      );
+      const idr = await IDUtils.getNextUnusedIdentifier(zk.state.account);
 
       if (!idr) {
         cnsl.log('error', 'MAX IDs per account reached');
@@ -56,8 +54,8 @@ export default function NewIdentity() {
     (async () => {
       const { delay } = await import('@zkhumans/utils');
       if (identifier && bioAuthState.link && !bioAuthState.auth) {
-        const { IdentityClientUtils } = await import('@zkhumans/utils-client');
-        const [id, auth] = await IdentityClientUtils.getBioAuth(identifier);
+        const { IDUtils } = await import('@zkhumans/utils-client');
+        const [id, auth] = await IDUtils.getBioAuth(identifier);
         if (auth) {
           cnsl.log('success', 'BioAuthorization received');
           setBioAuthState((s) => ({ ...s, auth, id }));
@@ -84,15 +82,15 @@ export default function NewIdentity() {
   // get bioauth'd signature of identifier
   async function handleBioAuth() {
     if (!identifier) return;
-    const { IdentityClientUtils } = await import('@zkhumans/utils-client');
-    const [id, auth] = await IdentityClientUtils.getBioAuth(identifier);
+    const { IDUtils } = await import('@zkhumans/utils-client');
+    const [id, auth] = await IDUtils.getBioAuth(identifier);
 
     if (auth) {
       cnsl.log('success', 'BioAuthorization received');
       setBioAuthState((s) => ({ ...s, auth, id }));
     } else {
       cnsl.log('info', 'Awaiting BioAuthorization...');
-      const link = await IdentityClientUtils.getBioAuthLink(id);
+      const link = await IDUtils.getBioAuthLink(id);
       setBioAuthState((s) => ({ ...s, id, link }));
     }
   }
@@ -133,8 +131,7 @@ export default function NewIdentity() {
         '@zkhumans/contracts'
       );
       const { Identifier } = await import('@zkhumans/utils');
-      const { IdentityClientUtils } = await import('@zkhumans/utils-client');
-      const IDUtils = IdentityClientUtils;
+      const { IDUtils } = await import('@zkhumans/utils-client');
 
       ////////////////////////////////////////////////////////////////////////
       // create new Identity

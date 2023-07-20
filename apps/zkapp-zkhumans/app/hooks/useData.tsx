@@ -14,12 +14,12 @@ export function useData(cnsl: CNSL, zk: AppContextType['zk']) {
   // get identities upon account change or refresh trigger
   useEffect(() => {
     (async () => {
-      const { IdentityClientUtils } = await import('@zkhumans/utils-client');
+      const { IDUtils } = await import('@zkhumans/utils-client');
       const { Field } = await import('snarkyjs');
 
       if (zk.state.account) {
         const ids = [] as UIIdentity[];
-        const dbIds = await IdentityClientUtils.getIdentities(zk.state.account);
+        const dbIds = await IDUtils.getIdentities(zk.state.account);
         for (const id of dbIds) {
           const base58 = Identifier.fromField(Field(id.key)).toBase58();
           ids.push({ ...id, base58 });

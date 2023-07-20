@@ -29,8 +29,7 @@ export default function Identity() {
   useEffect(() => {
     (async () => {
       // dynamically load libs for in-browser only, avoid ERR_REQUIRE_ESM
-      const { IdentityClientUtils } = await import('@zkhumans/utils-client');
-      const IDUtils = IdentityClientUtils;
+      const { IDUtils } = await import('@zkhumans/utils-client');
 
       if (identifier) {
         const afs_ = await IDUtils.getAuthNFactors(identifier);

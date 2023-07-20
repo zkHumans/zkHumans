@@ -15,7 +15,7 @@ type WalletSignedData = SignedData;
  * They use trpc-client to access database through API and may be run by users
  * in-browser.
  */
-export class IdentityClientUtils {
+export class IDUtils {
   static IDENTITY_MGR_MAX_IDS_PER_ACCT = 10;
   static IDENTITY_MGR_SALT = 'TODO:somethingUniqueTotheZkapp';
 
@@ -158,7 +158,7 @@ export class IdentityClientUtils {
     signature: WalletSignedData
   ) {
     // get operator key secret from identifier signed by operator key (wallet)
-    const secret = IdentityClientUtils.getOperatorKeySecret(
+    const secret = IDUtils.getOperatorKeySecret(
       identifier,
       signature
     );
@@ -170,7 +170,7 @@ export class IdentityClientUtils {
       revision: 0,
     };
 
-    await IdentityClientUtils.addAuthNFactorToKeyring(
+    await IDUtils.addAuthNFactorToKeyring(
       mmKeyring,
       identifier,
       afProtocol,
@@ -196,7 +196,7 @@ export class IdentityClientUtils {
       const data = JSON.parse(bioAuth);
       const bioAuthMsg = BioAuthorizedMessage.fromJSON(data);
       const secret = bioAuthMsg.bioAuthId.toString();
-      await IdentityClientUtils.addAuthNFactorToKeyring(
+      await IDUtils.addAuthNFactorToKeyring(
         mmKeyring,
         identifier,
         afProtocol,
@@ -263,7 +263,7 @@ export class IdentityClientUtils {
     identifier: string,
     mmIDKeyring: MerkleMap
   ) {
-    const mmIDManager = await IdentityClientUtils.getManagerMM();
+    const mmIDManager = await IDUtils.getManagerMM();
 
     const identity = Identity.init({
       identifier: Identifier.fromBase58(identifier).toField(),
@@ -280,7 +280,7 @@ export class IdentityClientUtils {
 
   /*
   static async addNewIdentity(identifier: string, identity: Identity) {
-    const mmIDManager = await IdentityClientUtils.getManagerMM();
+    const mmIDManager = await IDUtils.getManagerMM();
     mmIDManager.set(identity.identifier, identity.commitment);
 
     // X: await trpc.smt.txn.mutate({
