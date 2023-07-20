@@ -215,7 +215,7 @@ const loop = async () => {
             });
             console.log('[storage:pending] (with data) created store:', x);
 
-            // create an AF of type Operator Key to get it's meta
+            // create an AF of type Operator Key to get its meta
             const af = AuthNFactor.init({
               protocol: {
                 type: AuthNType.operator,
@@ -252,6 +252,12 @@ const loop = async () => {
             zkapp: { address: zkappAddress },
           });
           console.log('[storage:commit] # updated records:', x.count);
+
+          // mark zkapp as !transforming
+          await trpc.zkapp.update.mutate({
+            address: zkappAddress,
+            isTransforming: false,
+          });
         }
         break;
     }
