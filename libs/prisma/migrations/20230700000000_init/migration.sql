@@ -15,6 +15,7 @@ CREATE TABLE "zkapp" (
     "blockLast" BIGINT NOT NULL DEFAULT 0,
     "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
     "updatedAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "isTransforming" BOOLEAN NOT NULL DEFAULT false,
 
     CONSTRAINT "zkapp_pkey" PRIMARY KEY ("address")
 );
@@ -29,7 +30,6 @@ CREATE TABLE "storage" (
     "commitmentSettled" TEXT,
     "settlementChecksum" TEXT,
     "storageKey" TEXT,
-    "eventId" TEXT NOT NULL,
     "zkappAddress" TEXT NOT NULL,
     "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
     "updatedAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
@@ -44,21 +44,40 @@ CREATE TABLE "event" (
     "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
     "type" TEXT NOT NULL,
     "data" JSONB,
-    "transactionInfo" JSONB NOT NULL,
+    "transactionHash" TEXT NOT NULL,
     "blockHeight" BIGINT NOT NULL,
     "globalSlot" BIGINT NOT NULL,
+    "zkappAddress" TEXT,
 
     CONSTRAINT "event_pkey" PRIMARY KEY ("id")
+);
+
+-- CreateTable
+CREATE TABLE "_event-storage" (
+    "A" TEXT NOT NULL,
+    "B" TEXT NOT NULL
 );
 
 -- CreateIndex
 CREATE UNIQUE INDEX "storage_key_storageKey_key" ON "storage"("key", "storageKey");
 
+-- CreateIndex
+CREATE UNIQUE INDEX "_event-storage_AB_unique" ON "_event-storage"("A", "B");
+
+-- CreateIndex
+CREATE INDEX "_event-storage_B_index" ON "_event-storage"("B");
+
 -- AddForeignKey
 ALTER TABLE "storage" ADD CONSTRAINT "storage_storageKey_fkey" FOREIGN KEY ("storageKey") REFERENCES "storage"("key") ON DELETE CASCADE ON UPDATE CASCADE;
 
 -- AddForeignKey
-ALTER TABLE "storage" ADD CONSTRAINT "storage_eventId_fkey" FOREIGN KEY ("eventId") REFERENCES "event"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
+ALTER TABLE "storage" ADD CONSTRAINT "storage_zkappAddress_fkey" FOREIGN KEY ("zkappAddress") REFERENCES "zkapp"("address") ON DELETE CASCADE ON UPDATE CASCADE;
 
 -- AddForeignKey
-ALTER TABLE "storage" ADD CONSTRAINT "storage_zkappAddress_fkey" FOREIGN KEY ("zkappAddress") REFERENCES "zkapp"("address") ON DELETE CASCADE ON UPDATE CASCADE;
+ALTER TABLE "event" ADD CONSTRAINT "event_zkappAddress_fkey" FOREIGN KEY ("zkappAddress") REFERENCES "zkapp"("address") ON DELETE CASCADE ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "_event-storage" ADD CONSTRAINT "_event-storage_A_fkey" FOREIGN KEY ("A") REFERENCES "event"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "_event-storage" ADD CONSTRAINT "_event-storage_B_fkey" FOREIGN KEY ("B") REFERENCES "storage"("key") ON DELETE CASCADE ON UPDATE CASCADE;
