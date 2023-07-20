@@ -9,6 +9,7 @@ export const selectZkApp = Prisma.validator<Prisma.zkappSelect>()({
   blockLast: true,
   createdAt: true,
   updatedAt: true,
+  isTransforming: true,
 });
 
 export const zkappRouter = t.router({
@@ -43,6 +44,7 @@ export const zkappRouter = t.router({
         address: z.string(),
         blockInit: z.bigint().optional(),
         blockLast: z.bigint().optional(),
+        isTransforming: z.boolean().optional(),
       })
     )
     .mutation(async ({ input: { address, ...data } }) => {

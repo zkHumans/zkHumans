@@ -24,6 +24,11 @@ model zkapp {
   createdAt DateTime @default(now())
   updatedAt DateTime @default(now()) @updatedAt
 
+  // True when state transformation is in progress; when a transaction has been
+  // submitted to the network to commit pending state transformations.
+  // Used by prover to avoid producing a duplicate state transformation.
+  isTransforming Boolean @default(false)
+
   // relations
   storage storage[]
   events  event[]
