@@ -49,10 +49,10 @@ const status = await trpcWait(trpc, 5, 3_000);
 if (!status) process.exit(1);
 
 ////////////////////////////////////
-// get zkapp info from API
+// get zkapp address from API
 ////////////////////////////////////
 const meta = await trpc.meta.query();
-console.log('meta', meta);
+console.log('API meta:', meta);
 
 ////////////////////////////////////
 // configure Mina GraphQL endpoints
@@ -114,9 +114,14 @@ const loop = async () => {
   if (meta.address.IdentityManager !== address.IdentityManager)
     throw new Error('zkapp address changed');
 
-  ////////////////////////////////////
+  // wait for state transformations in progress
+  const z = await trpc.zkapp.byAddress.query({ address: zkappAddress });
+  if (z && z.isTransforming) {
+    console.log('Transformation in progress, waiting...');
+    return false;
+  }
+
   // fetch the network's last block
-  ////////////////////////////////////
   const { blockchainLength } = await fetchLastBlock(graphqlEndpoints.mina[0]);
   console.log('last network block:', blockchainLength.toBigint());
 
@@ -124,7 +129,7 @@ const loop = async () => {
   // process pending (uncommitted) storage
   ////////////////////////////////////////////////////////////////////////
   const pendingStorage = await trpc.storage.pending.query();
-  if (!pendingStorage.length) return;
+  if (!pendingStorage.length) return false;
 
   console.log();
   const maps: { [key: string]: MerkleMap } = {};
@@ -181,14 +186,26 @@ const loop = async () => {
     'https://berkeley.minaexplorer.com/transaction/' + hash
   );
 
+  // mark zkapp as transforming
+  await trpc.zkapp.update.mutate({
+    address: zkappAddress,
+    isTransforming: true,
+  });
+
   console.log('waiting for txn...');
-  await res.wait();
+  try {
+    await res.wait();
+  } catch (err: any) {
+    console.log(err.message);
+  }
   console.log('...waiting for txn');
+
+  return true;
 };
 
 const main = async () => {
   try {
-    await loop();
+    const r = await loop();
     hr();
 
     if (STOP) {
@@ -196,7 +213,8 @@ const main = async () => {
       process.exit(0);
     }
 
-    await delay(PROVER_CYCLE_TIME);
+    // only wait if did not wait for a txn
+    if (!r) await delay(PROVER_CYCLE_TIME);
   } catch (e) {
     console.log('Exiting to restart:', e);
     process.exit(1);
