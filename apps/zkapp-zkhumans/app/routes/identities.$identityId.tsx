@@ -5,6 +5,11 @@ import { useAppContext } from '../root';
 import { Alert } from '../components';
 import { useEffect, useState } from 'react';
 
+/**
+ * How often to recheck the BioAuthOracle for bio-authorized data
+ */
+const CYCLE_CHECK_BIOAUTH = 5_000;
+
 export const loader = async ({ params }: LoaderArgs) => {
   const identifier = params.identityId;
   return json({ identifier });
@@ -132,6 +137,58 @@ export default function Identity() {
   }
 
   ////////////////////////////////////////////////////////////////////////
+  // Bioauth
+  ////////////////////////////////////////////////////////////////////////
+
+  const [bioAuthState, setBioAuthState] = useState({
+    auth: null as null | string,
+    link: null as null | string,
+    id: null as null | string,
+    recheckCounter: 0,
+  });
+
+  // continually check a pending BioAuth when there is a link for it
+  useEffect(() => {
+    (async () => {
+      const { delay } = await import('@zkhumans/utils');
+      if (identifier && bioAuthState.link && !bioAuthState.auth) {
+        const { IDUtils } = await import('@zkhumans/utils-client');
+        const [id, auth] = await IDUtils.getBioAuth(identifier);
+        if (auth) {
+          cnsl.log('success', 'BioAuthorization received');
+          setBioAuthState((s) => ({ ...s, auth, id }));
+        } else {
+          await delay(CYCLE_CHECK_BIOAUTH);
+          setBioAuthState((s) => ({
+            ...s,
+            recheckCounter: bioAuthState.recheckCounter + 1,
+          }));
+        }
+      }
+    })();
+  }, [
+    identifier,
+    bioAuthState.auth,
+    bioAuthState.link,
+    bioAuthState.recheckCounter,
+  ]);
+
+  // get bioauth'd signature of identifier
+  async function handleBioAuth() {
+    if (!identifier) return;
+    const { IDUtils } = await import('@zkhumans/utils-client');
+    const [id, auth] = await IDUtils.getBioAuth(identifier);
+
+    if (auth) {
+      cnsl.log('success', 'BioAuthorization received');
+      setBioAuthState((s) => ({ ...s, auth, id }));
+    } else {
+      cnsl.log('info', 'Awaiting BioAuthorization...');
+      const link = await IDUtils.getBioAuthLink(id);
+      setBioAuthState((s) => ({ ...s, id, link }));
+    }
+  }
+
   ////////////////////////////////////////////////////////////////////////
   ////////////////////////////////////////////////////////////////////////
 
