@@ -19,12 +19,34 @@ type AFS = {
   };
 }[];
 
+const optsAFTypes = [
+  // TODO: { value: AuthNType.operator, text: 'Operator Key', disabled: true },
+  { value: '', text: '- Select a Type -', disabled: true },
+  { value: '1', text: 'Operator Key', disabled: true },
+  { value: '2', text: 'Password', disabled: false },
+  { value: '3', text: 'Biometric', disabled: true },
+  { value: '4', text: 'Crypto Wallet', disabled: true },
+  { value: '6', text: 'Proof of Human', disabled: false },
+];
+
+const optsAFProviders = [
+  { value: '', text: '- Select a Provider -', disabled: true },
+  { value: '1', text: 'Self', disabled: false },
+  { value: '2', text: 'zkHumans', disabled: false },
+  { value: '3', text: 'Humanode', disabled: false },
+  { value: '4', text: 'WebAuthn', disabled: false },
+];
+
 export default function Identity() {
   const { identifier } = useLoaderData<typeof loader>();
   const appContext = useAppContext();
   const { cnsl, zk } = appContext;
 
   const [authNFactors, setAuthNFactors] = useState([] as AFS);
+  const [selectedAFType, setSelectedAFType] = useState(optsAFTypes[0].value);
+  const [selectedAFProvider, setSelectedAFProvider] = useState(
+    optsAFProviders[0].value
+  );
 
   useEffect(() => {
     (async () => {
@@ -73,6 +95,31 @@ export default function Identity() {
     cnsl.log('error', 'TOOD: Destroyed Identity:', identifier);
 
     appContext.data.refresh();
+  }
+
+  function handleAddAF_changeType(event: React.ChangeEvent<HTMLSelectElement>) {
+    setSelectedAFType(event.target.value);
+    setSelectedAFProvider(optsAFProviders[0].value);
+  }
+
+  function handleAddAF_changeProvider(
+    event: React.ChangeEvent<HTMLSelectElement>
+  ) {
+    setSelectedAFProvider(event.target.value);
+  }
+
+  function handleAddAF_add() {
+    console.log(
+      'TODO: add AuthNFactor!',
+      `type=${selectedAFType}, provider=${selectedAFProvider}`
+    );
+    handleAddAF_close();
+  }
+
+  function handleAddAF_close() {
+    setSelectedAFType(optsAFTypes[0].value);
+    setSelectedAFProvider(optsAFProviders[0].value);
+    (window as any).modal_1.close();
   }
 
   if (!identifier) return <Alert type="error">Identity not found.</Alert>;
@@ -137,11 +184,19 @@ export default function Identity() {
 
       {/* Action Buttons */}
       <div className="flex flex-row justify-center space-x-4 p-4">
+        <button
+          className="btn btn-primary normal-case"
+          onClick={() => (window as any).modal_1.showModal()}
+        >
+          Add Authentication Factor
+        </button>
+        {/*
         <Link to={'./authn/new'}>
           <button className="btn btn-primary normal-case">
             Add AuthN Factor
           </button>
         </Link>
+        */}
         <button
           className="btn btn-warning normal-case"
           onClick={handleDestroyIdentity}
@@ -149,6 +204,93 @@ export default function Identity() {
           Destroy Identity
         </button>
       </div>
+
+      {/* Modal to add AuthNFactor */}
+      <dialog id="modal_1" className="modal">
+        <form method="dialog" className="modal-box">
+          <h3 className="text-lg font-bold">
+            Prepare to Add Authentication Factor
+          </h3>
+          <div className="my-4 flex flex-col space-y-4">
+            <select
+              onChange={handleAddAF_changeType}
+              className="select select-bordered w-full max-w-xs"
+              value={selectedAFType}
+            >
+              {optsAFTypes.map((o) => (
+                <option key={o.value} value={o.value} disabled={o.disabled}>
+                  {o.text}
+                </option>
+              ))}
+            </select>
+
+            {/* Password */}
+            {selectedAFType == '2' && (
+              <>
+                <input
+                  id="input_password"
+                  type="password"
+                  placeholder="Enter a password"
+                  className="input input-bordered w-full max-w-xs"
+                />
+                <select
+                  onChange={handleAddAF_changeProvider}
+                  className="select select-bordered w-full max-w-xs"
+                  value={selectedAFProvider}
+                >
+                  {optsAFProviders.map(
+                    (o) =>
+                      ['', '1'].includes(o.value) && (
+                        <option
+                          key={o.value}
+                          value={o.value}
+                          disabled={o.disabled}
+                        >
+                          {o.text}
+                        </option>
+                      )
+                  )}
+                </select>
+              </>
+            )}
+
+            {/* Proof of Human */}
+            {selectedAFType == '6' && (
+              <>
+                <select
+                  onChange={handleAddAF_changeProvider}
+                  className="select select-bordered w-full max-w-xs"
+                  value={selectedAFProvider}
+                >
+                  {optsAFProviders.map(
+                    (o) =>
+                      ['', '3'].includes(o.value) && (
+                        <option
+                          key={o.value}
+                          value={o.value}
+                          disabled={o.disabled}
+                        >
+                          {o.text}
+                        </option>
+                      )
+                  )}
+                </select>
+              </>
+            )}
+          </div>
+          <div className="modal-action">
+            <div className="btn normal-case" onClick={handleAddAF_close}>
+              Cancel
+            </div>
+            <div
+              className="btn btn-primary normal-case"
+              onClick={handleAddAF_add}
+            >
+              Add
+            </div>
+          </div>
+        </form>
+      </dialog>
     </div>
   );
 }
