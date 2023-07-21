@@ -42,29 +42,9 @@ export default function Identity() {
   const appContext = useAppContext();
   const { cnsl, zk } = appContext;
 
-  const [authNFactors, setAuthNFactors] = useState([] as AFS);
-  const [selectedAFType, setSelectedAFType] = useState(optsAFTypes[0].value);
-  const [selectedAFProvider, setSelectedAFProvider] = useState(
-    optsAFProviders[0].value
-  );
-
-  useEffect(() => {
-    (async () => {
-      // dynamically load libs for in-browser only, avoid ERR_REQUIRE_ESM
-      const { IDUtils } = await import('@zkhumans/utils-client');
-
-      if (identifier) {
-        const afs_ = await IDUtils.getAuthNFactors(identifier);
-        const afs = [] as AFS;
-        for (const af of Object.keys(afs_))
-          afs.push({
-            key: af,
-            value: IDUtils.humanReadableAuthNFactor(afs_[af]),
-          });
-        setAuthNFactors(() => afs);
-      }
-    })();
-  }, [identifier]);
+  ////////////////////////////////////////////////////////////////////////
+  // Identity Management
+  ////////////////////////////////////////////////////////////////////////
 
   async function handleDestroyIdentity() {
     cnsl.log('info', 'Destroying Identity...');
@@ -97,6 +77,35 @@ export default function Identity() {
     appContext.data.refresh();
   }
 
+  ////////////////////////////////////////////////////////////////////////
+  // AuthNFactor Management
+  ////////////////////////////////////////////////////////////////////////
+
+  const [authNFactors, setAuthNFactors] = useState([] as AFS);
+  const [selectedAFType, setSelectedAFType] = useState(optsAFTypes[0].value);
+  const [selectedAFProvider, setSelectedAFProvider] = useState(
+    optsAFProviders[0].value
+  );
+
+  // load authentication factors from storage
+  useEffect(() => {
+    (async () => {
+      // dynamically load libs for in-browser only, avoid ERR_REQUIRE_ESM
+      const { IDUtils } = await import('@zkhumans/utils-client');
+
+      if (identifier) {
+        const afs_ = await IDUtils.getAuthNFactors(identifier);
+        const afs = [] as AFS;
+        for (const af of Object.keys(afs_))
+          afs.push({
+            key: af,
+            value: IDUtils.humanReadableAuthNFactor(afs_[af]),
+          });
+        setAuthNFactors(() => afs);
+      }
+    })();
+  }, [identifier]);
+
   function handleAddAF_changeType(event: React.ChangeEvent<HTMLSelectElement>) {
     setSelectedAFType(event.target.value);
     setSelectedAFProvider(optsAFProviders[0].value);
@@ -121,6 +130,10 @@ export default function Identity() {
     setSelectedAFProvider(optsAFProviders[0].value);
     (window as any).modal_1.close();
   }
+
+  ////////////////////////////////////////////////////////////////////////
+  ////////////////////////////////////////////////////////////////////////
+  ////////////////////////////////////////////////////////////////////////
 
   if (!identifier) return <Alert type="error">Identity not found.</Alert>;
 
