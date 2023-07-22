@@ -5,9 +5,9 @@ export function strToBool(s: string | undefined): boolean | undefined {
   return s === undefined ? undefined : RegExp(/^\s*(true|1|on)\s*$/i).test(s);
 }
 
-// Show first 6 and last 4 characters of user's Mina account.
-export const displayAccount = (account: string) =>
-  `${account.slice(0, 6)}...${account.slice(-4)}`;
+// Show first (pre) and last (post) characters of an account or hash.
+export const displayAccount = (account: string, pre = 6, post = 4) =>
+  `${account.slice(0, pre)}...${account.slice(-post)}`;
 
 // log a "horizontal rule" (spacer) on the console
 export const hr = () =>
