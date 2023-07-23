@@ -26,8 +26,6 @@ import {
   eventStoreDefault,
 } from '@zkhumans/zkkv';
 
-import type { AuthNFactorData, AuthNFactorProtocol } from '../IdentityManager';
-
 ////////////////////////////////////////////////////////////////////////
 // set config from env
 ////////////////////////////////////////////////////////////////////////
@@ -252,23 +250,36 @@ storageRunner.logMapKeys();
 hr();
 log('addAuthNFactor Alice...');
 await addAuthNFactor(
-  storageRunner.maps[zkappIdentifier.toString()],
-  storageRunner.maps[Alice.identifier.toString()],
+  AuthNFactor.init({
+    protocol: {
+      type: AuthNType.operator,
+      provider: AuthNProvider.zkhumans,
+      revision: 0,
+    },
+    data: { salt, secret: 'secretCode' },
+  }),
   Alice,
-  { type: AuthNType.operator, provider: AuthNProvider.self, revision: 0 },
-  { salt, secret: 'secretCode' }
+  storageRunner.maps[Alice.identifier.toString()],
+  storageRunner.maps[zkappIdentifier.toString()]
 );
 log('...addAuthNFactor Alice');
 numEvents = await processEvents(numEvents);
 
 hr();
 log('addAuthNFactor Bob...');
+const bobOperatorKey = AuthNFactor.init({
+  protocol: {
+    type: AuthNType.operator,
+    provider: AuthNProvider.zkhumans,
+    revision: 0,
+  },
+  data: { salt, secret: 'XXXXXXXXXX' },
+});
 await addAuthNFactor(
-  storageRunner.maps[zkappIdentifier.toString()],
-  storageRunner.maps[Bob.identifier.toString()],
+  bobOperatorKey,
   Bob,
-  { type: AuthNType.operator, provider: AuthNProvider.self, revision: 0 },
-  { salt, secret: 'XXXXXXXXXX' }
+  storageRunner.maps[Bob.identifier.toString()],
+  storageRunner.maps[zkappIdentifier.toString()]
 );
 log('...addAuthNFactor Bob');
 numEvents = await processEvents(numEvents);
@@ -389,24 +400,11 @@ async function addIdentity(idManagerMM: MerkleMap, identity: Identity) {
 }
 
 async function addAuthNFactor(
-  idManagerMM: MerkleMap,
-  idKeyringMM: MerkleMap,
+  af: AuthNFactor,
   identity: Identity,
-  afProtocol: AuthNFactorProtocol,
-  afData: AuthNFactorData
+  idKeyringMM: MerkleMap,
+  idManagerMM: MerkleMap
 ) {
-  const af = new AuthNFactor({
-    protocol: {
-      type: Field(afProtocol.type),
-      provider: Field(afProtocol.provider),
-      revision: Field(afProtocol.revision),
-    },
-    data: {
-      salt: CircuitString.fromString(afData.salt),
-      secret: CircuitString.fromString(afData.secret),
-    },
-  });
-
   // prove the identifier IS in the Identity Manager MT
   const witnessManager = idManagerMM.getWitness(identity.identifier);
 
