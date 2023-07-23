@@ -23,8 +23,8 @@ const EXE = basename(process.argv[1], '.js');
 process.chdir(process.cwd() + '/libs/contracts');
 
 // check env for auth
-const authStr = process.env['ZKAPP_SECRET_AUTH'];
-if (!authStr) {
+const ZKAPP_SECRET_AUTH = process.env['ZKAPP_SECRET_AUTH'];
+if (!ZKAPP_SECRET_AUTH) {
   console.error(`ERROR: env ZKAPP_SECRET_AUTH undefined`);
   process.exit(1);
 }
@@ -96,7 +96,9 @@ try {
   console.log('init commitment :', initCommitment.toString());
 
   // setup auth
-  const authToken = Poseidon.hash(CircuitString.fromString(authStr).toFields());
+  const authToken = Poseidon.hash(
+    CircuitString.fromString(ZKAPP_SECRET_AUTH).toFields()
+  );
   const authHash = Poseidon.hash([authToken]);
 
   // deploy!
