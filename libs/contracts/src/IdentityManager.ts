@@ -144,6 +144,18 @@ export class AuthNFactor extends Struct({
       ],
     });
   }
+
+  protocolEquals(protocol: AuthNFactorProtocol) {
+    const { type, provider, revision } = this.protocol;
+    const t = type.equals(Field(protocol.type));
+    const p = provider.equals(Field(protocol.provider));
+    const r = revision.greaterThanOrEqual(Field(protocol.revision));
+    return t.and(p).and(r);
+  }
+
+  protocolAssertEquals(protocol: AuthNFactorProtocol) {
+    return this.protocolEquals(protocol).assertTrue();
+  }
 }
 
 /**
