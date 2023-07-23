@@ -5,8 +5,9 @@ import {
   MerkleMapWitness,
   Permissions,
   Poseidon,
-  SmartContract,
+  PublicKey,
   State,
+  SmartContract,
   Struct,
   method,
   state,
@@ -249,6 +250,14 @@ export class IdentityManager extends SmartContract {
    */
   @state(Field) authHash = State<Field>();
 
+  /**
+   * BioAuth Oracle PublicKey for verification of CryptoBiometric AuthNFactors.
+   *
+   * 2023-07: This is a "hardcoded" interim solution.
+   * TODO: https://github.com/zkHumans/zkHumans/issues/10
+   */
+  @state(PublicKey) oraclePublicKey = State<PublicKey>();
+
   override events = {
     'storage:create': EventStorageCreate,
     'storage:pending': EventStoragePending,
@@ -283,6 +292,45 @@ export class IdentityManager extends SmartContract {
         key: mgrIdentifier,
         value: mgrCommitment,
       }),
+      witnessManager,
+    });
+
+    for (const { type, event } of events) this.emitEvent(type, event);
+  }
+
+  @method NEW_addAuthNFactor(
+    authNFactor: AuthNFactor,
+    opKey: AuthNFactor,
+    identity: Identity,
+    witnessOpKey: MerkleMapWitness,
+    witnessKeyring: MerkleMapWitness,
+    witnessManager: MerkleMapWitness
+  ) {
+    const mgrIdentifier = this.identifier.getAndAssertEquals();
+    const mgrCommitment = this.commitment.getAndAssertEquals();
+
+    // assert Operator Key is valid and within the identity
+    // Note: ZKKV asserts identity within manager
+    opKey.assertProtocol({
+      type: AuthNType.operator,
+      provider: AuthNProvider.zkhumans,
+      revision: 0,
+    });
+    const [rootOpKey] = witnessOpKey.computeRootAndKey(opKey.getValue());
+    rootOpKey.assertEquals(identity.commitment);
+
+    const events = ZKKV.setStoreData({
+      data0: UnitOfStore.init({
+        key: authNFactor.toUnitOfStore().getKey(),
+        value: EMPTY, // Add
+      }),
+      data1: authNFactor.toUnitOfStore(),
+      store: identity.toUnitOfStore(),
+      storeManager: UnitOfStore.init({
+        key: mgrIdentifier,
+        value: mgrCommitment,
+      }),
+      witnessStore: witnessKeyring,
       witnessManager,
     });
 
