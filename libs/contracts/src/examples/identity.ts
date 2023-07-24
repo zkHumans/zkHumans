@@ -6,6 +6,7 @@ import {
   Mina,
   Poseidon,
   PrivateKey,
+  Signature,
   // 1: Proof,
   // 1: verify,
 } from 'snarkyjs';
@@ -25,6 +26,7 @@ import {
   // 1: RollupTransformations,
   eventStoreDefault,
 } from '@zkhumans/zkkv';
+import { BioAuthorizedMessage } from '@zkhumans/snarky-bioauth';
 
 ////////////////////////////////////////////////////////////////////////
 // set config from env
@@ -181,6 +183,26 @@ const authStr = 'S0meth1ngS3cr3t';
 const authToken = Poseidon.hash(CircuitString.fromString(authStr).toFields());
 const authHash = Poseidon.hash([authToken]);
 
+// setup bioauth oracle simulation
+const oraclePrivateKey = PrivateKey.random();
+const oraclePublicKey = oraclePrivateKey.toPublicKey();
+const bioAuthSimulator = (x: string): BioAuthorizedMessage => {
+  const payload = Field(1);
+  const timestamp = Field(Date.now());
+  const bioAuthId = Poseidon.hash(CircuitString.fromString(x).toFields());
+  const signature = Signature.create(oraclePrivateKey, [
+    payload,
+    timestamp,
+    bioAuthId,
+  ]);
+  return new BioAuthorizedMessage({
+    payload,
+    timestamp,
+    bioAuthId,
+    signature,
+  });
+};
+
 ////////////////////////////////////////////////////////////////////////
 // deploy
 ////////////////////////////////////////////////////////////////////////
@@ -195,6 +217,7 @@ const tx = await Mina.transaction(feePayer, () => {
   zkapp.identifier.set(initStoreIdentifier);
   zkapp.commitment.set(initStoreCommitment);
   zkapp.authHash.set(authHash);
+  zkapp.oraclePublicKey.set(oraclePublicKey);
 
   // notify off-chain storage
   zkapp.emitEvent('storage:create', {
@@ -329,6 +352,50 @@ witness1.assertEquals(witness2);
 const sRoot = storage.maps[zkappIdentifier.toString()].getRoot();
 zkapp.commitment.get().assertEquals(sRoot);
 
+////////////////////////////////////////////////////////////////////////
+// add additional auth factors to committed storage
+////////////////////////////////////////////////////////////////////////
+
+hr();
+log('Bob: NEW_addAuthNFactor password...');
+await NEW_addAuthNFactor(
+  AuthNFactor.init({
+    protocol: {
+      type: AuthNType.password,
+      provider: AuthNProvider.self,
+      revision: 0,
+    },
+    data: { salt, secret: 'password' },
+  }),
+  bobOperatorKey,
+  Bob,
+  storageRunner.maps[Bob.identifier.toString()],
+  storageRunner.maps[zkappIdentifier.toString()]
+);
+log('...Bob: NEW_addAuthNFactor password');
+numEvents = await processEvents(numEvents);
+
+hr();
+log('Bob: NEW_addAuthNFactor bioauth...');
+const bioAuthMsg = bioAuthSimulator('simulatedPayload');
+await NEW_addAuthNFactor(
+  AuthNFactor.init({
+    protocol: {
+      type: AuthNType.proofOfPerson,
+      provider: AuthNProvider.humanode,
+      revision: 0,
+    },
+    data: { salt, secret: bioAuthMsg.bioAuthId.toString() },
+  }),
+  bobOperatorKey,
+  Bob,
+  storageRunner.maps[Bob.identifier.toString()],
+  storageRunner.maps[zkappIdentifier.toString()],
+  bioAuthMsg
+);
+log('...Bob: NEW_addAuthNFactor bioauth');
+numEvents = await processEvents(numEvents);
+
 tada();
 
 ////////////////////////////////////////////////////////////////////////
@@ -406,6 +473,43 @@ async function addIdentity(idManagerMM: MerkleMap, identity: Identity) {
   log('  tx: prove() sign() send()...');
   const tx = await Mina.transaction(feePayer, () => {
     zkapp.addIdentity(identity, witness);
+  });
+  await tx.prove();
+  await tx.sign([feePayerKey]).send();
+  log('  ...tx: prove() sign() send()');
+}
+
+async function NEW_addAuthNFactor(
+  af: AuthNFactor,
+  afOperatorKey: AuthNFactor,
+  identity: Identity,
+  idKeyringMM: MerkleMap,
+  idManagerMM: MerkleMap,
+  oracleMsg = BioAuthorizedMessage.dummy()
+) {
+  // ensure identity matches storage
+  identity = identity.setCommitment(idKeyringMM.getRoot());
+
+  // prove the Operator Key is in the Identity Keyring
+  const witnessOpKey = idKeyringMM.getWitness(afOperatorKey.getKey());
+
+  // prove the AuthNFactor IS NOT in the Identity Keyring MT
+  const witnessKeyring = idKeyringMM.getWitness(af.getKey());
+
+  // prove the identifier IS in the Identity Manager MT
+  const witnessManager = idManagerMM.getWitness(identity.identifier);
+
+  log('  tx: prove() sign() send()...');
+  const tx = await Mina.transaction(feePayer, () => {
+    zkapp.NEW_addAuthNFactor(
+      af,
+      afOperatorKey,
+      identity,
+      witnessOpKey,
+      witnessKeyring,
+      witnessManager,
+      oracleMsg
+    );
   });
   await tx.prove();
   await tx.sign([feePayerKey]).send();
