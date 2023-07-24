@@ -60,16 +60,35 @@ const tada = () => {
 class StorageSimulator {
   maps: { [key: string]: MerkleMap };
   pending: Array<EventStoragePending>;
+
   constructor() {
     this.maps = {};
     this.pending = [];
   }
+
   getRoot(identifier: Field): string {
     return this.maps[identifier.toString()].getRoot().toString();
   }
+
   logMapKeys(label = '') {
     console.log(label, 'storage maps identifiers:');
     Object.keys(this.maps).forEach((k) => console.log(` ${k}`));
+  }
+
+  processPending(zkappIdentifierStr: string, pending = this.pending) {
+    for (const pe of pending) {
+      const i = pe.id.toString();
+      if (!this.maps[i]) this.maps[i] = new MerkleMap();
+      this.maps[i].set(pe.data1.getKey(), pe.data1.getValue());
+
+      // if level-3 K:V data, update level-2 within level-1
+      if (i !== zkappIdentifierStr)
+        this.maps[zkappIdentifierStr].set(Field(i), this.maps[i].getRoot());
+
+      // create MerkleMap for new stores
+      const j = pe.data1.key.toString();
+      if (!this.maps[j]) this.maps[j] = new MerkleMap();
+    }
   }
 }
 
@@ -358,7 +377,7 @@ async function processEvents(offset = 0) {
       case 'storage:commit':
         {
           // off-chain storage should update pending records
-          processPendingStorage(storage);
+          storage.processPending(zkappIdentifier.toString());
           storage.pending = [];
         }
         break;
@@ -421,29 +440,13 @@ async function commitPendingTransformations() {
   await commitPendingTransformationsWithAuthToken();
 }
 
-function processPendingStorage(s: StorageSimulator) {
-  for (const pe of storage.pending) {
-    const i = pe.id.toString();
-    if (!s.maps[i]) s.maps[i] = new MerkleMap();
-    s.maps[i].set(pe.data1.getKey(), pe.data1.getValue());
-
-    // if level-3 K:V data, update level-2 within level-1
-    if (i !== zkappIdentifier.toString())
-      s.maps[zkappIdentifier.toString()].set(Field(i), s.maps[i].getRoot());
-
-    const j = pe.data1.key.toString();
-    if (!s.maps[j]) s.maps[j] = new MerkleMap();
-  }
-}
-
 async function commitPendingTransformationsWithAuthToken() {
   log('commit pending with Auth');
   log('commit pending store events...');
   logRoots();
   {
-    // update storage runner, to get the next commitment
-    processPendingStorage(storageRunner);
-
+    // update storage runner from pending storage, to get the next commitment
+    storageRunner.processPending(zkappIdentifier.toString(), storage.pending);
 
     const commitmentPending = zkapp.commitment.get();
     const commitmentSettled =
