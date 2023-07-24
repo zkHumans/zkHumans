@@ -188,7 +188,6 @@ export function useZKApp<T>(
 
   /**
    * checkAccountNetwork.
-   * Note: call after snarkyjs.isReady otherwise returns false
    * @param account - the MINA account to look for presence on the network
    */
   const checkAccountNetwork = async (account: string) => {
