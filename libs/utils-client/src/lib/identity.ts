@@ -16,7 +16,7 @@ type WalletSignedData = SignedData;
  * in-browser.
  */
 export class IDUtils {
-  static IDENTITY_MGR_MAX_IDS_PER_ACCT = 10;
+  static IDENTITY_MGR_MAX_IDS_PER_ACCT = 10; // TODO: remove
   static IDENTITY_MGR_SALT = 'TODO:somethingUniqueTotheZkapp';
 
   static async getIdentities(account: string) {
@@ -48,10 +48,10 @@ export class IDUtils {
    * Only committed (non-pending) data is used to restore the MerkleMap as only
    * it may be used to produce an acceptable witness.
    */
-  static async getStoredMerkleMap(identifier: string) {
+  static async getStoredMerkleMap(key: string) {
     const mm = new MerkleMap();
 
-    const storage = await trpc.storage.byKeyWithData.query({ key: identifier });
+    const storage = await trpc.storage.byKeyWithData.query({ key });
     if (!storage) return mm;
 
     // restore MerkleMap from db store
@@ -209,29 +209,6 @@ export class IDUtils {
       console.log('addAuthNFactorBioAuth ERROR', err);
       return false;
     }
-  }
-  */
-
-  /*
-  static async addAuthNFactorToKeyring(
-    mmKeyring: MerkleMap,
-    identifier: string, // TODO: remove
-    protocol: AuthNFactorProtocol,
-    secret: string
-  ) {
-    const af = AuthNFactor.init({
-      protocol,
-      data: { salt: IDENTITY_MGR_SALT, secret },
-    });
-
-    mmKeyring.set(af.getKey(), af.getValue());
-
-    // X: await trpc.smt.txn.mutate({
-    // X:   id: identifier,
-    // X:   txn: 'update',
-    // X:   key: smtValueToString(afHash, Field),
-    // X:   value: smtValueToString(af, AuthNFactor),
-    // X: });
   }
   */
 
