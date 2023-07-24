@@ -1,6 +1,6 @@
 import { json } from '@remix-run/node';
 import invariant from 'tiny-invariant';
-import { PrivateKey, isReady } from 'snarkyjs';
+import { PrivateKey } from 'snarkyjs';
 
 // CORS
 const headers = {
@@ -12,7 +12,6 @@ export async function loader() {
     process.env.AUTH_MINA_PRIVATE_KEY,
     'AUTH_MINA_PRIVATE_KEY must be set'
   );
-  await isReady;
   const privateKey = PrivateKey.fromBase58(process.env.AUTH_MINA_PRIVATE_KEY);
   const publicKey = privateKey.toPublicKey();
   const meta = {

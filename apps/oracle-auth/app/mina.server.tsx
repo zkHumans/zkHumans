@@ -5,7 +5,6 @@ import {
   PrivateKey,
   PublicKey,
   Signature,
-  isReady,
 } from 'snarkyjs';
 import invariant from 'tiny-invariant';
 
@@ -32,9 +31,6 @@ export async function getSignedBioAuth(_id: string, _bioAuthId: string) {
     process.env.AUTH_MINA_PRIVATE_KEY,
     'AUTH_MINA_PRIVATE_KEY must be set'
   );
-
-  // wait for SnarkyJS to finish loading
-  await isReady;
 
   // The private key of our account.
   const privateKey = PrivateKey.fromBase58(process.env.AUTH_MINA_PRIVATE_KEY);
