@@ -2,7 +2,7 @@ import { Link, Outlet, useLoaderData, useMatches } from '@remix-run/react';
 import { json, LoaderArgs } from '@remix-run/node';
 import { trpc } from '@zkhumans/trpc-client';
 import { useAppContext } from '../root';
-import { Alert } from '../components';
+import { Alert, Spinner } from '../components';
 import { useEffect, useState } from 'react';
 import { delay, displayAccount } from '@zkhumans/utils';
 
@@ -206,7 +206,7 @@ export default function Identity() {
     setSignature(() => signedData);
   }
 
-  async function handlePrepareProofAddAuthNFactorBioAuth() {
+  async function handleAddAF_prepareProofBioAuth() {
     zk.setIs((s) => ({ ...s, proving: true }));
     try {
       cnsl.tic('Preparing add AuthNFactor Proof...');
@@ -410,8 +410,6 @@ export default function Identity() {
     </div>
   );
 
-  const spinner = <span className="loading loading-ring loading-sm" />;
-
   const hasOutlet = useMatches().length > 3;
   const hasBioAuth = bioAuthState.auth !== null;
   const hasSignature = signature !== null;
@@ -535,7 +533,7 @@ export default function Identity() {
                       className={hasBioAuth ? btnSuccess : btnTodo}
                       onClick={hasBioAuth ? handleNothing : handleBioAuth}
                     >
-                      {zk.is.authing && spinner}
+                      {zk.is.authing && <Spinner />}
                       BioAuthorize
                     </div>
 
@@ -566,14 +564,14 @@ export default function Identity() {
                   className={hasSignature ? btnSuccess : btnTodo}
                   onClick={hasSignature ? handleNothing : handleSignature}
                 >
-                  {zk.is.signing && spinner}
+                  {zk.is.signing && <Spinner />}
                   Sign with Operator Key
                 </div>
                 <div
                   className={hasZKApp ? btnSuccess : btnTodo}
                   onClick={hasZKApp ? handleNothing : handleCompileZkApp}
                 >
-                  {zk.is.compiling && spinner}
+                  {zk.is.compiling && <Spinner />}
                   Compile zkApp
                 </div>
                 <div
@@ -586,17 +584,17 @@ export default function Identity() {
                       ? btnTodo
                       : btnDisabled
                   }
-                  onClick={handlePrepareProofAddAuthNFactorBioAuth}
+                  onClick={handleAddAF_prepareProofBioAuth}
                 >
-                  {zk.is.proving && spinner}
+                  {zk.is.proving && <Spinner />}
                   Prepare Proof
                 </div>
                 <div
                   className={hasTransaction ? btnTodo : btnDisabled}
                   onClick={handleSendTransaction}
                 >
-                  {zk.is.sending && spinner}
-                  Send Proof
+                  {zk.is.sending && <Spinner />}
+                  Send Transaction
                 </div>
               </>
             )}
