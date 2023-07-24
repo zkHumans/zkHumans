@@ -6,6 +6,7 @@ import {
   Mina,
   Poseidon,
   fetchAccount,
+  PrivateKey,
 } from 'snarkyjs';
 import {
   Identifier,
@@ -26,6 +27,13 @@ process.chdir(process.cwd() + '/libs/contracts');
 const ZKAPP_SECRET_AUTH = process.env['ZKAPP_SECRET_AUTH'];
 if (!ZKAPP_SECRET_AUTH) {
   console.error(`ERROR: env ZKAPP_SECRET_AUTH undefined`);
+  process.exit(1);
+}
+
+// check env for bioauth oracle signature key
+const AUTH_MINA_PRIVATE_KEY = process.env['AUTH_MINA_PRIVATE_KEY'];
+if (!AUTH_MINA_PRIVATE_KEY) {
+  console.error(`ERROR: env AUTH_MINA_PRIVATE_KEY undefined`);
   process.exit(1);
 }
 
@@ -101,6 +109,11 @@ try {
   );
   const authHash = Poseidon.hash([authToken]);
 
+  // get oracle pub from priv key
+  const oraclePublicKey = PrivateKey.fromBase58(
+    AUTH_MINA_PRIVATE_KEY
+  ).toPublicKey();
+
   // deploy!
   console.log('deploying contract');
   const tx = await Mina.transaction(
@@ -115,10 +128,11 @@ try {
       zkApp.deploy({ verificationKey });
       // zkApp.deploy({ zkappKey: zkAppPrivateKey, verificationKey });
 
-      // set initial storage identifier and root hash
+      // set initial state
       zkApp.identifier.set(initIdentifier);
       zkApp.commitment.set(initCommitment);
       zkApp.authHash.set(authHash);
+      zkApp.oraclePublicKey.set(oraclePublicKey);
 
       // notify off-chain storage
       zkApp.emitEvent('storage:create', {
