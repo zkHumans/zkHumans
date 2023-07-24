@@ -4,7 +4,7 @@ import { trpc } from '@zkhumans/trpc-client';
 import { useAppContext } from '../root';
 import { Alert } from '../components';
 import { useEffect, useState } from 'react';
-import { displayAccount } from '@zkhumans/utils';
+import { delay, displayAccount } from '@zkhumans/utils';
 
 import type { WalletSignedData } from '../hooks';
 
@@ -53,6 +53,13 @@ export default function Identity() {
   const [signature, setSignature] = useState(null as null | WalletSignedData);
   const [transaction, setTransaction] = useState(null as null | string);
   const [transactionHash, setTransactionHash] = useState(null as null | string);
+  const [is, setIs] = useState({
+    bioAuthing: false as boolean,
+    signing: false as boolean,
+    compiling: false as boolean,
+    proving: false as boolean,
+    sending: false as boolean,
+  });
 
   ////////////////////////////////////////////////////////////////////////
   // Identity Management
@@ -155,13 +162,13 @@ export default function Identity() {
   // continually check a pending BioAuth when there is a link for it
   useEffect(() => {
     (async () => {
-      const { delay } = await import('@zkhumans/utils');
       if (identifier && bioAuthState.link && !bioAuthState.auth) {
         const { IDUtils } = await import('@zkhumans/utils-client');
         const [id, auth] = await IDUtils.getBioAuth(identifier);
         if (auth) {
           cnsl.log('success', 'BioAuthorization received');
           setBioAuthState((s) => ({ ...s, auth, id }));
+          setIs((s) => ({ ...s, bioAuthing: false }));
         } else {
           await delay(CYCLE_CHECK_BIOAUTH);
           setBioAuthState((s) => ({
@@ -181,33 +188,37 @@ export default function Identity() {
   // get bioauth'd signature of identifier
   async function handleBioAuth() {
     if (!identifier) return;
+    setIs((s) => ({ ...s, bioAuthing: true }));
     const { IDUtils } = await import('@zkhumans/utils-client');
-    const [id, auth] = await IDUtils.getBioAuth(identifier);
-
-    if (auth) {
-      cnsl.log('success', 'BioAuthorization received');
-      setBioAuthState((s) => ({ ...s, auth, id }));
-    } else {
-      cnsl.log('info', 'Awaiting BioAuthorization...');
-      const link = await IDUtils.getBioAuthLink(id);
-      setBioAuthState((s) => ({ ...s, id, link }));
-    }
+    const [id] = await IDUtils.getBioAuth(identifier);
+    const link = await IDUtils.getBioAuthLink(id);
+    setBioAuthState((s) => ({
+      ...s,
+      id,
+      link,
+      recheckCounter: bioAuthState.recheckCounter + 1,
+    }));
   }
 
   ////////////////////////////////////////////////////////////////////////
 
   async function handleCompileZkApp() {
+    setIs((s) => ({ ...s, compiling: true }));
     await zk.compile(); // this takes forever!
+    setIs((s) => ({ ...s, compiling: false }));
   }
 
   // get wallet signature of identifier
   async function handleSignature() {
     if (!identifier) return;
+    setIs((s) => ({ ...s, signing: true }));
     const signedData = await zk.getSignedMessage(identifier);
     setSignature(() => signedData);
+    setIs((s) => ({ ...s, signing: false }));
   }
 
   async function handlePrepareProofAddAuthNFactorBioAuth() {
+    setIs((s) => ({ ...s, proving: true }));
     try {
       cnsl.tic('Preparing add AuthNFactor Proof...');
 
@@ -269,6 +280,9 @@ export default function Identity() {
       // prove the AuthNFactor IS NOT (yet) in the Identity Keyring MT
       ////////////////////////////////////////////////////////////////////////
       cnsl.tic('> Adding Bioauth as Authentication Factor...');
+      const bioAuthMsg = BioAuthorizedMessage.fromJSON(
+        JSON.parse(bioAuthState.auth)
+      );
       const afBioAuth = AuthNFactor.init({
         protocol: {
           type: AuthNType.proofOfPerson,
@@ -277,9 +291,7 @@ export default function Identity() {
         },
         data: {
           salt: IDUtils.IDENTITY_MGR_SALT,
-          secret: BioAuthorizedMessage.fromJSON(
-            JSON.parse(bioAuthState.auth)
-          ).bioAuthId.toString(),
+          secret: bioAuthMsg.bioAuthId.toString(),
         },
       });
       const witnessKeyring = mmIdentity.getWitness(afBioAuth.getKey());
@@ -298,11 +310,14 @@ export default function Identity() {
       ////////////////////////////////////////////////////////////////////////
       cnsl.tic('> Preparing transaction...');
       const tx = await snarkyjs.Mina.transaction(() => {
-        zkApp.identityManager.addAuthNFactor(
+        zkApp.identityManager.NEW_addAuthNFactor(
           afBioAuth,
+          afOperatorKey,
           identity,
+          witnessOpKey,
           witnessKeyring,
-          witnessManager
+          witnessManager,
+          bioAuthMsg
         );
       });
       cnsl.toc('success');
@@ -323,14 +338,43 @@ export default function Identity() {
       cnsl.toc('error', `ERROR: ${err.message}`);
       cnsl.toc('error');
       console.log('ERROR', err.message, err.code);
-      return;
     }
 
     appContext.data.refresh();
+    setIs((s) => ({ ...s, proving: false }));
   }
 
-  async function handleSendProofAddAuthNFactorBioAuth() {
-    // TODO
+  async function handleSendTransaction() {
+    setIs((s) => ({ ...s, sending: true }));
+    try {
+      cnsl.tic('Sending transaction...');
+      const zks = zk.getReadyState();
+      if (!zks) throw new Error('zkApp not ready for transaction');
+      const { wallet } = zks;
+
+      const { hash } = await wallet.sendTransaction({
+        transaction,
+        feePayer: {
+          fee: 0.1,
+          memo: '',
+        },
+      });
+      cnsl.toc('success', `sent with hash=${hash}`);
+
+      cnsl.log(
+        'info',
+        `See transaction at https://berkeley.minaexplorer.com/transaction/${hash}`
+      );
+
+      setTransactionHash(() => hash);
+    } catch (
+      err: any // eslint-disable-line @typescript-eslint/no-explicit-any
+    ) {
+      cnsl.toc('error', `ERROR: ${err.message}`);
+    }
+
+    appContext.data.refresh();
+    setIs((s) => ({ ...s, sending: false }));
   }
 
   const handleNothing = () => {
@@ -379,6 +423,8 @@ export default function Identity() {
       </table>
     </div>
   );
+
+  const spinner = <span className="loading loading-ring loading-sm" />;
 
   const hasOutlet = useMatches().length > 3;
   const hasBioAuth = bioAuthState.auth !== null;
@@ -503,6 +549,7 @@ export default function Identity() {
                       className={hasBioAuth ? btnSuccess : btnTodo}
                       onClick={hasBioAuth ? handleNothing : handleBioAuth}
                     >
+                      {is.bioAuthing && spinner}
                       BioAuthorize
                     </div>
 
@@ -533,12 +580,14 @@ export default function Identity() {
                   className={hasSignature ? btnSuccess : btnTodo}
                   onClick={hasSignature ? handleNothing : handleSignature}
                 >
+                  {is.signing && spinner}
                   Sign with Operator Key
                 </div>
                 <div
                   className={hasZKApp ? btnSuccess : btnTodo}
                   onClick={hasZKApp ? handleNothing : handleCompileZkApp}
                 >
+                  {is.compiling && spinner}
                   Compile zkApp
                 </div>
                 <div
@@ -553,12 +602,14 @@ export default function Identity() {
                   }
                   onClick={handlePrepareProofAddAuthNFactorBioAuth}
                 >
+                  {is.proving && spinner}
                   Prepare Proof
                 </div>
                 <div
                   className={hasTransaction ? btnTodo : btnDisabled}
-                  onClick={handleSendProofAddAuthNFactorBioAuth}
+                  onClick={handleSendTransaction}
                 >
+                  {is.sending && spinner}
                   Send Proof
                 </div>
               </>
