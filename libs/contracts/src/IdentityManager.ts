@@ -1,13 +1,15 @@
 import {
+  Bool,
   CircuitString,
   DeployArgs,
   Field,
   MerkleMapWitness,
   Permissions,
   Poseidon,
+  Provable,
   PublicKey,
-  State,
   SmartContract,
+  State,
   Struct,
   method,
   state,
@@ -21,6 +23,10 @@ import {
   UnitOfStore,
   ZKKV,
 } from '@zkhumans/zkkv';
+import {
+  BioAuthorizedMessage,
+  ProvableBioAuth,
+} from '@zkhumans/snarky-bioauth';
 
 /**
  * Abbreviations:
@@ -253,7 +259,7 @@ export class IdentityManager extends SmartContract {
   /**
    * BioAuth Oracle PublicKey for verification of CryptoBiometric AuthNFactors.
    *
-   * 2023-07: This is a "hardcoded" interim solution.
+   * 2023-07: This is a "hardcoded" interim solution until generalized.
    * TODO: https://github.com/zkHumans/zkHumans/issues/10
    */
   @state(PublicKey) oraclePublicKey = State<PublicKey>();
@@ -304,20 +310,39 @@ export class IdentityManager extends SmartContract {
     identity: Identity,
     witnessOpKey: MerkleMapWitness,
     witnessKeyring: MerkleMapWitness,
-    witnessManager: MerkleMapWitness
+    witnessManager: MerkleMapWitness,
+    oracleMsg: BioAuthorizedMessage
   ) {
     const mgrIdentifier = this.identifier.getAndAssertEquals();
     const mgrCommitment = this.commitment.getAndAssertEquals();
+    const oraclePublicKey = this.oraclePublicKey.getAndAssertEquals();
 
     // assert Operator Key is valid and within the identity
     // Note: ZKKV asserts identity within manager
-    opKey.assertProtocol({
+    opKey.protocolAssertEquals({
       type: AuthNType.operator,
       provider: AuthNProvider.zkhumans,
-      revision: 0,
+      revision: 0, // >= 0
     });
     const [rootOpKey] = witnessOpKey.computeRootAndKey(opKey.getValue());
     rootOpKey.assertEquals(identity.commitment);
+
+    // if adding BioAuth authentication factor
+    Provable.if(
+      authNFactor.protocolEquals({
+        type: AuthNType.proofOfPerson,
+        provider: AuthNProvider.humanode,
+        revision: 0,
+      }),
+      // check validity of bioauthenticated message
+      ProvableBioAuth.checkMessage(oraclePublicKey, oracleMsg).and(
+        // and ensure bioauthorization and authentication factor match
+        // TODO: oracleMsg.bioAuthId.equals(authNFactor.data.secret)
+        Bool(true)
+      ),
+      // otherwise pass through
+      Bool(true)
+    ).assertTrue();
 
     const events = ZKKV.setStoreData({
       data0: UnitOfStore.init({
