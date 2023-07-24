@@ -1,15 +1,8 @@
 import { trpc } from '@zkhumans/trpc-client';
 import { useAppContext } from '../root';
 import { useEffect, useState } from 'react';
-import { Modal } from '../components';
-import { Link } from '@remix-run/react';
 
 import type { WalletSignedData } from '../hooks';
-
-/**
- * How often to recheck the BioAuthOracle for bio-authorized data
- */
-const CYCLE_CHECK_BIOAUTH = 5_000;
 
 export default function NewIdentity() {
   const appContext = useAppContext();
@@ -19,13 +12,6 @@ export default function NewIdentity() {
   const [signature, setSignature] = useState(null as null | WalletSignedData);
   const [transaction, setTransaction] = useState(null as null | string);
   const [transactionHash, setTransactionHash] = useState(null as null | string);
-
-  const [bioAuthState, setBioAuthState] = useState({
-    auth: null as null | string,
-    link: null as null | string,
-    id: null as null | string,
-    recheckCounter: 0,
-  });
 
   // get next available identifier
   useEffect(() => {
@@ -49,50 +35,8 @@ export default function NewIdentity() {
     })();
   }, [zk.state.account]);
 
-  // continually check a pending BioAuth when there is a link for it
-  useEffect(() => {
-    (async () => {
-      const { delay } = await import('@zkhumans/utils');
-      if (identifier && bioAuthState.link && !bioAuthState.auth) {
-        const { IDUtils } = await import('@zkhumans/utils-client');
-        const [id, auth] = await IDUtils.getBioAuth(identifier);
-        if (auth) {
-          cnsl.log('success', 'BioAuthorization received');
-          setBioAuthState((s) => ({ ...s, auth, id }));
-        } else {
-          await delay(CYCLE_CHECK_BIOAUTH);
-          setBioAuthState((s) => ({
-            ...s,
-            recheckCounter: bioAuthState.recheckCounter + 1,
-          }));
-        }
-      }
-    })();
-  }, [
-    identifier,
-    bioAuthState.auth,
-    bioAuthState.link,
-    bioAuthState.recheckCounter,
-  ]);
-
   async function handleCompileZkApp() {
     await zk.compile(); // this takes forever!
-  }
-
-  // get bioauth'd signature of identifier
-  async function handleBioAuth() {
-    if (!identifier) return;
-    const { IDUtils } = await import('@zkhumans/utils-client');
-    const [id, auth] = await IDUtils.getBioAuth(identifier);
-
-    if (auth) {
-      cnsl.log('success', 'BioAuthorization received');
-      setBioAuthState((s) => ({ ...s, auth, id }));
-    } else {
-      cnsl.log('info', 'Awaiting BioAuthorization...');
-      const link = await IDUtils.getBioAuthLink(id);
-      setBioAuthState((s) => ({ ...s, id, link }));
-    }
   }
 
   // get wallet signature of identifier
@@ -117,12 +61,6 @@ export default function NewIdentity() {
 
       const r = await trpc.health.check.query();
       if (r !== 1) throw new Error('API not available');
-
-      // WIP: add identity first, then add bioauth authNFactor later
-      // X: if (!bioAuthState.auth) {
-      // X:   cnsl.toc('error', 'ERROR: no bioauth');
-      // X:   return;
-      // X: }
 
       ////////////////////////////////////////////////////////////////////////
       // dynamically load libs for in-browser only, avoid ERR_REQUIRE_ESM
@@ -177,20 +115,6 @@ export default function NewIdentity() {
         af.getKey(),
         af.getValue(),
       ]);
-
-      ////////////////////////////////////////////////////////////////////////
-      // add BioAuth as AuthNFactor to Identity Keyring
-      // Note: not adding BioAuth as AF, but rather make optional
-      ////////////////////////////////////////////////////////////////////////
-      // X: // add BioAuth as AuthNFactor to Identity Keyring
-      // X: cnsl.tic('> Adding BioAuth as Authentication Factor...');
-      // X: const statusBioAuth = await IDUtils.addAuthNFactorBioAuth(
-      // X:   mmIDKeyring,
-      // X:   identifier,
-      // X:   bioAuthState.auth
-      // X: );
-      // X: cnsl.toc(statusBioAuth ? 'success' : 'error');
-      // X: if (!statusBioAuth) return;
 
       ////////////////////////////////////////////////////////////////////////
       // prove the new Identity can be added to Identity Manager
@@ -264,28 +188,9 @@ export default function NewIdentity() {
     appContext.data.refresh();
   }
 
-  const ModalNeedBioAuth = () => (
-    <Modal title="BioAuthorization Required">
-      Please visit{' '}
-      <Link
-        to={bioAuthState.link ?? ''}
-        target="_blank"
-        className="link link-primary"
-        rel="noreferrer"
-      >
-        the BioAuth Oracle
-      </Link>{' '}
-      to authorize the identifier
-      <br />
-      then return here to continue.
-    </Modal>
-  );
-
-  const hasBioAuth = bioAuthState.auth !== null;
   const hasSignature = signature !== null;
   const hasTransaction = transaction !== null;
   const hasZKApp = zk.state.zkApp !== null;
-  const needsBioAuth = bioAuthState.link && !hasBioAuth;
 
   const btnDisabled = 'btn normal-case btn-disabled';
   const btnSuccess = 'btn normal-case btn-success';
@@ -323,12 +228,6 @@ export default function NewIdentity() {
           Compile zkApp
         </button>
         <button
-          className={hasBioAuth ? btnSuccess : btnTodo}
-          onClick={hasBioAuth ? handleNothing : handleBioAuth}
-        >
-          BioAuthorize
-        </button>
-        <button
           className={hasSignature ? btnSuccess : btnTodo}
           onClick={hasSignature ? handleNothing : handleSignature}
         >
@@ -338,7 +237,7 @@ export default function NewIdentity() {
           className={
             hasTransaction
               ? btnSuccess
-              : hasZKApp && hasBioAuth && hasSignature
+              : hasZKApp && hasSignature
               ? btnTodo
               : btnDisabled
           }
@@ -353,9 +252,6 @@ export default function NewIdentity() {
           Send Proof
         </button>
       </div>
-
-      {/* Modals */}
-      {needsBioAuth && <ModalNeedBioAuth />}
     </div>
   );
 }
