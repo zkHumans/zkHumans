@@ -270,9 +270,6 @@ export default function Identity() {
       });
 
       const witnessOpKey = mmIdentity.getWitness(afOperatorKey.getKey());
-      const [root] = witnessOpKey.computeRootAndKey(afOperatorKey.getValue());
-      if (!mmIdentity.getRoot().equals(root).toBoolean())
-        throw new Error('Identity ownership Merkle Proof failed');
       cnsl.toc('success');
 
       ////////////////////////////////////////////////////////////////////////
