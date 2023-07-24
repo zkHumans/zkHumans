@@ -53,13 +53,6 @@ export default function Identity() {
   const [signature, setSignature] = useState(null as null | WalletSignedData);
   const [transaction, setTransaction] = useState(null as null | string);
   const [transactionHash, setTransactionHash] = useState(null as null | string);
-  const [is, setIs] = useState({
-    bioAuthing: false as boolean,
-    signing: false as boolean,
-    compiling: false as boolean,
-    proving: false as boolean,
-    sending: false as boolean,
-  });
 
   ////////////////////////////////////////////////////////////////////////
   // Identity Management
@@ -168,7 +161,7 @@ export default function Identity() {
         if (auth) {
           cnsl.log('success', 'BioAuthorization received');
           setBioAuthState((s) => ({ ...s, auth, id }));
-          setIs((s) => ({ ...s, bioAuthing: false }));
+          zk.setIs((s) => ({ ...s, authing: false }));
         } else {
           await delay(CYCLE_CHECK_BIOAUTH);
           setBioAuthState((s) => ({
@@ -188,7 +181,7 @@ export default function Identity() {
   // get bioauth'd signature of identifier
   async function handleBioAuth() {
     if (!identifier) return;
-    setIs((s) => ({ ...s, bioAuthing: true }));
+    zk.setIs((s) => ({ ...s, authing: true }));
     const { IDUtils } = await import('@zkhumans/utils-client');
     const [id] = await IDUtils.getBioAuth(identifier);
     const link = await IDUtils.getBioAuthLink(id);
@@ -203,22 +196,18 @@ export default function Identity() {
   ////////////////////////////////////////////////////////////////////////
 
   async function handleCompileZkApp() {
-    setIs((s) => ({ ...s, compiling: true }));
     await zk.compile(); // this takes forever!
-    setIs((s) => ({ ...s, compiling: false }));
   }
 
   // get wallet signature of identifier
   async function handleSignature() {
     if (!identifier) return;
-    setIs((s) => ({ ...s, signing: true }));
     const signedData = await zk.getSignedMessage(identifier);
     setSignature(() => signedData);
-    setIs((s) => ({ ...s, signing: false }));
   }
 
   async function handlePrepareProofAddAuthNFactorBioAuth() {
-    setIs((s) => ({ ...s, proving: true }));
+    zk.setIs((s) => ({ ...s, proving: true }));
     try {
       cnsl.tic('Preparing add AuthNFactor Proof...');
 
@@ -338,11 +327,11 @@ export default function Identity() {
     }
 
     appContext.data.refresh();
-    setIs((s) => ({ ...s, proving: false }));
+    zk.setIs((s) => ({ ...s, proving: false }));
   }
 
   async function handleSendTransaction() {
-    setIs((s) => ({ ...s, sending: true }));
+    zk.setIs((s) => ({ ...s, sending: true }));
     try {
       cnsl.tic('Sending transaction...');
       const zks = zk.getReadyState();
@@ -371,7 +360,7 @@ export default function Identity() {
     }
 
     appContext.data.refresh();
-    setIs((s) => ({ ...s, sending: false }));
+    zk.setIs((s) => ({ ...s, sending: false }));
   }
 
   const handleNothing = () => {
@@ -546,7 +535,7 @@ export default function Identity() {
                       className={hasBioAuth ? btnSuccess : btnTodo}
                       onClick={hasBioAuth ? handleNothing : handleBioAuth}
                     >
-                      {is.bioAuthing && spinner}
+                      {zk.is.authing && spinner}
                       BioAuthorize
                     </div>
 
@@ -577,14 +566,14 @@ export default function Identity() {
                   className={hasSignature ? btnSuccess : btnTodo}
                   onClick={hasSignature ? handleNothing : handleSignature}
                 >
-                  {is.signing && spinner}
+                  {zk.is.signing && spinner}
                   Sign with Operator Key
                 </div>
                 <div
                   className={hasZKApp ? btnSuccess : btnTodo}
                   onClick={hasZKApp ? handleNothing : handleCompileZkApp}
                 >
-                  {is.compiling && spinner}
+                  {zk.is.compiling && spinner}
                   Compile zkApp
                 </div>
                 <div
@@ -599,14 +588,14 @@ export default function Identity() {
                   }
                   onClick={handlePrepareProofAddAuthNFactorBioAuth}
                 >
-                  {is.proving && spinner}
+                  {zk.is.proving && spinner}
                   Prepare Proof
                 </div>
                 <div
                   className={hasTransaction ? btnTodo : btnDisabled}
                   onClick={handleSendTransaction}
                 >
-                  {is.sending && spinner}
+                  {zk.is.sending && spinner}
                   Send Proof
                 </div>
               </>

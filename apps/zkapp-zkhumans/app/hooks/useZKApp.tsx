@@ -92,7 +92,17 @@ export function useZKApp<T>(
   cnsl: CNSL,
   zkAppInit: (snarkyjs: Snarkyjs, cnsl: CNSL) => Promise<T>
 ) {
+  // app state
   const [state, setState] = useState<ZKAppState<T>>(stateInit);
+
+  // process state
+  const [is, setIs] = useState({
+    authing: false as boolean,
+    compiling: false as boolean,
+    proving: false as boolean,
+    sending: false as boolean,
+    signing: false as boolean,
+  });
 
   // watch for MINA wallet changes
   useEffect(() => {
@@ -230,6 +240,7 @@ export function useZKApp<T>(
     message: string
   ): Promise<WalletSignedData | null> {
     cnsl.tic('Requesting signature from wallet...');
+    setIs((s) => ({ ...s, signing: true }));
     try {
       if (!state.wallet) throw new Error('wallet not connected');
       if (!state.hasAccountNetwork) throw new Error('account not found');
@@ -238,11 +249,13 @@ export function useZKApp<T>(
       });
       if (!data) throw new Error('signature empty');
       cnsl.toc('success');
+      setIs((s) => ({ ...s, signing: false }));
       return data;
     } catch (
       err: any // eslint-disable-line @typescript-eslint/no-explicit-any
     ) {
       cnsl.toc('error', `Failed: ${err.message}`);
+      setIs((s) => ({ ...s, signing: false }));
       return null;
     }
   }
@@ -262,15 +275,15 @@ export function useZKApp<T>(
       // load snarky!
       ////////////////////////////////////////////////////////////////////////
 
-      cnsl.tic('Loading snarkyjs...');
       const snarkyjs = await import('snarkyjs');
       snarkyjs.Mina.setActiveInstance(snarkyjs.Mina.Network(MINA_NETWORK));
       setState((s) => ({ ...s, snarkyjs }));
-      cnsl.toc();
     })();
   }
 
   async function compile() {
+    setIs((s) => ({ ...s, compiling: true }));
+
     // only init zkApp once
     if (state.zkApp !== null) {
       cnsl.log('success', 'zkApp ready');
@@ -300,6 +313,7 @@ export function useZKApp<T>(
       cnsl.toc('error', `ERROR: ${err.message} ${err.code}`);
       setState((s) => ({ ...s, hasError: true }));
     }
+    setIs((s) => ({ ...s, compiling: false }));
   }
 
   function isReady() {
@@ -323,6 +337,8 @@ export function useZKApp<T>(
 
   return {
     state,
+    is,
+    setIs,
     getSignedMessage,
     handleConnectWallet,
     getReadyState,
