@@ -10,8 +10,9 @@ test -z "${1}" && echo "USAGE: ${0} <path to file>" && exit 1
 test ! -f nx.json && echo "ERROR: ${0}: run from project root" && exit 1
 test ! -f "${1}" && echo "ERROR: ${0}: file not found: ${1}" && exit 1
 
-# setup environment
+# setup environment (used by deployment script)
 source ./.env
+export AUTH_MINA_PRIVATE_KEY
 export ZKAPP_SECRET_AUTH
 
 node_options=(
