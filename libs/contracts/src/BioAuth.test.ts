@@ -1,7 +1,5 @@
 import { BioAuth } from './BioAuth';
 import {
-  isReady,
-  shutdown,
   Mina,
   PrivateKey,
   PublicKey,
@@ -28,7 +26,6 @@ describe('BioAuth', () => {
   let bioAuthOracle: BioAuthOracle;
 
   beforeAll(async () => {
-    await isReady;
     if (proofsEnabled) BioAuth.compile();
   });
 
@@ -46,13 +43,6 @@ describe('BioAuth', () => {
     zkApp = new BioAuth(zkAppAddress);
 
     bioAuthOracle = new BioAuthOracle(ORACLE_URL);
-  });
-
-  afterAll(() => {
-    // `shutdown()` internally calls `process.exit()` which will exit the running Jest process early.
-    // Specifying a timeout of 0 is a workaround to defer `shutdown()` until Jest is done running all tests.
-    // This should be fixed with https://github.com/MinaProtocol/mina/issues/10943
-    setTimeout(shutdown, 0);
   });
 
   async function localDeploy() {
