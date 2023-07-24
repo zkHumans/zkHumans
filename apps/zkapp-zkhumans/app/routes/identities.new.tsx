@@ -1,6 +1,7 @@
 import { trpc } from '@zkhumans/trpc-client';
 import { useAppContext } from '../root';
 import { useEffect, useState } from 'react';
+import { Spinner } from '../components';
 
 import type { WalletSignedData } from '../hooks';
 
@@ -46,7 +47,7 @@ export default function NewIdentity() {
     setSignature(() => signedData);
   }
 
-  async function handlePrepareCreateIdentityProof() {
+  async function handleCreateIdentity_prepareProof() {
     try {
       cnsl.tic('Preparing Create Identity Proof...');
 
@@ -156,7 +157,7 @@ export default function NewIdentity() {
     appContext.data.refresh();
   }
 
-  async function handleSendCreateIdentityProof() {
+  async function handleSendTransaction() {
     try {
       cnsl.tic('Sending transaction...');
       const zks = zk.getReadyState();
@@ -188,6 +189,16 @@ export default function NewIdentity() {
     appContext.data.refresh();
   }
 
+  function handleCreateIdentity_close() {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    (window as any).modal_0.close();
+  }
+
+  function handleCreateIdentity_open() {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    (window as any).modal_0.showModal();
+  }
+
   const hasSignature = signature !== null;
   const hasTransaction = transaction !== null;
   const hasZKApp = zk.state.zkApp !== null;
@@ -204,54 +215,87 @@ export default function NewIdentity() {
     <div className="divide-y rounded-xl border border-neutral-400">
       {/* Heading */}
       <div className="bg-base-300 flex flex-col items-center rounded-t-xl p-1">
-        <div className="my-4 text-xl font-bold">Create New Identity</div>
+        <div className="my-4 text-xl font-bold">New Identity</div>
       </div>
 
       {/* Content */}
       <div className="p-2">
         {identifier && (
           <p>
-            Identifier: <b>{identifier}</b>
+            Identifier:
+            <br />
+            <b>{identifier}</b>
           </p>
         )}
+        <br />
         <p>
-          Operator Key: <b>{zk.state.account}</b>
+          Operator Key:
+          <br />
+          <b>{zk.state.account}</b>
         </p>
       </div>
 
       {/* Action Buttons */}
       <div className="flex flex-row justify-center space-x-4 p-4">
         <button
-          className={hasZKApp ? btnSuccess : btnTodo}
-          onClick={hasZKApp ? handleNothing : handleCompileZkApp}
+          className="btn btn-primary normal-case"
+          onClick={handleCreateIdentity_open}
         >
-          Compile zkApp
-        </button>
-        <button
-          className={hasSignature ? btnSuccess : btnTodo}
-          onClick={hasSignature ? handleNothing : handleSignature}
-        >
-          Sign with Operator Key
-        </button>
-        <button
-          className={
-            hasTransaction
-              ? btnSuccess
-              : hasZKApp && hasSignature
-              ? btnTodo
-              : btnDisabled
-          }
-          onClick={handlePrepareCreateIdentityProof}
-        >
-          Prepare Proof
-        </button>
-        <button
-          className={hasTransaction ? btnTodo : btnDisabled}
-          onClick={handleSendCreateIdentityProof}
-        >
-          Send Proof
+          Create Identity
         </button>
       </div>
+
+      {/* Modal to create identity */}
+      {/* Note: <button> within <form> closes modal, so use <div> */}
+      <dialog id="modal_0" className="modal">
+        <form method="dialog" className="modal-box w-full max-w-xs">
+          <h3 className="text-center text-lg font-bold">Create Identity</h3>
+          <div className="my-4 flex flex-col space-y-4">
+            <div
+              className={hasZKApp ? btnSuccess : btnTodo}
+              onClick={hasZKApp ? handleNothing : handleCompileZkApp}
+            >
+              {zk.is.compiling && <Spinner />}
+              Compile zkApp
+            </div>
+            <div
+              className={hasSignature ? btnSuccess : btnTodo}
+              onClick={hasSignature ? handleNothing : handleSignature}
+            >
+              {zk.is.signing && <Spinner />}
+              Sign with Operator Key
+            </div>
+            <div
+              className={
+                hasTransaction
+                  ? btnSuccess
+                  : hasZKApp && hasSignature
+                  ? btnTodo
+                  : btnDisabled
+              }
+              onClick={handleCreateIdentity_prepareProof}
+            >
+              {zk.is.proving && <Spinner />}
+              Prepare Proof
+            </div>
+            <div
+              className={hasTransaction ? btnTodo : btnDisabled}
+              onClick={handleSendTransaction}
+            >
+              {zk.is.sending && <Spinner />}
+              Send Transaction
+            </div>
+          </div>
+          <div className="modal-action">
+            <div
+              className="btn normal-case"
+              onClick={handleCreateIdentity_close}
+            >
+              Cancel
+            </div>
+          </div>
+        </form>
+      </dialog>
     </div>
   );
 }
