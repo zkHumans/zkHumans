@@ -427,6 +427,10 @@ function processPendingStorage(s: StorageSimulator) {
     if (!s.maps[i]) s.maps[i] = new MerkleMap();
     s.maps[i].set(pe.data1.getKey(), pe.data1.getValue());
 
+    // if level-3 K:V data, update level-2 within level-1
+    if (i !== zkappIdentifier.toString())
+      s.maps[zkappIdentifier.toString()].set(Field(i), s.maps[i].getRoot());
+
     const j = pe.data1.key.toString();
     if (!s.maps[j]) s.maps[j] = new MerkleMap();
   }
