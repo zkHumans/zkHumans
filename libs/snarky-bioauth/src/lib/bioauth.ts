@@ -33,6 +33,18 @@ class BioAuthorizedMessage extends Struct({
       signature: Signature.fromJSON(data.signature),
     });
   }
+
+  static dummy() {
+    return new BioAuthorizedMessage({
+      payload: Field(0),
+      timestamp: Field(0),
+      bioAuthId: Field(0),
+      signature: Signature.fromBase58(
+        // a random real signature, so this dummy actually works
+        '7mXAP4BPPEzDD9MxEfGHxLHvgFrkzf8cMZfr48FFTRTgdKVZFokPxUKH718rcHTiCpfi8PCekxhAPYJnPTQzfJyYWqNsHQfE'
+      ),
+    });
+  }
 }
 
 /**

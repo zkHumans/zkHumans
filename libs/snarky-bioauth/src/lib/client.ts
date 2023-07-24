@@ -36,8 +36,8 @@ class BioAuthOracle {
    * The BioAuth id is always returned so an auth link may be requested for it
    * using {@link getBioAuthLink}.
    *
-   * Stringified JSON is returned so that the caller (having called snarkyjs
-   * isReady) may construct the BioAuthorizedMessage Object.
+   * Stringified JSON is returned so that the caller may construct the
+   * BioAuthorizedMessage Object.
    *
    * @param {} payload The data to have bio-authorized.
    * @param {} options { test: if non-interactive test }
