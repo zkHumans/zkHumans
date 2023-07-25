@@ -1,14 +1,17 @@
-import { Link, Outlet } from '@remix-run/react';
+import { Link, Outlet, useNavigate } from '@remix-run/react';
 import { Alert } from '../components';
 import { useAppContext } from '../root';
 import { displayAccount } from '@zkhumans/utils';
 
 export default function Identities() {
+  const navigate = useNavigate();
   const appContext = useAppContext();
   const {
     data: { identities },
     zk,
   } = appContext;
+
+  const nav = (s: string) => () => navigate(s);
 
   const tableIdentities = (
     <div className="w-full overflow-x-auto ">
@@ -21,11 +24,13 @@ export default function Identities() {
         </thead>
         <tbody>
           {identities.map((id, index) => (
-            <tr key={index} className="hover:bg-base-200">
+            <tr
+              key={index}
+              className="hover:bg-base-200 cursor-pointer"
+              onClick={nav(`./${id.base58}`)}
+            >
               <th>{index}</th>
-              <td>
-                <Link to={`./${id.base58}`}>{displayAccount(id.base58)}</Link>
-              </td>
+              <td>{displayAccount(id.base58)}</td>
             </tr>
           ))}
         </tbody>

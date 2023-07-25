@@ -1,4 +1,10 @@
-import { Link, Outlet, useLoaderData, useMatches } from '@remix-run/react';
+import {
+  Link,
+  Outlet,
+  useLoaderData,
+  useMatches,
+  useNavigate,
+} from '@remix-run/react';
 import { json, LoaderArgs } from '@remix-run/node';
 import { trpc } from '@zkhumans/trpc-client';
 import { useAppContext } from '../root';
@@ -46,6 +52,7 @@ const optsAFProviders = [
 ];
 
 export default function Identity() {
+  const navigate = useNavigate();
   const { identifier } = useLoaderData<typeof loader>();
   const appContext = useAppContext();
   const { cnsl, zk } = appContext;
@@ -55,6 +62,8 @@ export default function Identity() {
   const [transactionHash, setTransactionHash] = useState(
     undefined as undefined | null | string
   );
+
+  const nav = (s: string) => () => navigate(s);
 
   ////////////////////////////////////////////////////////////////////////
   // Identity Management
@@ -382,10 +391,12 @@ export default function Identity() {
         </thead>
         <tbody>
           {authNFactors.map((af, index) => (
-            <tr key={af.key} className="hover:bg-base-200">
-              <th className="grid justify-items-center">
-                <Link to={`./authn/${af.key}/edit`}>{index}</Link>
-              </th>
+            <tr
+              key={af.key}
+              className="hover:bg-base-200 cursor-pointer"
+              onClick={nav(`./authn/${af.key}/edit`)}
+            >
+              <th className="grid justify-items-center">{index}</th>
               <td>{af.value.type}</td>
               <td>{af.value.provider}</td>
               <td className="grid justify-items-center">{af.value.revision}</td>
