@@ -1,7 +1,9 @@
-import { trpc } from '@zkhumans/trpc-client';
-import { useAppContext } from '../root';
+import { Link } from '@remix-run/react';
 import { useEffect, useState } from 'react';
-import { Spinner } from '../components';
+import { displayAccount, transactionLink } from '@zkhumans/utils';
+import { trpc } from '@zkhumans/trpc-client';
+import { Alert, Spinner } from '../components';
+import { useAppContext } from '../root';
 
 import type { WalletSignedData } from '../hooks';
 
@@ -12,7 +14,9 @@ export default function NewIdentity() {
   const [identifier, setIdentifier] = useState(null as null | string);
   const [signature, setSignature] = useState(null as null | WalletSignedData);
   const [transaction, setTransaction] = useState(null as null | string);
-  const [transactionHash, setTransactionHash] = useState(null as null | string);
+  const [transactionHash, setTransactionHash] = useState(
+    undefined as undefined | null | string
+  );
 
   // get next available identifier
   useEffect(() => {
@@ -158,35 +162,11 @@ export default function NewIdentity() {
   }
 
   async function handleSendTransaction() {
-    try {
-      cnsl.tic('Sending transaction...');
-      const zks = zk.getReadyState();
-      if (!zks) throw new Error('zkApp not ready for transaction');
-      const { wallet } = zks;
-
-      const { hash } = await wallet.sendTransaction({
-        transaction,
-        feePayer: {
-          fee: 0.1,
-          memo: '',
-        },
-      });
-      cnsl.toc('success', `sent with hash=${hash}`);
-
-      cnsl.log(
-        'info',
-        `See transaction at https://berkeley.minaexplorer.com/transaction/${hash}`
-      );
-
-      setTransactionHash(() => hash);
-    } catch (
-      err: any // eslint-disable-line @typescript-eslint/no-explicit-any
-    ) {
-      cnsl.toc('error', `ERROR: ${err.message}`);
-      return;
-    }
-
+    if (!transaction) return;
+    const hash = await zk.sendTransaction(transaction);
+    setTransactionHash(() => hash);
     appContext.data.refresh();
+    handleCreateIdentity_close();
   }
 
   function handleCreateIdentity_close() {
@@ -199,9 +179,17 @@ export default function NewIdentity() {
     (window as any).modal_0.showModal();
   }
 
+  // // for testing UI:
+  // useState(() => {
+  //   setTransactionHash(() => 'XXXXXXXXXXXXXXXXXXX'); // success
+  //   setTransactionHash(() => null); // error
+  // });
+
   const hasSignature = signature !== null;
   const hasTransaction = transaction !== null;
   const hasZKApp = zk.state.zkApp !== null;
+  const hasSentTxn = transactionHash !== undefined;
+  const hasTxnSuccess = hasSentTxn && transactionHash !== null;
 
   const btnDisabled = 'btn normal-case btn-disabled';
   const btnSuccess = 'btn normal-case btn-success';
@@ -236,13 +224,35 @@ export default function NewIdentity() {
       </div>
 
       {/* Action Buttons */}
-      <div className="flex flex-row justify-center space-x-4 p-4">
-        <button
-          className="btn btn-primary normal-case"
-          onClick={handleCreateIdentity_open}
-        >
-          Create Identity
-        </button>
+      <div className="flex flex-col items-center space-y-4 p-4">
+        {/* Status Alerts */}
+        {hasSentTxn &&
+          (hasTxnSuccess ? (
+            <Alert type="success">
+              Transaction Sent. View it in the explorer:{' '}
+              <Link
+                to={transactionLink(transactionHash)}
+                target="_blank"
+                className="link link-primary"
+                rel="noreferrer"
+              >
+                {displayAccount(transactionHash, 8, 8)}
+              </Link>
+              .
+            </Alert>
+          ) : (
+            <Alert type="error">Error sending transaction.</Alert>
+          ))}
+
+        {/* Show Create button if txn error or txn not yet sent */}
+        {hasTxnSuccess || (
+          <button
+            className="btn btn-primary normal-case"
+            onClick={handleCreateIdentity_open}
+          >
+            Create Identity
+          </button>
+        )}
       </div>
 
       {/* Modal to create identity */}
