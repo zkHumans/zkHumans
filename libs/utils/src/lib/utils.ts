@@ -9,6 +9,9 @@ export function strToBool(s: string | undefined): boolean | undefined {
 export const displayAccount = (account: string, pre = 6, post = 4) =>
   `${account.slice(0, pre)}...${account.slice(-post)}`;
 
+export const transactionLink = (hash: string) =>
+  `https://berkeley.minaexplorer.com/transaction/${hash}`;
+
 // log a "horizontal rule" (spacer) on the console
 export const hr = () =>
   console.log(
