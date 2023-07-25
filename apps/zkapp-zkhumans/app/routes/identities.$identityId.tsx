@@ -4,7 +4,7 @@ import { trpc } from '@zkhumans/trpc-client';
 import { useAppContext } from '../root';
 import { Alert, Spinner } from '../components';
 import { useEffect, useState } from 'react';
-import { delay, displayAccount } from '@zkhumans/utils';
+import { delay, displayAccount, transactionLink } from '@zkhumans/utils';
 
 import type { WalletSignedData } from '../hooks';
 
@@ -52,7 +52,9 @@ export default function Identity() {
 
   const [signature, setSignature] = useState(null as null | WalletSignedData);
   const [transaction, setTransaction] = useState(null as null | string);
-  const [transactionHash, setTransactionHash] = useState(null as null | string);
+  const [transactionHash, setTransactionHash] = useState(
+    undefined as undefined | null | string
+  );
 
   ////////////////////////////////////////////////////////////////////////
   // Identity Management
@@ -335,6 +337,7 @@ export default function Identity() {
     const hash = await zk.sendTransaction(transaction);
     setTransactionHash(() => hash);
     appContext.data.refresh();
+    handleAddAF_close();
   }
 
   const handleNothing = () => {
@@ -345,11 +348,20 @@ export default function Identity() {
 
   if (!identifier) return <Alert type="error">Identity not found.</Alert>;
 
-  const hasOutlet = useMatches().length > 3;
-  const hasBioAuth = bioAuthState.auth !== null;
+  // // for testing UI:
+  // useState(() => {
+  //   // setTransactionHash(() => undefined); // not sent
+  //   // setTransactionHash(() => null); // error
+  //   setTransactionHash(() => 'XXXXXXXXXXXXXXXXXXX'); // success
+  // });
+
   const hasSignature = signature !== null;
   const hasTransaction = transaction !== null;
   const hasZKApp = zk.state.zkApp !== null;
+  const hasSentTxn = transactionHash !== undefined;
+  const hasTxnSuccess = hasSentTxn && transactionHash !== null;
+  const hasOutlet = useMatches().length > 3;
+  const hasBioAuth = bioAuthState.auth !== null;
   const needsBioAuth = bioAuthState.link && !hasBioAuth;
   const hasUserInput = selectedAFType !== '' && selectedAFProvider !== '';
 
@@ -566,20 +578,42 @@ export default function Identity() {
         </div>
       )}
 
-      {/* Action Buttons */}
-      <div className="flex flex-row justify-center space-x-4 p-4">
-        <button
-          className="btn btn-primary normal-case"
-          onClick={handleAddAF_open}
-        >
-          Add Authentication Factor
-        </button>
-        <button
-          className="btn btn-warning normal-case"
-          onClick={handleDestroyIdentity}
-        >
-          Destroy Identity
-        </button>
+      {/* Alerts & Actions */}
+      <div className="flex flex-col items-center space-y-4 p-4">
+        {/* Alerts */}
+        {hasSentTxn &&
+          (hasTxnSuccess ? (
+            <Alert type="success">
+              Transaction Sent. View it in the explorer:{' '}
+              <Link
+                to={transactionLink(transactionHash)}
+                target="_blank"
+                className="link link-primary"
+                rel="noreferrer"
+              >
+                {displayAccount(transactionHash, 8, 8)}
+              </Link>
+              .
+            </Alert>
+          ) : (
+            <Alert type="error">Error sending transaction.</Alert>
+          ))}
+
+        {/* Buttons */}
+        <div className="flex flex-row justify-center space-x-4">
+          <button
+            className="btn btn-primary normal-case"
+            onClick={handleAddAF_open}
+          >
+            Add Authentication Factor
+          </button>
+          <button
+            className="btn btn-warning normal-case"
+            onClick={handleDestroyIdentity}
+          >
+            Destroy Identity
+          </button>
+        </div>
       </div>
 
       {/* Modal to add AuthNFactor */}
