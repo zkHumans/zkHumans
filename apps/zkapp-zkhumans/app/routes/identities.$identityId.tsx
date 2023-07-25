@@ -345,6 +345,18 @@ export default function Identity() {
 
   if (!identifier) return <Alert type="error">Identity not found.</Alert>;
 
+  const hasOutlet = useMatches().length > 3;
+  const hasBioAuth = bioAuthState.auth !== null;
+  const hasSignature = signature !== null;
+  const hasTransaction = transaction !== null;
+  const hasZKApp = zk.state.zkApp !== null;
+  const needsBioAuth = bioAuthState.link && !hasBioAuth;
+  const hasUserInput = selectedAFType !== '' && selectedAFProvider !== '';
+
+  const btnDisabled = 'btn normal-case btn-disabled';
+  const btnSuccess = 'btn normal-case btn-success';
+  const btnTodo = 'btn normal-case btn-primary';
+
   const tableAuthNFactors = (
     <div className="overflow-x-auto">
       <table className="table">
@@ -384,23 +396,164 @@ export default function Identity() {
     </div>
   );
 
-  const hasOutlet = useMatches().length > 3;
-  const hasBioAuth = bioAuthState.auth !== null;
-  const hasSignature = signature !== null;
-  const hasTransaction = transaction !== null;
-  const hasZKApp = zk.state.zkApp !== null;
-  const needsBioAuth = bioAuthState.link && !hasBioAuth;
-  const hasUserInput = selectedAFType !== '' && selectedAFProvider !== '';
+  const modalAddAuthNFactor = (
+    <dialog id="modal_1" className="modal">
+      <form method="dialog" className="modal-box w-full max-w-xs">
+        <h3 className="text-center text-lg font-bold">
+          Add Authentication Factor
+        </h3>
+        <div className="my-4 flex flex-col space-y-4">
+          <select
+            onChange={handleAddAF_changeType}
+            className="select select-bordered input-primary w-full max-w-xs"
+            value={selectedAFType}
+          >
+            {optsAFTypes.map((o) => (
+              <option key={o.value} value={o.value} disabled={o.disabled}>
+                {o.text}
+              </option>
+            ))}
+          </select>
 
-  const btnDisabled = 'btn normal-case btn-disabled';
-  const btnSuccess = 'btn normal-case btn-success';
-  const btnTodo = 'btn normal-case btn-primary';
+          {/* Password */}
+          {selectedAFType == '2' && (
+            <>
+              <input
+                id="input_password"
+                type="password"
+                placeholder="Enter a password"
+                className="input input-bordered input-primary w-full max-w-xs"
+              />
+              <select
+                onChange={handleAddAF_changeProvider}
+                className="select select-bordered input-primary w-full max-w-xs"
+                value={selectedAFProvider}
+              >
+                {optsAFProviders.map(
+                  (o) =>
+                    ['', '1'].includes(o.value) && (
+                      <option
+                        key={o.value}
+                        value={o.value}
+                        disabled={o.disabled}
+                      >
+                        {o.text}
+                      </option>
+                    )
+                )}
+              </select>
+            </>
+          )}
+
+          {/* Proof of Human (BioAuth) */}
+          {selectedAFType == '6' && (
+            <>
+              <select
+                onChange={handleAddAF_changeProvider}
+                className="select select-bordered input-primary w-full max-w-xs"
+                value={selectedAFProvider}
+              >
+                {optsAFProviders.map(
+                  (o) =>
+                    ['', '3'].includes(o.value) && (
+                      <option
+                        key={o.value}
+                        value={o.value}
+                        disabled={o.disabled}
+                      >
+                        {o.text}
+                      </option>
+                    )
+                )}
+              </select>
+
+              {selectedAFProvider !== '' && (
+                <>
+                  <div
+                    className={hasBioAuth ? btnSuccess : btnTodo}
+                    onClick={hasBioAuth ? handleNothing : handleBioAuth}
+                  >
+                    {zk.is.authing && <Spinner />}
+                    BioAuthorize
+                  </div>
+
+                  {needsBioAuth && (
+                    <p>
+                      Use the following link to bioauthorize this identifier
+                      with the <b>BioAuth Oracle</b> then return here to
+                      continue:{' '}
+                      <Link
+                        to={bioAuthState.link ?? ''}
+                        target="_blank"
+                        className="link link-accent"
+                        rel="noreferrer"
+                      >
+                        BioAuth={displayAccount(bioAuthState.id ?? '', 8, 8)}
+                      </Link>
+                    </p>
+                  )}
+                </>
+              )}
+            </>
+          )}
+
+          {/* actions common to all AuthNFactors */}
+          {/* Note: <button> within <form> closes modal, so use <div> */}
+          {hasUserInput && (
+            <>
+              <div
+                className={hasSignature ? btnSuccess : btnTodo}
+                onClick={hasSignature ? handleNothing : handleSignature}
+              >
+                {zk.is.signing && <Spinner />}
+                Sign with Operator Key
+              </div>
+              <div
+                className={hasZKApp ? btnSuccess : btnTodo}
+                onClick={hasZKApp ? handleNothing : handleCompileZkApp}
+              >
+                {zk.is.compiling && <Spinner />}
+                Compile zkApp
+              </div>
+              <div
+                className={
+                  hasTransaction
+                    ? btnSuccess
+                    : hasZKApp &&
+                      hasSignature &&
+                      (needsBioAuth ? hasBioAuth : true)
+                    ? btnTodo
+                    : btnDisabled
+                }
+                onClick={handleAddAF_prepareProofBioAuth}
+              >
+                {zk.is.proving && <Spinner />}
+                Prepare Proof
+              </div>
+              <div
+                className={hasTransaction ? btnTodo : btnDisabled}
+                onClick={handleSendTransaction}
+              >
+                {zk.is.sending && <Spinner />}
+                Send Transaction
+              </div>
+            </>
+          )}
+        </div>
+        <div className="modal-action">
+          <div className="btn normal-case" onClick={handleAddAF_close}>
+            Cancel
+          </div>
+        </div>
+      </form>
+    </dialog>
+  );
 
   return (
     <div className="divide-y rounded-xl border border-neutral-400">
       {/* Heading */}
       <div className="bg-base-300 flex flex-col items-center rounded-t-xl p-1">
-        <div className="my-4 text-xl font-bold">{identifier}</div>
+        <div className="my-4 text-lg font-bold">{identifier}</div>
       </div>
 
       {/* Table of AuthNFactors */}
@@ -430,156 +583,7 @@ export default function Identity() {
       </div>
 
       {/* Modal to add AuthNFactor */}
-      {/* Note: <button> within <form> closes modal, so use <div> */}
-      <dialog id="modal_1" className="modal">
-        <form method="dialog" className="modal-box w-full max-w-xs">
-          <h3 className="text-center text-lg font-bold">
-            Add Authentication Factor
-          </h3>
-          <div className="my-4 flex flex-col space-y-4">
-            <select
-              onChange={handleAddAF_changeType}
-              className="select select-bordered input-primary w-full max-w-xs"
-              value={selectedAFType}
-            >
-              {optsAFTypes.map((o) => (
-                <option key={o.value} value={o.value} disabled={o.disabled}>
-                  {o.text}
-                </option>
-              ))}
-            </select>
-
-            {/* Password */}
-            {selectedAFType == '2' && (
-              <>
-                <input
-                  id="input_password"
-                  type="password"
-                  placeholder="Enter a password"
-                  className="input input-bordered input-primary w-full max-w-xs"
-                />
-                <select
-                  onChange={handleAddAF_changeProvider}
-                  className="select select-bordered input-primary w-full max-w-xs"
-                  value={selectedAFProvider}
-                >
-                  {optsAFProviders.map(
-                    (o) =>
-                      ['', '1'].includes(o.value) && (
-                        <option
-                          key={o.value}
-                          value={o.value}
-                          disabled={o.disabled}
-                        >
-                          {o.text}
-                        </option>
-                      )
-                  )}
-                </select>
-              </>
-            )}
-
-            {/* Proof of Human (BioAuth) */}
-            {selectedAFType == '6' && (
-              <>
-                <select
-                  onChange={handleAddAF_changeProvider}
-                  className="select select-bordered input-primary w-full max-w-xs"
-                  value={selectedAFProvider}
-                >
-                  {optsAFProviders.map(
-                    (o) =>
-                      ['', '3'].includes(o.value) && (
-                        <option
-                          key={o.value}
-                          value={o.value}
-                          disabled={o.disabled}
-                        >
-                          {o.text}
-                        </option>
-                      )
-                  )}
-                </select>
-
-                {selectedAFProvider !== '' && (
-                  <>
-                    <div
-                      className={hasBioAuth ? btnSuccess : btnTodo}
-                      onClick={hasBioAuth ? handleNothing : handleBioAuth}
-                    >
-                      {zk.is.authing && <Spinner />}
-                      BioAuthorize
-                    </div>
-
-                    {needsBioAuth && (
-                      <p>
-                        Use the following link to bioauthorize this identifier
-                        with the <b>BioAuth Oracle</b> then return here to
-                        continue:{' '}
-                        <Link
-                          to={bioAuthState.link ?? ''}
-                          target="_blank"
-                          className="link link-accent"
-                          rel="noreferrer"
-                        >
-                          BioAuth={displayAccount(bioAuthState.id ?? '', 8, 8)}
-                        </Link>
-                      </p>
-                    )}
-                  </>
-                )}
-              </>
-            )}
-
-            {/* actions common to all AuthNFactors */}
-            {hasUserInput && (
-              <>
-                <div
-                  className={hasSignature ? btnSuccess : btnTodo}
-                  onClick={hasSignature ? handleNothing : handleSignature}
-                >
-                  {zk.is.signing && <Spinner />}
-                  Sign with Operator Key
-                </div>
-                <div
-                  className={hasZKApp ? btnSuccess : btnTodo}
-                  onClick={hasZKApp ? handleNothing : handleCompileZkApp}
-                >
-                  {zk.is.compiling && <Spinner />}
-                  Compile zkApp
-                </div>
-                <div
-                  className={
-                    hasTransaction
-                      ? btnSuccess
-                      : hasZKApp &&
-                        hasSignature &&
-                        (needsBioAuth ? hasBioAuth : true)
-                      ? btnTodo
-                      : btnDisabled
-                  }
-                  onClick={handleAddAF_prepareProofBioAuth}
-                >
-                  {zk.is.proving && <Spinner />}
-                  Prepare Proof
-                </div>
-                <div
-                  className={hasTransaction ? btnTodo : btnDisabled}
-                  onClick={handleSendTransaction}
-                >
-                  {zk.is.sending && <Spinner />}
-                  Send Transaction
-                </div>
-              </>
-            )}
-          </div>
-          <div className="modal-action">
-            <div className="btn normal-case" onClick={handleAddAF_close}>
-              Cancel
-            </div>
-          </div>
-        </form>
-      </dialog>
+      {modalAddAuthNFactor}
     </div>
   );
 }
