@@ -1,5 +1,5 @@
 import MinaProvider from '@aurowallet/mina-provider';
-import { delay } from '@zkhumans/utils';
+import { delay, transactionLink } from '@zkhumans/utils';
 import { useEffect, useState } from 'react';
 import type { CNSL } from './useConsole';
 
@@ -316,6 +316,37 @@ export function useZKApp<T>(
     setIs((s) => ({ ...s, compiling: false }));
   }
 
+  async function sendTransaction(
+    transaction: string,
+    feePayer = {
+      fee: 0.1,
+      memo: '',
+    }
+  ) {
+    setIs((s) => ({ ...s, sending: true }));
+    try {
+      cnsl.tic('Sending transaction...');
+      const zks = getReadyState();
+      if (!zks) throw new Error('zkApp not ready for transaction');
+      const { wallet } = zks;
+
+      const { hash } = await wallet.sendTransaction({
+        transaction,
+        feePayer,
+      });
+      cnsl.toc('success', `sent with hash=${hash}`);
+      cnsl.log('info', transactionLink(hash));
+      setIs((s) => ({ ...s, sending: false }));
+      return hash;
+    } catch (
+      err: any // eslint-disable-line @typescript-eslint/no-explicit-any
+    ) {
+      cnsl.toc('error', `ERROR: ${err.message}`);
+      setIs((s) => ({ ...s, sending: false }));
+      return null;
+    }
+  }
+
   function isReady() {
     const notReady =
       !state.hasAccount ||
@@ -343,5 +374,6 @@ export function useZKApp<T>(
     handleConnectWallet,
     getReadyState,
     compile,
+    sendTransaction,
   };
 }

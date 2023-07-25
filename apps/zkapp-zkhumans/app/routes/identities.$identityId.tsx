@@ -331,36 +331,10 @@ export default function Identity() {
   }
 
   async function handleSendTransaction() {
-    zk.setIs((s) => ({ ...s, sending: true }));
-    try {
-      cnsl.tic('Sending transaction...');
-      const zks = zk.getReadyState();
-      if (!zks) throw new Error('zkApp not ready for transaction');
-      const { wallet } = zks;
-
-      const { hash } = await wallet.sendTransaction({
-        transaction,
-        feePayer: {
-          fee: 0.1,
-          memo: '',
-        },
-      });
-      cnsl.toc('success', `sent with hash=${hash}`);
-
-      cnsl.log(
-        'info',
-        `See transaction at https://berkeley.minaexplorer.com/transaction/${hash}`
-      );
-
-      setTransactionHash(() => hash);
-    } catch (
-      err: any // eslint-disable-line @typescript-eslint/no-explicit-any
-    ) {
-      cnsl.toc('error', `ERROR: ${err.message}`);
-    }
-
+    if (!transaction) return;
+    const hash = await zk.sendTransaction(transaction);
+    setTransactionHash(() => hash);
     appContext.data.refresh();
-    zk.setIs((s) => ({ ...s, sending: false }));
   }
 
   const handleNothing = () => {
