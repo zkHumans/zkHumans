@@ -109,6 +109,7 @@ export default function Identity() {
   const [selectedAFProvider, setSelectedAFProvider] = useState(
     optsAFProviders[0].value
   );
+  const [inputPassword, setInputPassword] = useState('');
 
   // load authentication factors from storage
   useEffect(() => {
@@ -138,6 +139,12 @@ export default function Identity() {
     event: React.ChangeEvent<HTMLSelectElement>
   ) {
     setSelectedAFProvider(event.target.value);
+  }
+
+  function handleAddAF_inputPassword(
+    event: React.ChangeEvent<HTMLInputElement>
+  ) {
+    setInputPassword(event.target.value);
   }
 
   function handleAddAF_close() {
@@ -217,7 +224,7 @@ export default function Identity() {
     setSignature(() => signedData);
   }
 
-  async function handleAddAF_prepareProofBioAuth() {
+  async function handleAddAF_prepareProof() {
     zk.setIs((s) => ({ ...s, proving: true }));
     try {
       cnsl.tic('Preparing add AuthNFactor Proof...');
@@ -230,7 +237,6 @@ export default function Identity() {
       if (!signature) throw new Error('no operator key signature');
       const r = await trpc.health.check.query();
       if (r !== 1) throw new Error('API not available');
-      if (!bioAuthState.auth) throw new Error('no bioauthorization');
 
       ////////////////////////////////////////////////////////////////////////
       // dynamically load libs for in-browser only, avoid ERR_REQUIRE_ESM
@@ -272,27 +278,57 @@ export default function Identity() {
       const witnessOpKey = mmIdentity.getWitness(afOperatorKey.getKey());
       cnsl.toc('success');
 
-      ////////////////////////////////////////////////////////////////////////
-      // add Bioauth as Authentication Factor
-      // prove the AuthNFactor IS NOT (yet) in the Identity Keyring MT
-      ////////////////////////////////////////////////////////////////////////
-      cnsl.tic('> Adding Bioauth as Authentication Factor...');
-      const bioAuthMsg = BioAuthorizedMessage.fromJSON(
-        JSON.parse(bioAuthState.auth)
-      );
-      const afBioAuth = AuthNFactor.init({
+      // default to AFType password (for cheap types)
+      let oracleMsg = BioAuthorizedMessage.dummy();
+      let af = AuthNFactor.init({
         protocol: {
-          type: AuthNType.proofOfPerson,
-          provider: AuthNProvider.humanode,
+          type: AuthNType.password,
+          provider: AuthNProvider.self,
           revision: 0,
         },
         data: {
           salt: IDUtils.IDENTITY_MGR_SALT,
-          secret: bioAuthMsg.bioAuthId.toString(),
+          secret: inputPassword,
         },
       });
-      const witnessKeyring = mmIdentity.getWitness(afBioAuth.getKey());
-      cnsl.toc('success');
+      switch (selectedAFType) {
+        // password
+        case '2':
+          cnsl.tic('> Adding password as Authentication Factor...');
+          if (inputPassword === '') throw new Error('no password');
+          cnsl.toc('success');
+          break;
+
+        // proof-of-person
+        case '6':
+          ////////////////////////////////////////////////////////////////////////
+          // add Bioauth as Authentication Factor
+          ////////////////////////////////////////////////////////////////////////
+          cnsl.tic('> Adding Bioauth as Authentication Factor...');
+          if (!bioAuthState.auth) throw new Error('no bioauthorization');
+          oracleMsg = BioAuthorizedMessage.fromJSON(
+            JSON.parse(bioAuthState.auth)
+          );
+          af = AuthNFactor.init({
+            protocol: {
+              type: AuthNType.proofOfPerson,
+              provider: AuthNProvider.humanode,
+              revision: 0,
+            },
+            data: {
+              salt: IDUtils.IDENTITY_MGR_SALT,
+              secret: oracleMsg.bioAuthId.toString(),
+            },
+          });
+          cnsl.toc('success');
+          break;
+
+        default:
+          throw new Error(`unhandled AuthNFactor type: ${selectedAFType}`);
+      }
+
+      // prove the AuthNFactor IS NOT (yet) in the Identity Keyring MT
+      const witnessKeyring = mmIdentity.getWitness(af.getKey());
 
       ////////////////////////////////////////////////////////////////////////
       // prove identifier IS in the Identity Manager MT, thus can be updated
@@ -308,13 +344,13 @@ export default function Identity() {
       cnsl.tic('> Preparing transaction...');
       const tx = await snarkyjs.Mina.transaction(() => {
         zkApp.identityManager.NEW_addAuthNFactor(
-          afBioAuth,
+          af,
           afOperatorKey,
           identity,
           witnessOpKey,
           witnessKeyring,
           witnessManager,
-          bioAuthMsg
+          oracleMsg
         );
       });
       cnsl.toc('success');
@@ -334,7 +370,7 @@ export default function Identity() {
     ) {
       cnsl.toc('error', `ERROR: ${err.message}`);
       cnsl.toc('error');
-      console.log('ERROR', err.message, err.code);
+      console.log('ERROR', err);
     }
 
     appContext.data.refresh();
@@ -446,6 +482,8 @@ export default function Identity() {
                 type="password"
                 placeholder="Enter a password"
                 className="input input-bordered input-primary w-full max-w-xs"
+                value={inputPassword}
+                onChange={handleAddAF_inputPassword}
               />
               <select
                 onChange={handleAddAF_changeProvider}
@@ -548,7 +586,7 @@ export default function Identity() {
                     ? btnTodo
                     : btnDisabled
                 }
-                onClick={handleAddAF_prepareProofBioAuth}
+                onClick={handleAddAF_prepareProof}
               >
                 {zk.is.proving && <Spinner />}
                 Prepare Proof
