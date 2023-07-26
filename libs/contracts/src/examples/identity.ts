@@ -132,11 +132,6 @@ const storage = new StorageSimulator(); // simulates storage and event-processin
 // to conform its off-chain storage mechanics
 const zkappIdentifier = Identifier.fromPublicKey(zkappAddress, 1).toField();
 storageRunner.maps[zkappIdentifier.toString()] = new MerkleMap();
-// 2: // add something to the MM so it is not empty
-// 2: storageRunner.maps[zkappIdentifier.toString()].set(
-// 2:   zkappIdentifier,
-// 2:   zkappIdentifier
-// 2: );
 const zkappIdentity = Identity.init({
   identifier: zkappIdentifier,
   commitment: storageRunner.maps[zkappIdentifier.toString()].getRoot(),
@@ -233,7 +228,7 @@ const opKeyAlice = AuthNFactor.init({
   },
   data: { salt, secret: 'secretCode' },
 });
-await NEW_addIdentity(
+await addIdentity(
   opKeyAlice,
   Alice,
   storageRunner.maps[zkappIdentifier.toString()]
@@ -258,7 +253,7 @@ const opKeyBob = AuthNFactor.init({
   },
   data: { salt, secret: 'XXXXXXXXXX' },
 });
-await NEW_addIdentity(
+await addIdentity(
   opKeyBob,
   Bob,
   storageRunner.maps[zkappIdentifier.toString()]
@@ -268,6 +263,59 @@ numEvents = await processEvents(numEvents);
 
 ////////////////////////////////////////////////////////////////////////
 // commit pending storage events
+////////////////////////////////////////////////////////////////////////
+
+hr();
+await commitPendingTransformations();
+numEvents = await processEvents(numEvents);
+logRoots();
+
+////////////////////////////////////////////////////////////////////////
+// add additional auth factors to committed storage
+////////////////////////////////////////////////////////////////////////
+
+hr();
+log('Bob: addAuthNFactor password...');
+await addAuthNFactor(
+  AuthNFactor.init({
+    protocol: {
+      type: AuthNType.password,
+      provider: AuthNProvider.self,
+      revision: 0,
+    },
+    data: { salt, secret: 'password' },
+  }),
+  opKeyBob,
+  Bob,
+  storageRunner.maps[Bob.identifier.toString()],
+  storageRunner.maps[zkappIdentifier.toString()]
+);
+log('...Bob: addAuthNFactor password');
+numEvents = await processEvents(numEvents);
+
+hr();
+log('Bob: addAuthNFactor bioauth...');
+const bioAuthMsg = bioAuthSimulator('simulatedPayload');
+await addAuthNFactor(
+  AuthNFactor.init({
+    protocol: {
+      type: AuthNType.proofOfPerson,
+      provider: AuthNProvider.humanode,
+      revision: 0,
+    },
+    data: { salt, secret: bioAuthMsg.bioAuthId.toString() },
+  }),
+  opKeyBob,
+  Bob,
+  storageRunner.maps[Bob.identifier.toString()],
+  storageRunner.maps[zkappIdentifier.toString()],
+  bioAuthMsg
+);
+log('...Bob: addAuthNFactor bioauth');
+numEvents = await processEvents(numEvents);
+
+////////////////////////////////////////////////////////////////////////
+// commit pending transformations and confirm storage sync
 ////////////////////////////////////////////////////////////////////////
 
 hr();
@@ -291,59 +339,6 @@ witness1.assertEquals(witness2);
 // confirm sync of commitments
 const sRoot = storage.maps[zkappIdentifier.toString()].getRoot();
 zkapp.commitment.get().assertEquals(sRoot);
-
-////////////////////////////////////////////////////////////////////////
-// add additional auth factors to committed storage
-////////////////////////////////////////////////////////////////////////
-
-hr();
-log('Bob: NEW_addAuthNFactor password...');
-await NEW_addAuthNFactor(
-  AuthNFactor.init({
-    protocol: {
-      type: AuthNType.password,
-      provider: AuthNProvider.self,
-      revision: 0,
-    },
-    data: { salt, secret: 'password' },
-  }),
-  opKeyBob,
-  Bob,
-  storageRunner.maps[Bob.identifier.toString()],
-  storageRunner.maps[zkappIdentifier.toString()]
-);
-log('...Bob: NEW_addAuthNFactor password');
-numEvents = await processEvents(numEvents);
-
-hr();
-log('Bob: NEW_addAuthNFactor bioauth...');
-const bioAuthMsg = bioAuthSimulator('simulatedPayload');
-await NEW_addAuthNFactor(
-  AuthNFactor.init({
-    protocol: {
-      type: AuthNType.proofOfPerson,
-      provider: AuthNProvider.humanode,
-      revision: 0,
-    },
-    data: { salt, secret: bioAuthMsg.bioAuthId.toString() },
-  }),
-  opKeyBob,
-  Bob,
-  storageRunner.maps[Bob.identifier.toString()],
-  storageRunner.maps[zkappIdentifier.toString()],
-  bioAuthMsg
-);
-log('...Bob: NEW_addAuthNFactor bioauth');
-numEvents = await processEvents(numEvents);
-
-hr();
-await commitPendingTransformations();
-numEvents = await processEvents(numEvents);
-logRoots();
-
-hr();
-storageRunner.logMapKeys('storageRunner');
-storage.logMapKeys('storage');
 
 tada();
 
@@ -378,8 +373,6 @@ async function processEvents(offset = 0) {
           // off-chain storage should create the record
           const ev = EventStorageCreate.fromJSON(js);
           storage.maps[ev.key.toString()] = new MerkleMap();
-          // 2: // something was added to init the MM
-          // 2: storage.maps[ev.key.toString()].set(ev.key, ev.value);
         }
         break;
 
@@ -407,7 +400,7 @@ async function processEvents(offset = 0) {
   return counter;
 }
 
-async function NEW_addIdentity(
+async function addIdentity(
   opKey: AuthNFactor,
   identity: Identity,
   idManagerMM: MerkleMap
@@ -424,30 +417,7 @@ async function NEW_addIdentity(
   log('  ...tx: prove() sign() send()');
 }
 
-async function addIdentity(idManagerMM: MerkleMap, identity: Identity) {
-  // 2: // add something to the MM so it is not empty
-  // 2: storageRunner.maps[identity.identifier.toString()] = new MerkleMap();
-  // 2: storageRunner.maps[identity.identifier.toString()].set(
-  // 2:   identity.identifier,
-  // 2:   identity.identifier
-  // 2: );
-  // 2: identity = identity.setCommitment(
-  // 2:   storageRunner.maps[identity.identifier.toString()].getRoot()
-  // 2: );
-
-  // prove the identifier IS NOT in the Identity Manager MT
-  const witness = idManagerMM.getWitness(identity.identifier);
-
-  log('  tx: prove() sign() send()...');
-  const tx = await Mina.transaction(feePayer, () => {
-    zkapp.addIdentity(identity, witness);
-  });
-  await tx.prove();
-  await tx.sign([feePayerKey]).send();
-  log('  ...tx: prove() sign() send()');
-}
-
-async function NEW_addAuthNFactor(
+async function addAuthNFactor(
   af: AuthNFactor,
   afOperatorKey: AuthNFactor,
   identity: Identity,
@@ -478,27 +448,6 @@ async function NEW_addAuthNFactor(
       witnessManager,
       oracleMsg
     );
-  });
-  await tx.prove();
-  await tx.sign([feePayerKey]).send();
-  log('  ...tx: prove() sign() send()');
-}
-
-async function addAuthNFactor(
-  af: AuthNFactor,
-  identity: Identity,
-  idKeyringMM: MerkleMap,
-  idManagerMM: MerkleMap
-) {
-  // prove the identifier IS in the Identity Manager MT
-  const witnessManager = idManagerMM.getWitness(identity.identifier);
-
-  // prove the AuthNFactor IS NOT in the Identity Keyring MT
-  const witnessKeyring = idKeyringMM.getWitness(af.getKey());
-
-  log('  tx: prove() sign() send()...');
-  const tx = await Mina.transaction(feePayer, () => {
-    zkapp.addAuthNFactor(af, identity, witnessKeyring, witnessManager);
   });
   await tx.prove();
   await tx.sign([feePayerKey]).send();
@@ -713,4 +662,3 @@ async function commitPendingTransformationsWithProof() {
 */
 
 // [1]: recursive proofs disabled until upstream bug resolved
-// [2]: test non-empty store and store data additions
