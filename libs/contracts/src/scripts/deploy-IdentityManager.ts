@@ -54,6 +54,9 @@ try {
 
   const feepayerPublicKey = feepayerPrivateKey.toPublicKey();
   const zkAppPublicKey = zkAppPrivateKey.toPublicKey();
+  const oraclePublicKey = PrivateKey.fromBase58(
+    AUTH_MINA_PRIVATE_KEY
+  ).toPublicKey();
 
   Mina.setActiveInstance(Mina.Network(graphqlEndpoints));
 
@@ -61,6 +64,7 @@ try {
   Using the following addresses:
     feePayer: ${feepayerPublicKey.toBase58()}
     IdentityManager: ${zkAppPublicKey.toBase58()}
+    BioAuthOracle: ${oraclePublicKey.toBase58()}
   `);
 
   // check (and wait for) account to exist
@@ -108,11 +112,6 @@ try {
     CircuitString.fromString(ZKAPP_SECRET_AUTH).toFields()
   );
   const authHash = Poseidon.hash([authToken]);
-
-  // get oracle pub from priv key
-  const oraclePublicKey = PrivateKey.fromBase58(
-    AUTH_MINA_PRIVATE_KEY
-  ).toPublicKey();
 
   // deploy!
   console.log('deploying contract');
