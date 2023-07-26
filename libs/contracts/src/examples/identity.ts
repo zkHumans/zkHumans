@@ -124,38 +124,6 @@ const PK = 'EKFJtXzNFt6cv2AH5TvJKvMAw8RF1nfyT9xE7kedyUUNnXrpZERn';
 const zkappKey = PrivateKey.fromBase58(PK);
 const zkappAddress = zkappKey.toPublicKey();
 
-const emptyMMRoot = new MerkleMap().getRoot();
-
-// create identities
-const Alice = Identity.init({
-  identifier: Identifier.fromPublicKey(
-    Local.testAccounts[0].publicKey,
-    1
-  ).toField(),
-  commitment: emptyMMRoot,
-});
-const Bob = Identity.init({
-  identifier: Identifier.fromPublicKey(
-    Local.testAccounts[1].publicKey,
-    1
-  ).toField(),
-  commitment: emptyMMRoot,
-});
-// const Charlie = Identity.init({
-//   identifier: Identifier.fromPublicKey(
-//     Local.testAccounts[2].publicKey,
-//     1
-//   ).toField(),
-//   commitment: emptyMMRoot,
-// });
-// const Darcy = Identity.init({
-//   identifier: Identifier.fromPublicKey(
-//     Local.testAccounts[3].publicKey,
-//     1
-//   ).toField(),
-//   commitment: emptyMMRoot,
-// });
-
 // setup storage simulation
 const storageRunner = new StorageSimulator(); // for computing proposed state transformations
 const storage = new StorageSimulator(); // simulates storage and event-processing indexer
@@ -246,15 +214,46 @@ const logRoots = () => {
 ////////////////////////////////////////////////////////////////////////
 // Add Identities as Pending
 ////////////////////////////////////////////////////////////////////////
+const salt = zkappIdentifier.toString();
 
 hr();
 log('addIdentity Alice...');
+const Alice = Identity.init({
+  identifier: Identifier.fromPublicKey(
+    Local.testAccounts[0].publicKey,
+    1
+  ).toField(),
+  commitment: new MerkleMap().getRoot(),
+});
+const opKeyAlice = AuthNFactor.init({
+  protocol: {
+    type: AuthNType.operator,
+    provider: AuthNProvider.zkhumans,
+    revision: 0,
+  },
+  data: { salt, secret: 'secretCode' },
+});
 await addIdentity(storageRunner.maps[zkappIdentifier.toString()], Alice);
 log('...addIdentity Alice');
 numEvents = await processEvents(numEvents);
 
 hr();
 log('addIdentity Bob...');
+const Bob = Identity.init({
+  identifier: Identifier.fromPublicKey(
+    Local.testAccounts[1].publicKey,
+    1
+  ).toField(),
+  commitment: new MerkleMap().getRoot(),
+});
+const bobOperatorKey = AuthNFactor.init({
+  protocol: {
+    type: AuthNType.operator,
+    provider: AuthNProvider.zkhumans,
+    revision: 0,
+  },
+  data: { salt, secret: 'XXXXXXXXXX' },
+});
 await addIdentity(storageRunner.maps[zkappIdentifier.toString()], Bob);
 log('...addIdentity Bob');
 numEvents = await processEvents(numEvents);
@@ -268,38 +267,15 @@ await commitPendingTransformations();
 numEvents = await processEvents(numEvents);
 logRoots();
 
-/*
-hr();
-log('addIdentity Charlie...');
-await addIdentity(storageRunner.maps[zkappIdentifier.toString()], Charlie);
-log('...addIdentity Charlie');
-numEvents = await processEvents(numEvents);
-
-hr();
-log('addIdentity Darcy...');
-await addIdentity(storageRunner.maps[zkappIdentifier.toString()], Darcy);
-log('...addIdentity Darcy');
-numEvents = await processEvents(numEvents);
-*/
-
 ////////////////////////////////////////////////////////////////////////
 // Personal Identity Keyring Management
 ////////////////////////////////////////////////////////////////////////
-
-const salt = 'uniqueTotheZkapp';
 
 storageRunner.logMapKeys();
 hr();
 log('addAuthNFactor Alice...');
 await addAuthNFactor(
-  AuthNFactor.init({
-    protocol: {
-      type: AuthNType.operator,
-      provider: AuthNProvider.zkhumans,
-      revision: 0,
-    },
-    data: { salt, secret: 'secretCode' },
-  }),
+  opKeyAlice,
   Alice,
   storageRunner.maps[Alice.identifier.toString()],
   storageRunner.maps[zkappIdentifier.toString()]
@@ -309,14 +285,6 @@ numEvents = await processEvents(numEvents);
 
 hr();
 log('addAuthNFactor Bob...');
-const bobOperatorKey = AuthNFactor.init({
-  protocol: {
-    type: AuthNType.operator,
-    provider: AuthNProvider.zkhumans,
-    revision: 0,
-  },
-  data: { salt, secret: 'XXXXXXXXXX' },
-});
 await addAuthNFactor(
   bobOperatorKey,
   Bob,
