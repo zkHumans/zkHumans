@@ -163,6 +163,14 @@ export class AuthNFactor extends Struct({
   protocolAssertEquals(protocol: AuthNFactorProtocol) {
     return this.protocolEquals(protocol).assertTrue();
   }
+
+  isOperatorKey() {
+    return this.protocolEquals({
+      type: AuthNType.operator,
+      provider: AuthNProvider.zkhumans,
+      revision: 0, // >= 0
+    });
+  }
 }
 
 /**
