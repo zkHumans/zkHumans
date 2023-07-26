@@ -233,7 +233,11 @@ const opKeyAlice = AuthNFactor.init({
   },
   data: { salt, secret: 'secretCode' },
 });
-await addIdentity(storageRunner.maps[zkappIdentifier.toString()], Alice);
+await NEW_addIdentity(
+  opKeyAlice,
+  Alice,
+  storageRunner.maps[zkappIdentifier.toString()]
+);
 log('...addIdentity Alice');
 numEvents = await processEvents(numEvents);
 
@@ -246,7 +250,7 @@ const Bob = Identity.init({
   ).toField(),
   commitment: new MerkleMap().getRoot(),
 });
-const bobOperatorKey = AuthNFactor.init({
+const opKeyBob = AuthNFactor.init({
   protocol: {
     type: AuthNType.operator,
     provider: AuthNProvider.zkhumans,
@@ -254,44 +258,12 @@ const bobOperatorKey = AuthNFactor.init({
   },
   data: { salt, secret: 'XXXXXXXXXX' },
 });
-await addIdentity(storageRunner.maps[zkappIdentifier.toString()], Bob);
-log('...addIdentity Bob');
-numEvents = await processEvents(numEvents);
-
-////////////////////////////////////////////////////////////////////////
-// commit pending storage events
-////////////////////////////////////////////////////////////////////////
-
-hr();
-await commitPendingTransformations();
-numEvents = await processEvents(numEvents);
-logRoots();
-
-////////////////////////////////////////////////////////////////////////
-// Personal Identity Keyring Management
-////////////////////////////////////////////////////////////////////////
-
-storageRunner.logMapKeys();
-hr();
-log('addAuthNFactor Alice...');
-await addAuthNFactor(
-  opKeyAlice,
-  Alice,
-  storageRunner.maps[Alice.identifier.toString()],
-  storageRunner.maps[zkappIdentifier.toString()]
-);
-log('...addAuthNFactor Alice');
-numEvents = await processEvents(numEvents);
-
-hr();
-log('addAuthNFactor Bob...');
-await addAuthNFactor(
-  bobOperatorKey,
+await NEW_addIdentity(
+  opKeyBob,
   Bob,
-  storageRunner.maps[Bob.identifier.toString()],
   storageRunner.maps[zkappIdentifier.toString()]
 );
-log('...addAuthNFactor Bob');
+log('...addIdentity Bob');
 numEvents = await processEvents(numEvents);
 
 ////////////////////////////////////////////////////////////////////////
@@ -335,7 +307,7 @@ await NEW_addAuthNFactor(
     },
     data: { salt, secret: 'password' },
   }),
-  bobOperatorKey,
+  opKeyBob,
   Bob,
   storageRunner.maps[Bob.identifier.toString()],
   storageRunner.maps[zkappIdentifier.toString()]
@@ -355,7 +327,7 @@ await NEW_addAuthNFactor(
     },
     data: { salt, secret: bioAuthMsg.bioAuthId.toString() },
   }),
-  bobOperatorKey,
+  opKeyBob,
   Bob,
   storageRunner.maps[Bob.identifier.toString()],
   storageRunner.maps[zkappIdentifier.toString()],
@@ -363,6 +335,15 @@ await NEW_addAuthNFactor(
 );
 log('...Bob: NEW_addAuthNFactor bioauth');
 numEvents = await processEvents(numEvents);
+
+hr();
+await commitPendingTransformations();
+numEvents = await processEvents(numEvents);
+logRoots();
+
+hr();
+storageRunner.logMapKeys('storageRunner');
+storage.logMapKeys('storage');
 
 tada();
 
@@ -405,7 +386,9 @@ async function processEvents(offset = 0) {
       case 'storage:pending':
         {
           // off-chain storage should create the record as pending
-          storage.pending.push(EventStoragePending.fromJSON(js));
+          // Note: events appear here in reverse of contract method emission
+          // In practice, first fetch events, order them, then process
+          storage.pending.unshift(EventStoragePending.fromJSON(js));
         }
         break;
 
@@ -422,6 +405,23 @@ async function processEvents(offset = 0) {
   log('...Process Events');
 
   return counter;
+}
+
+async function NEW_addIdentity(
+  opKey: AuthNFactor,
+  identity: Identity,
+  idManagerMM: MerkleMap
+) {
+  // prove the identifier IS NOT in the Identity Manager MT
+  const witnessManager = idManagerMM.getWitness(identity.identifier);
+
+  log('  tx: prove() sign() send()...');
+  const tx = await Mina.transaction(feePayer, () => {
+    zkapp.NEW_addIdentity(opKey, identity, witnessManager);
+  });
+  await tx.prove();
+  await tx.sign([feePayerKey]).send();
+  log('  ...tx: prove() sign() send()');
 }
 
 async function addIdentity(idManagerMM: MerkleMap, identity: Identity) {
