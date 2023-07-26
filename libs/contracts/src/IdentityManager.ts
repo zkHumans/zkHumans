@@ -327,89 +327,34 @@ export class IdentityManager extends SmartContract {
     const oraclePublicKey = this.oraclePublicKey.getAndAssertEquals();
 
     // assert Operator Key is valid and within the identity
-    // Note: ZKKV asserts identity within manager
-    opKey.protocolAssertEquals({
-      type: AuthNType.operator,
-      provider: AuthNProvider.zkhumans,
-      revision: 0, // >= 0
-    });
+    opKey.isOperatorKey().assertTrue();
     const [rootOpKey] = witnessOpKey.computeRootAndKey(opKey.getValue());
     rootOpKey.assertEquals(identity.commitment);
 
-    // 2: // if adding BioAuth authentication factor
-    // 2: Provable.if(
-    // 2:   authNFactor.protocolEquals({
-    // 2:     type: AuthNType.proofOfPerson,
-    // 2:     provider: AuthNProvider.humanode,
-    // 2:     revision: 0,
-    // 2:   }),
-    // 2:   // check validity of bioauthenticated message
-    // 2:   ProvableBioAuth.checkMessage(oraclePublicKey, oracleMsg).and(
-    // 2:     // and ensure bioauthorization and authentication factor match
-    // 2:     // TODO: oracleMsg.bioAuthId.equals(authNFactor.data.secret)
-    // 2:     Bool(true)
-    // 2:   ),
-    // 2:   // otherwise pass through
-    // 2:   Bool(true)
-    // 2: ).assertTrue();
-
-    // WIP: if adding BioAuth authentication factor
+    // if adding BioAuth authentication factor
     Provable.if(
       authNFactor.protocolEquals({
         type: AuthNType.proofOfPerson,
         provider: AuthNProvider.humanode,
         revision: 0,
       }),
-      oracleMsg.signature.verify(oraclePublicKey, [
-        oracleMsg.payload,
-        oracleMsg.timestamp,
-        oracleMsg.bioAuthId,
-      ]),
+      // 2: // check validity of bioauthenticated message
+      // 2: oracleMsg.signature
+      // 2:   .verify(oraclePublicKey, [
+      // 2:     oracleMsg.payload,
+      // 2:     oracleMsg.timestamp,
+      // 2:     oracleMsg.bioAuthId,
+      // 2:   ])
+      // 2:   .and(
+      // 2:     // and ensure bioauthorization and authentication factor match
+      // 2:     // TODO: oracleMsg.bioAuthId.equals(authNFactor.data.secret)
+      // 2:     Bool(true)
+      // 2:   ),
+      Bool(true),
       Bool(true)
     ).assertTrue();
 
-    const events = ZKKV.setStoreData({
-      data0: UnitOfStore.init({
-        key: authNFactor.toUnitOfStore().getKey(),
-        value: EMPTY, // Add
-      }),
-      data1: authNFactor.toUnitOfStore(),
-      store: identity.toUnitOfStore(),
-      storeManager: UnitOfStore.init({
-        key: mgrIdentifier,
-        value: mgrCommitment,
-      }),
-      witnessStore: witnessKeyring,
-      witnessManager,
-    });
-
-    for (const { type, event } of events) this.emitEvent(type, event);
-  }
-
-  // same as above, without oracle signature verifiy
-  @method NEWALT_addAuthNFactor(
-    authNFactor: AuthNFactor,
-    opKey: AuthNFactor,
-    identity: Identity,
-    witnessOpKey: MerkleMapWitness,
-    witnessKeyring: MerkleMapWitness,
-    witnessManager: MerkleMapWitness,
-    oracleMsg: BioAuthorizedMessage
-  ) {
-    const mgrIdentifier = this.identifier.getAndAssertEquals();
-    const mgrCommitment = this.commitment.getAndAssertEquals();
-    const oraclePublicKey = this.oraclePublicKey.getAndAssertEquals();
-
-    // assert Operator Key is valid and within the identity
     // Note: ZKKV asserts identity within manager
-    opKey.protocolAssertEquals({
-      type: AuthNType.operator,
-      provider: AuthNProvider.zkhumans,
-      revision: 0, // >= 0
-    });
-    const [rootOpKey] = witnessOpKey.computeRootAndKey(opKey.getValue());
-    rootOpKey.assertEquals(identity.commitment);
-
     const events = ZKKV.setStoreData({
       data0: UnitOfStore.init({
         key: authNFactor.toUnitOfStore().getKey(),
@@ -601,4 +546,5 @@ export class IdentityManager extends SmartContract {
  * Error: curve point must not be the point at infinity
  *
  * [2] 2023-07-25: Error: "Field.Inv: zero" on signature.verify
+ * Only occurs on Berkeley deployment when generaring proof in ui.
  */
