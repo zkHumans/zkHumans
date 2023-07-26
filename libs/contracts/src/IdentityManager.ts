@@ -23,10 +23,7 @@ import {
   UnitOfStore,
   ZKKV,
 } from '@zkhumans/zkkv';
-import {
-  BioAuthorizedMessage,
-  ProvableBioAuth,
-} from '@zkhumans/snarky-bioauth';
+import { BioAuthorizedMessage } from '@zkhumans/snarky-bioauth';
 
 /**
  * Abbreviations:
@@ -292,6 +289,50 @@ export class IdentityManager extends SmartContract {
       ...Permissions.default(),
       editState: Permissions.proofOrSignature(),
     });
+  }
+
+  /**
+   * Add an Identity; only if it has not already been added.
+   */
+  @method NEW_addIdentity(
+    opKey: AuthNFactor,
+    identity: Identity,
+    witnessManager: MerkleMapWitness
+  ) {
+    const mgrIdentifier = this.identifier.getAndAssertEquals();
+    const mgrCommitment = this.commitment.getAndAssertEquals();
+
+    // assert Operator Key is valid
+    opKey.isOperatorKey().assertTrue();
+
+    // create the identity as a new pending store
+    const store = identity.toUnitOfStore();
+    const storeManager = UnitOfStore.init({
+      key: mgrIdentifier,
+      value: mgrCommitment,
+    });
+    const events = ZKKV.addStore({
+      store,
+      storeManager,
+      witnessManager,
+    });
+    for (const { type, event } of events) this.emitEvent(type, event);
+
+    // set operator key as new pending data within identity
+    const opKeyStore = opKey.toUnitOfStore();
+    this.emitEvent(
+      'storage:pending',
+      new EventStoragePending({
+        commitmentPending: storeManager.getValue(),
+        settlementChecksum: opKeyStore.getChecksum(),
+        id: store.getKey(),
+        data0: UnitOfStore.init({
+          key: opKeyStore.getKey(),
+          value: EMPTY, // Add
+        }),
+        data1: opKeyStore,
+      })
+    );
   }
 
   /**
