@@ -11,6 +11,8 @@ import { jest } from '@jest/globals';
 import { BioAuthOracle, BioAuthorizedMessage } from '@zkhumans/snarky-bioauth';
 
 const ORACLE_URL = `http://${process.env['AUTH_TEST_HOST']}:${process.env['AUTH_TEST_PORT']}`;
+const ORACLE_PRIVATE_KEY = process.env['AUTH_MINA_PRIVATE_KEY'] ?? '';
+const oraclePublicKey = PrivateKey.fromBase58(ORACLE_PRIVATE_KEY).toPublicKey();
 
 const proofsEnabled = false;
 
@@ -49,6 +51,7 @@ describe('BioAuth', () => {
     const txn = await Mina.transaction(deployerAccount, () => {
       AccountUpdate.fundNewAccount(deployerAccount);
       zkApp.deploy();
+      zkApp.oraclePublicKey.set(oraclePublicKey);
     });
     await txn.prove();
     // this tx needs .sign(), because `deploy()` adds an account update that requires signature authorization
