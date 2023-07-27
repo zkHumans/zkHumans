@@ -143,7 +143,16 @@ const loop = async () => {
   console.log();
   const maps: { [key: string]: MerkleMap } = {};
 
-  for (const ps of pendingStorage) console.log('Pending storage:', ps);
+  let commitmentPending = zkapp.commitment.get();
+  for (const ps of pendingStorage) {
+    log('Pending storage:', ps);
+
+    // Note: 2027-07: For unknown reason, zkapp.commitment.get() is not
+    // returning current state when it changes, even with new, so get it
+    // from pending storage which should all have the same value.
+    // TODO: further investigation for such behavior
+    if (ps.commitmentPending) commitmentPending = Field(ps.commitmentPending);
+  }
 
   // storage levels:
   // 1: primary storage, zkapp @state
@@ -166,7 +175,6 @@ const loop = async () => {
   Object.keys(maps).forEach((k) => mmMgr.set(Field(k), maps[k].getRoot()));
 
   // get the old and new commitments (roots)
-  const commitmentPending = zkapp.commitment.get();
   const commitmentSettled = mmMgr.getRoot();
   console.log('zkapp.commitPendingTransformations');
   console.log('  commitmentPending:', commitmentPending.toBigInt());
