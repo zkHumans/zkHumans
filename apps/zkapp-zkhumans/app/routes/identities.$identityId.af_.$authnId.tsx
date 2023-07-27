@@ -69,10 +69,6 @@ export default function TODO() {
             <td>{displayAccount(authNFactorKey + '', 20, 20)}</td>
           </tr>
           <tr>
-            <th>Pending ?</th>
-            <td>{storage.isPending ? 'Y' : 'N'}</td>
-          </tr>
-          <tr>
             <th>Checksum</th>
             <td>{displayAccount(storage.settlementChecksum + '', 20, 20)}</td>
           </tr>

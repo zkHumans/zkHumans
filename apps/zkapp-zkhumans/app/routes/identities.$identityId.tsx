@@ -9,7 +9,7 @@ import {
 import { json, LoaderArgs } from '@remix-run/node';
 import { trpc } from '@zkhumans/trpc-client';
 import { useAppContext } from '../root';
-import { Alert, Spinner } from '../components';
+import { Alert, IconPending, IconNotPending, Spinner } from '../components';
 import { useEffect, useState } from 'react';
 import { delay, displayAccount, transactionLink } from '@zkhumans/utils';
 
@@ -37,6 +37,7 @@ type AFS = {
     provider: string;
     revision: number;
   };
+  isPending: boolean;
 }[];
 
 const optsAFTypes = [
@@ -136,6 +137,7 @@ export default function Identity() {
           afs.push({
             key: af,
             value: IDUtils.humanReadableAuthNFactor(afs_[af]),
+            isPending: afs_[af].isPending,
           });
         setAuthNFactors(() => afs);
       }
@@ -472,25 +474,37 @@ export default function Identity() {
       <table className="table">
         <thead>
           <tr>
-            <th className="grid justify-items-center">#</th>
             <th className="">Authentication Factor</th>
             <th className="">Provider</th>
-            <th className="grid justify-items-center">Revision</th>
+            <th>
+              <div className="grid justify-items-center">Revision</div>
+            </th>
+            <th>
+              <div className="grid justify-items-center">Status</div>
+            </th>
           </tr>
         </thead>
         <tbody>
           {authNFactors.map((af, index) => (
             <tr
-              key={af.key}
+              key={index}
               className={`hover:bg-base-200 cursor-pointer ${
                 af.key == authNFactorKey ? 'bg-base-300' : ''
               }`}
               onClick={nav(`./af/${af.key}`)}
             >
-              <th className="grid justify-items-center">{index}</th>
               <td>{af.value.type}</td>
               <td>{af.value.provider}</td>
-              <td className="grid justify-items-center">{af.value.revision}</td>
+              <td>
+                <div className="grid justify-items-center">
+                  {af.value.revision}
+                </div>
+              </td>
+              <td>
+                <div className="grid justify-items-center">
+                  {af.isPending ? <IconPending /> : <IconNotPending />}
+                </div>
+              </td>
             </tr>
           ))}
         </tbody>
