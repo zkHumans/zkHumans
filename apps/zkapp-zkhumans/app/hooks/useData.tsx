@@ -25,7 +25,6 @@ export function useData(cnsl: CNSL, zk: AppContextType['zk']) {
           ids.push({ ...id, base58 });
         }
         setIdentities(() => ids);
-        if (!ids.length) cnsl.log('info', 'No identities yet, create one! ⭐');
       } else {
         setIdentities(() => []);
       }

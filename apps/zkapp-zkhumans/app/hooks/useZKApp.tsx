@@ -334,8 +334,7 @@ export function useZKApp<T>(
         transaction,
         feePayer,
       });
-      cnsl.toc('success', `sent with hash=${hash}`);
-      cnsl.log('info', transactionLink(hash));
+      cnsl.toc('success', hash);
       setIs((s) => ({ ...s, sending: false }));
       return hash;
     } catch (
