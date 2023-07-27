@@ -35,7 +35,10 @@ export const storageRouter = t.router({
     .query(async ({ input: { key } }) => {
       return await prisma.storage.findUnique({
         where: { key },
-        select: { ...selectStorage, data: { select: selectStorage } },
+        select: {
+          ...selectStorage,
+          data: { select: selectStorage, orderBy: [{ createdAt: 'asc' }] },
+        },
       });
     }),
 
@@ -45,7 +48,10 @@ export const storageRouter = t.router({
     .query(async ({ input: { key } }) => {
       return await prisma.storage.findUnique({
         where: { key },
-        select: { ...selectStorage, events: { select: selectEvent } },
+        select: {
+          ...selectStorage,
+          events: { select: selectEvent, orderBy: [{ createdAt: 'asc' }] },
+        },
       });
     }),
 
