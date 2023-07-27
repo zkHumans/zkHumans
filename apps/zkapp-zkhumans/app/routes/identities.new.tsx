@@ -10,7 +10,7 @@ import type { WalletSignedData } from '../hooks';
 /**
  * How often to recheck the storage for an event from a sent txn.
  */
-const CYCLE_CHECK_TXN_CONFIRM = 10_000;
+const CYCLE_CHECK_TXN_CONFIRM = 5_000;
 
 export default function NewIdentity() {
   const appContext = useAppContext();
@@ -59,6 +59,7 @@ export default function NewIdentity() {
       if (event.length) {
         cnsl.toc('success');
         appContext.data.refresh();
+        setTransactionHash(() => undefined);
         // redirect UI to the its page
         navigate(`/identities/${identifier}`);
       } else {
@@ -220,9 +221,10 @@ export default function NewIdentity() {
   const hasSentTxn = transactionHash !== undefined;
   const hasTxnSuccess = hasSentTxn && transactionHash !== null;
 
-  const btnDisabled = 'btn normal-case btn-disabled';
-  const btnSuccess = 'btn normal-case btn-success';
-  const btnTodo = 'btn normal-case btn-primary';
+  const btnDisabled = 'btn btn-disabled normal-case';
+  const btnSuccess = 'btn btn-success normal-case';
+  const btnTodo = 'btn btn-primary normal-case';
+  const btnWarning = 'btn btn-warning normal-case';
 
   const handleNothing = () => {
     return false;

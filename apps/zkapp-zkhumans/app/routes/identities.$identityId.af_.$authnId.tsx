@@ -26,7 +26,7 @@ export default function TODO() {
       });
       setStorage(() => storage);
     })();
-  }, []);
+  }, [authNFactorKey]);
 
   if (!storage) return <></>;
 

@@ -20,6 +20,11 @@ import type { WalletSignedData } from '../hooks';
  */
 const CYCLE_CHECK_BIOAUTH = 5_000;
 
+/**
+ * How often to recheck the storage for an event from a sent txn.
+ */
+const CYCLE_CHECK_TXN_CONFIRM = 5_000;
+
 export const loader = async ({ params }: LoaderArgs) => {
   const identifier = params.identityId;
   return json({ identifier });
@@ -63,6 +68,8 @@ export default function Identity() {
   const [transactionHash, setTransactionHash] = useState(
     undefined as undefined | null | string
   );
+  const [txnWatchCounter, setTxnWatchCounter] = useState(0);
+  const [newAFKey, setNewAFKey] = useState(undefined as undefined | string);
 
   const route = 'routes/identities.$identityId.af_.$authnId';
   const routeData = useRouteLoaderData(route);
@@ -133,7 +140,7 @@ export default function Identity() {
         setAuthNFactors(() => afs);
       }
     })();
-  }, [identifier]);
+  }, [identifier, transactionHash]);
 
   function handleAddAF_changeType(event: React.ChangeEvent<HTMLSelectElement>) {
     setSelectedAFType(event.target.value);
@@ -217,6 +224,30 @@ export default function Identity() {
   }
 
   ////////////////////////////////////////////////////////////////////////
+
+  // wait for transaction confirmation
+  useEffect(() => {
+    (async () => {
+      if (!transactionHash) return; // only for txn success
+      if (!txnWatchCounter) cnsl.tic('Awaiting transaction confirmation...');
+      const event = await trpc.event.select.query({ transactionHash });
+
+      // if an event from the transaction was recorded by storage
+      if (event.length) {
+        cnsl.toc('success');
+
+        // refresh data and reset state
+        appContext.data.refresh();
+        resetState();
+
+        // redirect UI to the its page
+        navigate(`./af/${newAFKey}`);
+      } else {
+        await delay(CYCLE_CHECK_TXN_CONFIRM);
+        setTxnWatchCounter((x) => x + 1);
+      }
+    })();
+  }, [transactionHash, txnWatchCounter]);
 
   async function handleCompileZkApp() {
     await zk.compile(); // this takes forever!
@@ -370,6 +401,7 @@ export default function Identity() {
       console.log('Transaction:', tx.toPretty());
 
       setTransaction(() => tx.toJSON());
+      setNewAFKey(() => af.getKey().toString());
     } catch (
       err: any // eslint-disable-line @typescript-eslint/no-explicit-any
     ) {
@@ -394,6 +426,21 @@ export default function Identity() {
     return false;
   };
 
+  const resetState = () => {
+    setSignature(() => null);
+    setTransaction(() => null);
+    setTransactionHash(() => undefined);
+    setTxnWatchCounter(() => 0);
+    setNewAFKey(() => undefined);
+    setInputPassword(() => '');
+    setBioAuthState(() => ({
+      auth: null,
+      link: null,
+      id: null,
+      recheckCounter: 0,
+    }));
+  };
+
   ////////////////////////////////////////////////////////////////////////
 
   if (!identifier) return <Alert type="error">Identity not found.</Alert>;
@@ -415,9 +462,10 @@ export default function Identity() {
   const needsBioAuth = bioAuthState.link && !hasBioAuth;
   const hasUserInput = selectedAFType !== '' && selectedAFProvider !== '';
 
-  const btnDisabled = 'btn normal-case btn-disabled';
-  const btnSuccess = 'btn normal-case btn-success';
-  const btnTodo = 'btn normal-case btn-primary';
+  const btnDisabled = 'btn btn-disabled normal-case';
+  const btnSuccess = 'btn btn-success normal-case';
+  const btnTodo = 'btn btn-primary normal-case';
+  const btnWarning = 'btn btn-warning normal-case';
 
   const tableAuthNFactors = (
     <div className="overflow-x-auto">
@@ -630,7 +678,7 @@ export default function Identity() {
         {hasSentTxn &&
           (hasTxnSuccess ? (
             <Alert type="success">
-              Transaction Sent. View it in the explorer:{' '}
+              Transaction Sent. Explore it:{' '}
               <Link
                 to={transactionLink(transactionHash)}
                 target="_blank"
@@ -639,7 +687,7 @@ export default function Identity() {
               >
                 {displayAccount(transactionHash, 8, 8)}
               </Link>
-              .
+              . Awaiting confirmation. <Spinner />
             </Alert>
           ) : (
             <Alert type="error">Error sending transaction.</Alert>
@@ -654,7 +702,7 @@ export default function Identity() {
             Add Authentication Factor
           </button>
           <button
-            className="btn btn-warning normal-case"
+            className={hasSentTxn ? btnDisabled : btnWarning}
             onClick={handleDestroyIdentity}
           >
             Destroy Identity
