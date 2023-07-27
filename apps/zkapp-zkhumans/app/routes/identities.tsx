@@ -1,4 +1,9 @@
-import { Link, Outlet, useNavigate } from '@remix-run/react';
+import {
+  Link,
+  Outlet,
+  useNavigate,
+  useRouteLoaderData,
+} from '@remix-run/react';
 import { Alert } from '../components';
 import { useAppContext } from '../root';
 import { displayAccount } from '@zkhumans/utils';
@@ -10,6 +15,9 @@ export default function Identities() {
     data: { identities },
     zk,
   } = appContext;
+
+  const routeData = useRouteLoaderData('routes/identities.$identityId');
+  const identifier = routeData?.identifier;
 
   const nav = (s: string) => () => navigate(s);
 
@@ -26,7 +34,9 @@ export default function Identities() {
           {identities.map((id, index) => (
             <tr
               key={index}
-              className="hover:bg-base-200 cursor-pointer"
+              className={`hover:bg-base-200 cursor-pointer ${
+                id.base58 == identifier ? 'bg-base-100' : ''
+              }`}
               onClick={nav(`./${id.base58}`)}
             >
               <th>{index}</th>

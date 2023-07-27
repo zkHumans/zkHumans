@@ -4,6 +4,7 @@ import {
   useLoaderData,
   useMatches,
   useNavigate,
+  useRouteLoaderData,
 } from '@remix-run/react';
 import { json, LoaderArgs } from '@remix-run/node';
 import { trpc } from '@zkhumans/trpc-client';
@@ -62,6 +63,10 @@ export default function Identity() {
   const [transactionHash, setTransactionHash] = useState(
     undefined as undefined | null | string
   );
+
+  const route = 'routes/identities.$identityId.af_.$authnId';
+  const routeData = useRouteLoaderData(route);
+  const authNFactorKey = routeData?.authNFactorKey;
 
   const nav = (s: string) => () => navigate(s);
 
@@ -429,8 +434,10 @@ export default function Identity() {
           {authNFactors.map((af, index) => (
             <tr
               key={af.key}
-              className="hover:bg-base-200 cursor-pointer"
-              onClick={nav(`./authn/${af.key}/edit`)}
+              className={`hover:bg-base-200 cursor-pointer ${
+                af.key == authNFactorKey ? 'bg-base-300' : ''
+              }`}
+              onClick={nav(`./af/${af.key}`)}
             >
               <th className="grid justify-items-center">{index}</th>
               <td>{af.value.type}</td>
@@ -438,18 +445,6 @@ export default function Identity() {
               <td className="grid justify-items-center">{af.value.revision}</td>
             </tr>
           ))}
-          {/*
-          {factors.map((af, index) => (
-            <tr key={index} className="hover">
-              <th className="grid justify-items-center">
-                <Link to={`./authn/${index}/edit`}>{index}</Link>
-              </th>
-              <td>{af.type}</td>
-              <td>{af.provider}</td>
-              <td className="grid justify-items-center">{af.revision}</td>
-            </tr>
-          ))}
-          */}
         </tbody>
       </table>
     </div>
@@ -614,7 +609,9 @@ export default function Identity() {
     <div className="divide-y rounded-xl border border-neutral-400">
       {/* Heading */}
       <div className="bg-base-300 flex flex-col items-center rounded-t-xl p-1">
-        <div className="my-4 text-lg font-bold">{identifier}</div>
+        <div className="my-4 text-lg font-bold">
+          <Link to={`/identities/${identifier}`}>{identifier}</Link>
+        </div>
       </div>
 
       {/* Table of AuthNFactors */}
