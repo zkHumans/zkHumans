@@ -66,6 +66,26 @@ export const eventRouter = t.router({
       });
     }),
 
+  select: t.procedure
+    .input(
+      z.object({
+        isProcessed: z.boolean().optional(),
+        createdAt: z.date().optional(),
+        type: z.string().optional(),
+        transactionHash: z.string().optional(),
+        blockHeight: z.bigint().optional(),
+        globalSlot: z.bigint().optional(),
+        zkappAddress: z.string().optional(),
+      })
+    )
+    .query(async ({ input: { ...data } }) => {
+      return await prisma.event.findMany({
+        where: { ...data },
+        orderBy: [{ createdAt: 'asc' }],
+        select: selectEvent,
+      });
+    }),
+
   delete: t.procedure
     .input(
       z.object({
