@@ -1,15 +1,22 @@
-import { Link } from '@remix-run/react';
+import { Link, useNavigate } from '@remix-run/react';
 import { useEffect, useState } from 'react';
-import { displayAccount, transactionLink } from '@zkhumans/utils';
+import { delay, displayAccount, transactionLink } from '@zkhumans/utils';
 import { trpc } from '@zkhumans/trpc-client';
 import { Alert, Spinner } from '../components';
 import { useAppContext } from '../root';
 
 import type { WalletSignedData } from '../hooks';
 
+/**
+ * How often to recheck the storage for an event from a sent txn.
+ */
+const CYCLE_CHECK_TXN_CONFIRM = 10_000;
+
 export default function NewIdentity() {
   const appContext = useAppContext();
   const { cnsl, zk } = appContext;
+
+  const navigate = useNavigate();
 
   const [identifier, setIdentifier] = useState(null as null | string);
   const [signature, setSignature] = useState(null as null | WalletSignedData);
@@ -17,6 +24,7 @@ export default function NewIdentity() {
   const [transactionHash, setTransactionHash] = useState(
     undefined as undefined | null | string
   );
+  const [txnWatchCounter, setTxnWatchCounter] = useState(0);
 
   // get next available identifier
   useEffect(() => {
@@ -39,6 +47,26 @@ export default function NewIdentity() {
       setIdentifier(() => idr);
     })();
   }, [zk.state.account]);
+
+  // wait for transaction confirmation
+  useEffect(() => {
+    (async () => {
+      if (!transactionHash) return; // only for txn success
+      if (!txnWatchCounter) cnsl.tic('Awaiting transaction confirmation...');
+      const event = await trpc.event.select.query({ transactionHash });
+
+      // if an event from the transaction was recorded by storage
+      if (event.length) {
+        cnsl.toc('success');
+        appContext.data.refresh();
+        // redirect UI to the its page
+        navigate(`/identities/${identifier}`);
+      } else {
+        await delay(CYCLE_CHECK_TXN_CONFIRM);
+        setTxnWatchCounter((x) => x + 1);
+      }
+    })();
+  }, [transactionHash, txnWatchCounter]);
 
   async function handleCompileZkApp() {
     await zk.compile(); // this takes forever!
@@ -128,7 +156,7 @@ export default function NewIdentity() {
       cnsl.tic('> Create New Identity Merkle proof...');
       const mmMgr = await IDUtils.getManagerMM(zkApp.identityManager.address);
       const witness = mmMgr.getWitness(identity.identifier);
-      cnsl.toc('success', `witness=${JSON.stringify(witness.toJSON())}`);
+      cnsl.toc('success');
 
       ////////////////////////////////////////////////////////////////////////
       // prepare transaction
@@ -181,8 +209,9 @@ export default function NewIdentity() {
 
   // // for testing UI:
   // useState(() => {
+  //   // setTransactionHash(() => undefined); // not sent
   //   setTransactionHash(() => 'XXXXXXXXXXXXXXXXXXX'); // success
-  //   setTransactionHash(() => null); // error
+  //   // setTransactionHash(() => null); // error
   // });
 
   const hasSignature = signature !== null;
@@ -223,22 +252,22 @@ export default function NewIdentity() {
         </p>
       </div>
 
-      {/* Action Buttons */}
+      {/* Alerts & Actions */}
       <div className="flex flex-col items-center space-y-4 p-4">
-        {/* Status Alerts */}
+        {/* Alerts */}
         {hasSentTxn &&
           (hasTxnSuccess ? (
             <Alert type="success">
-              Transaction Sent. View it in the explorer:{' '}
+              Transaction Sent. Explore it:{' '}
               <Link
                 to={transactionLink(transactionHash)}
                 target="_blank"
                 className="link link-primary"
                 rel="noreferrer"
               >
-                {displayAccount(transactionHash, 8, 8)}
+                {displayAccount(transactionHash, 6, 6)}
               </Link>
-              .
+              . Awaiting confirmation. <Spinner />
             </Alert>
           ) : (
             <Alert type="error">Error sending transaction.</Alert>
