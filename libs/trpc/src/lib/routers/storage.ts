@@ -2,6 +2,7 @@ import { Prisma } from '@prisma/client';
 import { z } from 'zod';
 import { prisma } from '../middleware/prisma';
 import { t } from '../server';
+import { selectEvent } from './event';
 
 export const selectStorage = Prisma.validator<Prisma.storageSelect>()({
   key: true,
@@ -35,6 +36,16 @@ export const storageRouter = t.router({
       return await prisma.storage.findUnique({
         where: { key },
         select: { ...selectStorage, data: { select: selectStorage } },
+      });
+    }),
+
+  // get storage by key, with events
+  byKeyWithEvents: t.procedure
+    .input(z.object({ key: z.string() }))
+    .query(async ({ input: { key } }) => {
+      return await prisma.storage.findUnique({
+        where: { key },
+        select: { ...selectStorage, events: { select: selectEvent } },
       });
     }),
 

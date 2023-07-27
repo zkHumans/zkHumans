@@ -17,6 +17,7 @@ export type ApiInputMeta = RI['meta'];
 
 export type ApiInputStorageByKey = RI['storage']['byKey'];
 export type ApiInputStorageByKeyWithData = RI['storage']['byKeyWithData'];
+export type ApiInputStorageByKeyWithEvents = RI['storage']['byKeyWithEvents'];
 export type ApiInputStorageCreate = RI['storage']['create'];
 export type ApiInputStorageDelete = RI['storage']['delete'];
 export type ApiInputStorageGet = RI['storage']['get'];
@@ -40,6 +41,7 @@ export type ApiOutputMeta = RO['meta'];
 
 export type ApiOutputStorageByKey = RO['storage']['byKey'];
 export type ApiOutputStorageByKeyWithData = RO['storage']['byKeyWithData'];
+export type ApiOutputStorageByKeyWithEvents = RO['storage']['byKeyWithEvents'];
 export type ApiOutputStorageCreate = RO['storage']['create'];
 export type ApiOutputStorageDelete = RO['storage']['delete'];
 export type ApiOutputStorageGet = RO['storage']['get'];
