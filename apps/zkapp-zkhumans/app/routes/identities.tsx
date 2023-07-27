@@ -4,7 +4,7 @@ import {
   useNavigate,
   useRouteLoaderData,
 } from '@remix-run/react';
-import { Alert } from '../components';
+import { Alert, IconPending, IconNotPending } from '../components';
 import { useAppContext } from '../root';
 import { displayAccount } from '@zkhumans/utils';
 
@@ -26,7 +26,9 @@ export default function Identities() {
       <table className="table">
         <thead>
           <tr>
-            <th>#</th>
+            <th>
+              <div className="grid justify-items-center">Status</div>
+            </th>
             <th className="">Identifier</th>
           </tr>
         </thead>
@@ -39,7 +41,11 @@ export default function Identities() {
               }`}
               onClick={nav(`./${id.base58}`)}
             >
-              <th>{index}</th>
+              <td>
+                <div className="grid justify-items-center">
+                  {id.isPending ? <IconPending /> : <IconNotPending />}
+                </div>
+              </td>
               <td>{displayAccount(id.base58)}</td>
             </tr>
           ))}
