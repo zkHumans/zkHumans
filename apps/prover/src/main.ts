@@ -43,6 +43,15 @@ process.once('SIGINT', () => stop());
 process.once('SIGTERM', () => stop());
 
 ////////////////////////////////////
+// setup time logger
+////////////////////////////////////
+const t0 = performance.now();
+const t = () => Number(((performance.now() - t0) / 1000 / 60).toFixed(2)) + 'm';
+const log = (
+  ...args: any[] /* eslint-disable-line @typescript-eslint/no-explicit-any */
+) => console.log(`@T+${t()} |`, ...args);
+
+////////////////////////////////////
 // wait for API
 ////////////////////////////////////
 const status = await trpcWait(trpc, 5, 3_000);
@@ -71,9 +80,9 @@ console.log('IdentityManager @', meta.address.IdentityManager);
 ////////////////////////////////////
 // compile contract
 ////////////////////////////////////
-console.log('compile SmartContract...');
+log('compile SmartContract...');
 const { verificationKey } = await IdentityManager.compile();
-console.log('...compile SmartContract');
+log('...compile SmartContract');
 
 ////////////////////////////////////
 // init authToken
@@ -117,13 +126,13 @@ const loop = async () => {
   // wait for state transformations in progress
   const z = await trpc.zkapp.byAddress.query({ address: zkappAddress });
   if (z && z.isTransforming) {
-    console.log('Transformation in progress, waiting...');
+    log('Transformation in progress, waiting...');
     return false;
   }
 
   // fetch the network's last block
   const { blockchainLength } = await fetchLastBlock(graphqlEndpoints.mina[0]);
-  console.log('last network block:', blockchainLength.toBigint());
+  log('last network block:', blockchainLength.toBigint());
 
   ////////////////////////////////////////////////////////////////////////
   // process pending (uncommitted) storage
@@ -164,7 +173,7 @@ const loop = async () => {
   console.log('  commitmentSettled:', commitmentSettled.toBigInt());
 
   // send transaction to zkapp to commit pending transformations
-  console.log('Sending txn...');
+  log('Sending txn...');
   const tx = await Mina.transaction(
     { sender: feepayerPublicKey, fee: 100_000_000 },
     () => {
@@ -181,10 +190,7 @@ const loop = async () => {
   const res = await tx.send();
   const hash = res.hash();
   if (!hash) throw new Error('Transaction send failed:' + tx.toPretty());
-  console.log(
-    '...tx sent:',
-    'https://berkeley.minaexplorer.com/transaction/' + hash
-  );
+  log('...txn sent:', 'https://berkeley.minaexplorer.com/transaction/' + hash);
 
   // mark zkapp as transforming
   await trpc.zkapp.update.mutate({
@@ -192,13 +198,13 @@ const loop = async () => {
     isTransforming: true,
   });
 
-  console.log('waiting for txn...');
+  log('waiting for txn...');
   try {
     await res.wait();
   } catch (err: any) {
     console.log(err.message);
   }
-  console.log('...waiting for txn');
+  log('...waiting for txn');
 
   return true;
 };
