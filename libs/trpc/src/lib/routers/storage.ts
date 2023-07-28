@@ -72,7 +72,7 @@ export const storageRouter = t.router({
       async ({
         input: { commitmentPending, commitmentSettled, event, zkapp },
       }) => {
-        const x = await prisma.storage.updateMany({
+        await prisma.storage.updateMany({
           where: {
             isPending: true,
             commitmentPending,
@@ -102,7 +102,12 @@ export const storageRouter = t.router({
           })
         );
 
-        return x;
+        // return unique keys for storage with freshly committed data
+        const keys = [] as Array<string>;
+        storage.map((s) => {
+          if (s.storageKey) keys.push(s.storageKey);
+        });
+        return [...new Set(keys)];
       }
     ),
 
