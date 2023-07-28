@@ -21,6 +21,7 @@ import {
   eventStoreDefault,
 } from '@zkhumans/zkkv';
 import { delay, graphqlEndpoints, hr } from '@zkhumans/utils';
+import { IDUtils } from '@zkhumans/utils-client';
 
 // simple hash for unique event identifier
 // https://medium.com/@chris_72272/what-is-the-fastest-node-js-hashing-algorithm-c15c1a0e164e
@@ -66,6 +67,7 @@ Mina.setActiveInstance(Mina.Network(graphqlEndpoints));
 const zkappAddress = meta.address.IdentityManager;
 const zkappPublicKey = PublicKey.fromBase58(zkappAddress);
 const zkapp = new IdentityManager(zkappPublicKey);
+const zkappIdentifier = IDUtils.getManagerIdentfier(zkappPublicKey);
 console.log('IdentityManager @', meta.address.IdentityManager);
 
 ////////////////////////////////////
@@ -245,13 +247,38 @@ const loop = async () => {
       case 'storage:commit':
         {
           const es = EventStorageCommit.fromJSON(js);
-          const x = await trpc.storage.commit.mutate({
+
+          // update storage that is directly pending upon this commit
+          // and retrieve storage containing the committing storage as data
+          const updatingStores = await trpc.storage.commit.mutate({
             commitmentPending: es.commitmentPending.toString(),
             commitmentSettled: es.commitmentSettled.toString(),
             event: { id: event.id },
             zkapp: { address: zkappAddress },
           });
-          console.log('[storage:commit] # updated records:', x.count);
+          console.log('[storage:commit] updating stores:', updatingStores);
+
+          // For storage with committing data, update its value
+          // which is a Merkle root representing its data.
+          //
+          // Note: This value update is a convenience for local storage to
+          // compute the merkle roots of stores that contain the data *once* to
+          // avoid repeated nested computations later. The data itself is
+          // definitive as managed by the contract.
+          for (const key of updatingStores) {
+            if (key === zkappIdentifier) continue; // update manager next
+            const mm = await IDUtils.getStoredMerkleMap(key);
+            await trpc.storage.update.mutate({
+              key,
+              value: mm.getRoot().toString(),
+            });
+          }
+          // update the Identity Manager's storage value (root hash)
+          const mmMgr = await IDUtils.getStoredMerkleMap(zkappIdentifier);
+          await trpc.storage.update.mutate({
+            key: zkappIdentifier,
+            value: mmMgr.getRoot().toString(),
+          });
 
           // mark zkapp as !transforming
           await trpc.zkapp.update.mutate({
