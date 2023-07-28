@@ -439,7 +439,7 @@ async function addAuthNFactor(
 
   log('  tx: prove() sign() send()...');
   const tx = await Mina.transaction(feePayer, () => {
-    zkapp.NEW_addAuthNFactor(
+    zkapp.addAuthNFactor(
       af,
       afOperatorKey,
       identity,

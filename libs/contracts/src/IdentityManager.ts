@@ -305,7 +305,7 @@ export class IdentityManager extends SmartContract {
     // assert Operator Key is valid
     opKey.isOperatorKey().assertTrue();
 
-    // create the identity as a new pending store
+    // emit identity as a new pending store
     const store = identity.toUnitOfStore();
     const storeManager = UnitOfStore.init({
       key: mgrIdentifier,
@@ -318,7 +318,7 @@ export class IdentityManager extends SmartContract {
     });
     for (const { type, event } of events) this.emitEvent(type, event);
 
-    // set operator key as new pending data within identity
+    // emit operator key as new pending data within identity
     const opKeyStore = opKey.toUnitOfStore();
     this.emitEvent(
       'storage:pending',
@@ -354,7 +354,18 @@ export class IdentityManager extends SmartContract {
     for (const { type, event } of events) this.emitEvent(type, event);
   }
 
-  @method NEW_addAuthNFactor(
+  /**
+   * Add an Authentication Factor to an Identity.
+   *
+   * @param {AuthNFactor} authNFactor The new Authentication Factor to add to the Identity.
+   * @param {AuthNFactor} opKey The Operator Key attesting ownership of the Identity.
+   * @param {Identity} identity The Identity (Store) to add the AuthNFactor (data) to.
+   * @param {MerkleMapWitness} witnessOpKey Witness proving opKey is within Identity.
+   * @param {MerkleMapWitness} witnessKeyring Witness for AuthNFactor (data) within Identity (Store).
+   * @param {MerkleMapWitness} witnessManager Witness for Identity (Store) within Manager.
+   * @param {BioAuthorizedMessage} oracleMsg signed message from zkOracle providing AuthN Factor secret.
+   */
+  @method addAuthNFactor(
     authNFactor: AuthNFactor,
     opKey: AuthNFactor,
     identity: Identity,
@@ -396,41 +407,6 @@ export class IdentityManager extends SmartContract {
     ).assertTrue();
 
     // Note: ZKKV asserts identity within manager
-    const events = ZKKV.setStoreData({
-      data0: UnitOfStore.init({
-        key: authNFactor.toUnitOfStore().getKey(),
-        value: EMPTY, // Add
-      }),
-      data1: authNFactor.toUnitOfStore(),
-      store: identity.toUnitOfStore(),
-      storeManager: UnitOfStore.init({
-        key: mgrIdentifier,
-        value: mgrCommitment,
-      }),
-      witnessStore: witnessKeyring,
-      witnessManager,
-    });
-
-    for (const { type, event } of events) this.emitEvent(type, event);
-  }
-
-  /**
-   * Add an Authentication Factor to an Identity.
-   *
-   * @param {AuthNFactor} authNFactor The AuthNFactor with new value to update.
-   * @param {Identity} identity The Identity (Store) to add the AuthNFactor (data) to.
-   * @param {MerkleMapWitness} witnessKeyring Witness for AuthNFactor (data) within Identity (Store).
-   * @param {MerkleMapWitness} witnessManager Witness for Identity (Store) within Manager.
-   */
-  @method addAuthNFactor(
-    authNFactor: AuthNFactor,
-    identity: Identity,
-    witnessKeyring: MerkleMapWitness,
-    witnessManager: MerkleMapWitness
-  ) {
-    const mgrIdentifier = this.identifier.getAndAssertEquals();
-    const mgrCommitment = this.commitment.getAndAssertEquals();
-
     const events = ZKKV.setStoreData({
       data0: UnitOfStore.init({
         key: authNFactor.toUnitOfStore().getKey(),
