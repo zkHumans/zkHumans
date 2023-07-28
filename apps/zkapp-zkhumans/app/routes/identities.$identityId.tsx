@@ -381,7 +381,7 @@ export default function Identity() {
       ////////////////////////////////////////////////////////////////////////
       cnsl.tic('> Preparing transaction...');
       const tx = await snarkyjs.Mina.transaction(() => {
-        zkApp.identityManager.NEW_addAuthNFactor(
+        zkApp.identityManager.addAuthNFactor(
           af,
           afOperatorKey,
           identity,
