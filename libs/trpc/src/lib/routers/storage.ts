@@ -219,4 +219,19 @@ export const storageRouter = t.router({
         });
       }
     ),
+
+  update: t.procedure
+    .input(
+      z.object({
+        key: z.string(),
+        value: z.string(),
+      })
+    )
+    .mutation(async ({ input: { key, value } }) => {
+      return await prisma.storage.update({
+        where: { key },
+        data: { value },
+        select: selectStorage,
+      });
+    }),
 });
