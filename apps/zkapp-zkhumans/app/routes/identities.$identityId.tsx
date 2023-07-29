@@ -25,6 +25,11 @@ const CYCLE_CHECK_BIOAUTH = 5_000;
  */
 const CYCLE_CHECK_TXN_CONFIRM = 5_000;
 
+/**
+ * How often to recheck storage for AF status
+ */
+const CYCLE_CHECK_AF_STATUS = 5_000;
+
 export const loader = async ({ params }: LoaderArgs) => {
   const identifier = params.identityId;
   return json({ identifier });
@@ -70,6 +75,7 @@ export default function Identity() {
     undefined as undefined | null | string
   );
   const [txnWatchCounter, setTxnWatchCounter] = useState(0);
+  const [afWatchCounter, setAFWatchCounter] = useState(0);
   const [newAFKey, setNewAFKey] = useState(undefined as undefined | string);
 
   const route = 'routes/identities.$identityId.af_.$authnId';
@@ -133,16 +139,25 @@ export default function Identity() {
       if (identifier) {
         const afs_ = await IDUtils.getAuthNFactors(identifier);
         const afs = [] as AFS;
-        for (const af of Object.keys(afs_))
+        let hasPending = false;
+        for (const af of Object.keys(afs_)) {
           afs.push({
             key: af,
             value: IDUtils.humanReadableAuthNFactor(afs_[af]),
             isPending: afs_[af].isPending,
           });
+          if (afs_[af].isPending) hasPending = true;
+        }
         setAuthNFactors(() => afs);
+
+        // continually reload if any AFs are pending
+        if (hasPending) {
+          await delay(CYCLE_CHECK_AF_STATUS);
+          setAFWatchCounter((x) => x + 1);
+        }
       }
     })();
-  }, [identifier, transactionHash]);
+  }, [identifier, transactionHash, afWatchCounter]);
 
   function handleAddAF_changeType(event: React.ChangeEvent<HTMLSelectElement>) {
     setSelectedAFType(event.target.value);
@@ -429,6 +444,7 @@ export default function Identity() {
   };
 
   const resetState = () => {
+    setAFWatchCounter(() => 0);
     setSignature(() => null);
     setTransaction(() => null);
     setTransactionHash(() => undefined);
