@@ -315,6 +315,44 @@ log('...Bob: addAuthNFactor bioauth');
 numEvents = await processEvents(numEvents);
 
 ////////////////////////////////////////////////////////////////////////
+// commit pending storage events
+////////////////////////////////////////////////////////////////////////
+
+hr();
+await commitPendingTransformations();
+numEvents = await processEvents(numEvents);
+logRoots();
+
+////////////////////////////////////////////////////////////////////////
+// add a new Identity
+////////////////////////////////////////////////////////////////////////
+
+hr();
+log('addIdentity Charlie...');
+const Charlie = Identity.init({
+  identifier: Identifier.fromPublicKey(
+    Local.testAccounts[2].publicKey,
+    1
+  ).toField(),
+  commitment: new MerkleMap().getRoot(),
+});
+const opKeyCharlie = AuthNFactor.init({
+  protocol: {
+    type: AuthNType.operator,
+    provider: AuthNProvider.zkhumans,
+    revision: 0,
+  },
+  data: { salt, secret: 'XXXXXXXXXX' },
+});
+await addIdentity(
+  opKeyCharlie,
+  Charlie,
+  storageRunner.maps[zkappIdentifier.toString()]
+);
+log('...addIdentity Charlie');
+numEvents = await processEvents(numEvents);
+
+////////////////////////////////////////////////////////////////////////
 // commit pending transformations and confirm storage sync
 ////////////////////////////////////////////////////////////////////////
 

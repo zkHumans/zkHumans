@@ -564,4 +564,5 @@ export class IdentityManager extends SmartContract {
  *
  * [2] 2023-07-25: Error: "Field.Inv: zero" on signature.verify
  * Only occurs on Berkeley deployment when generaring proof in ui.
+ * https://github.com/o1-labs/snarky/blob/master/src/base/backend_extended.ml#L118
  */
