@@ -569,7 +569,7 @@ export class IdentityManager extends SmartContract {
    *
    * @param {Field} authToken Secret authentication token.
    */
-  @method commitPendingTransformationsWithAuthToken(
+  @method commitPendingXforms(
     authToken: Field,
     commitmentPending: Field,
     commitmentSettled: Field

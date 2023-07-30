@@ -591,7 +591,7 @@ async function commitPendingTransformationsWithAuthToken() {
     console.log('  commitmentSettled:', commitmentSettled.toString());
     log('  tx: prove() sign() send()...');
     const tx = await Mina.transaction(feePayer, () => {
-      zkapp.commitPendingTransformationsWithAuthToken(
+      zkapp.commitPendingXforms(
         authToken,
         commitmentPending,
         commitmentSettled

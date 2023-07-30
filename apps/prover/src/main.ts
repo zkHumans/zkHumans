@@ -185,7 +185,7 @@ const loop = async () => {
   const tx = await Mina.transaction(
     { sender: feepayerPublicKey, fee: 100_000_000 },
     () => {
-      zkapp.commitPendingTransformationsWithAuthToken(
+      zkapp.commitPendingXforms(
         authToken,
         commitmentPending,
         commitmentSettled
