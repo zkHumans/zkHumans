@@ -157,10 +157,6 @@ export class AuthNFactor extends Struct({
     return t.and(p).and(r);
   }
 
-  protocolAssertEquals(protocol: AuthNFactorProtocol) {
-    return this.protocolEquals(protocol).assertTrue();
-  }
-
   isOperatorKey() {
     return this.protocolEquals({
       type: AuthNType.operator,
