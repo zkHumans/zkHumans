@@ -15,6 +15,7 @@ import {
   AuthNProvider,
   AuthNType,
   Identity,
+  IdentityAssertion,
   IdentityManager,
 } from '../IdentityManager';
 import { Identifier, hr, strToBool } from '@zkhumans/utils';
@@ -27,6 +28,8 @@ import {
   eventStoreDefault,
 } from '@zkhumans/zkkv';
 import { BioAuthorizedMessage } from '@zkhumans/snarky-bioauth';
+
+import { ExampleIdentityConsumer } from '../ExampleIdentityConsumer';
 
 ////////////////////////////////////////////////////////////////////////
 // set config from env
@@ -108,9 +111,13 @@ class StorageSimulator {
 // 1: }
 
 if (proofsEnabled) {
-  log('compile SmartContract...');
+  log('compile SmartContract IdentityManager...');
   await IdentityManager.compile();
-  log('...compile SmartContract');
+  log('...compile SmartContract IdentityManager');
+
+  log('compile SmartContract ExampleIdentityConsumer...');
+  await ExampleIdentityConsumer.compile();
+  log('...compile SmartContract ExampleIdentityConsumer');
 }
 
 const Local = Mina.LocalBlockchain({ proofsEnabled });
@@ -123,6 +130,10 @@ const feePayerKey = Local.testAccounts[0].privateKey;
 const PK = 'EKFJtXzNFt6cv2AH5TvJKvMAw8RF1nfyT9xE7kedyUUNnXrpZERn';
 const zkappKey = PrivateKey.fromBase58(PK);
 const zkappAddress = zkappKey.toPublicKey();
+
+// example Identity Consumer contract
+const zkappIDConsumerKey = PrivateKey.random();
+const zkappIDConsumerAddress = zkappIDConsumerKey.toPublicKey();
 
 // setup storage simulation
 const storageRunner = new StorageSimulator(); // for computing proposed state transformations
@@ -172,8 +183,9 @@ const bioAuthSimulator = (x: string): BioAuthorizedMessage => {
 hr();
 log('Deploying IdentityManager...');
 const zkapp = new IdentityManager(zkappAddress);
+const zkappIDConsumer = new ExampleIdentityConsumer(zkappIDConsumerAddress);
 const tx = await Mina.transaction(feePayer, () => {
-  AccountUpdate.fundNewAccount(feePayer);
+  AccountUpdate.fundNewAccount(feePayer, 2);
   zkapp.deploy({ zkappKey });
 
   // set initial storage identifier, root, and authHash
@@ -181,6 +193,12 @@ const tx = await Mina.transaction(feePayer, () => {
   zkapp.commitment.set(initStoreCommitment);
   zkapp.authHash.set(authHash);
   zkapp.oraclePublicKey.set(oraclePublicKey);
+
+  // set Identity Manager PublicKey for Identity Consumer
+  // Note: this is just for pragmatic convienence,
+  // it can be hardcoded to not consume state
+  zkappIDConsumer.deploy({ zkappKey: zkappIDConsumerKey });
+  zkappIDConsumer.IDManagerPublicKey.set(zkappAddress);
 
   // notify off-chain storage
   zkapp.emitEvent('storage:create', {
@@ -351,6 +369,65 @@ await addIdentity(
 );
 log('...addIdentity Charlie');
 numEvents = await processEvents(numEvents);
+
+////////////////////////////////////////////////////////////////////////
+// Identity Consumer contract
+////////////////////////////////////////////////////////////////////////
+hr();
+log('ExampleIdentityConsumer.somethingRequiringAuth...');
+{
+  // successful auth
+  const tx = await Mina.transaction(feePayer, () => {
+    zkappIDConsumer.somethingRequiringAuth(
+      new IdentityAssertion({
+        // authenticate Identity ownership using its Operator Key
+        authNF: opKeyBob,
+        // provide the identity with current commitment
+        identity: Bob.setCommitment(
+          storage.maps[Bob.identifier.toString()].getRoot()
+        ),
+        // prove the Authentication Factor is within the Identity Keyring
+        witnessIdentity: storage.maps[Bob.identifier.toString()].getWitness(
+          opKeyBob.getKey()
+        ),
+        // prove the Identity is within the Manager
+        witnessManager: storage.maps[zkappIdentifier.toString()].getWitness(
+          Bob.identifier
+        ),
+      })
+    );
+  });
+  await tx.prove();
+  await tx.sign([feePayerKey]).send();
+  const eventsIDConsumer = await zkappIDConsumer.fetchEvents();
+  console.log(
+    'Successful ID auth event:',
+    JSON.stringify(eventsIDConsumer, null, 2)
+  );
+}
+
+try {
+  // failed auth
+  const tx = await Mina.transaction(feePayer, () => {
+    zkappIDConsumer.somethingRequiringAuth(
+      new IdentityAssertion({
+        authNF: opKeyBob,
+        identity: Alice, // <-- Bob can't auth Alice's identity, will fail!
+        witnessIdentity: storage.maps[Bob.identifier.toString()].getWitness(
+          opKeyBob.getKey()
+        ),
+        witnessManager: storage.maps[zkappIdentifier.toString()].getWitness(
+          Bob.identifier
+        ),
+      })
+    );
+  });
+  await tx.prove();
+  await tx.sign([feePayerKey]).send();
+} catch (err: any) {
+  console.log('Expected Failed ID Auth:', err.message);
+}
+log('...ExampleIdentityConsumer.somethingRequiringAuth');
 
 ////////////////////////////////////////////////////////////////////////
 // commit pending transformations and confirm storage sync
