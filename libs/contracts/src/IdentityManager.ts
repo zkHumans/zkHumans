@@ -168,6 +168,14 @@ export class AuthNFactor extends Struct({
       revision: 0, // >= 0
     });
   }
+
+  isBioAuth(): Bool {
+    return this.protocolEquals({
+      type: AuthNType.proofOfPerson,
+      provider: AuthNProvider.humanode,
+      revision: 0, // >= 0
+    });
+  }
 }
 
 /**
@@ -416,11 +424,7 @@ export class IdentityManager extends SmartContract {
 
     // if adding BioAuth authentication factor
     Provable.if(
-      authNFactor.protocolEquals({
-        type: AuthNType.proofOfPerson,
-        provider: AuthNProvider.humanode,
-        revision: 0,
-      }),
+      authNFactor.isBioAuth(),
       // 2: // check validity of bioauthenticated message
       // 2: oracleMsg.signature
       // 2:   .verify(oraclePublicKey, [
