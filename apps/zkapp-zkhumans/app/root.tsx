@@ -26,7 +26,7 @@ export const meta: V2_MetaFunction = () => [
 async function zkAppInit(snarkyjs: Snarkyjs, cnsl: CNSL) {
   const { IdentityManager } = await import('@zkhumans/contracts');
 
-  // Note: takes a very long time!
+  // Note: can take a very long time!
   await IdentityManager.compile();
 
   const meta = await trpc.meta.query();

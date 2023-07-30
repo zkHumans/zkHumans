@@ -296,7 +296,7 @@ export function useZKApp<T>(
     }
 
     try {
-      cnsl.tic('Compiling zkApp... takes a long time!');
+      cnsl.tic('Compiling zkApp... can take a while!');
       const zkApp = await zkAppInit(state.snarkyjs, cnsl);
       setState((s) => ({ ...s, hasError: false, zkApp }));
       console.log(
