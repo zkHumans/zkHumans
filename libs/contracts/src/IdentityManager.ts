@@ -243,6 +243,17 @@ export class Identity extends Struct({
   }
 }
 
+/**
+ * All the parts to prove ownership of an Identity.
+ * A convienence for managing the components as a unit.
+ */
+export class IdentityAssertion extends Struct({
+  authNF: AuthNFactor,
+  identity: Identity,
+  witnessIdentity: MerkleMapWitness,
+  witnessManager: MerkleMapWitness,
+}) {}
+
 export class IdentityManager extends SmartContract {
   /**
    * Static identifier of the Identity Manager Merkle Map.
@@ -289,6 +300,26 @@ export class IdentityManager extends SmartContract {
       ...Permissions.default(),
       editState: Permissions.proofOrSignature(),
     });
+  }
+
+  /**
+   * Assert ownership of an Identity
+   *
+   * @param {IdentityAssertion} assertion Assertion proving Identity ownership.
+   */
+  @method isIdentityOwner(assertion: IdentityAssertion): Bool {
+    const { authNF, identity, witnessIdentity, witnessManager } = assertion;
+
+    const mgrCommitment = this.commitment.getAndAssertEquals();
+
+    // compute roots for Authentication Factor within Identity within Manager
+    const [root0] = witnessIdentity.computeRootAndKey(authNF.getValue());
+    const [root1] = witnessManager.computeRootAndKey(root0);
+
+    // check if roots match Identity and Manager commitments
+    const matchID = root0.equals(identity.commitment);
+    const matchMgr = root1.equals(mgrCommitment);
+    return matchID.and(matchMgr);
   }
 
   /**
