@@ -6,7 +6,11 @@ import {
   method,
   state,
 } from 'snarkyjs';
-import { IdentityAssertion, IdentityManager } from './IdentityManager';
+import {
+  AuthNFactor,
+  IdentityAssertion,
+  IdentityManager,
+} from './IdentityManager';
 
 export class ExampleIdentityConsumer extends SmartContract {
   @state(PublicKey) IDManagerPublicKey = State<PublicKey>();
@@ -16,12 +20,12 @@ export class ExampleIdentityConsumer extends SmartContract {
     bioauthorizedID: Field,
   };
 
-  @method somethingRequiringAuth(assertion: IdentityAssertion) {
+  @method requireAuth(assertion: IdentityAssertion, authNF: AuthNFactor) {
     const idMgrPubKey = this.IDManagerPublicKey.getAndAssertEquals();
     const identityManager = new IdentityManager(idMgrPubKey);
 
     // assert Identity ownership
-    identityManager.isIdentityOwner(assertion).assertTrue();
+    identityManager.isIdentityOwner(assertion, authNF).assertTrue();
 
     // do something after Identity ownership has been proven
 
@@ -31,21 +35,19 @@ export class ExampleIdentityConsumer extends SmartContract {
     this.emitEvent('authorizedID', identifier);
   }
 
-  @method somethingRequiringBioAuth(assertion: IdentityAssertion) {
+  @method requireBioAuth(assertion: IdentityAssertion, authNF: AuthNFactor) {
     const idMgrPubKey = this.IDManagerPublicKey.getAndAssertEquals();
     const identityManager = new IdentityManager(idMgrPubKey);
 
     // assert Identity ownership
-    identityManager.isIdentityOwner(assertion).assertTrue();
+    identityManager.isIdentityOwner(assertion, authNF).assertTrue();
 
     // assert Authentication Factor is a BioAuth
-    assertion.authNF.isBioAuth().assertTrue();
+    authNF.isBioAuth().assertTrue();
 
     // do something after Identity ownership has been proven with BioAuth
 
-    // the Identity's unique identifier is useful
     const identifier = assertion.identity.identifier;
-
     this.emitEvent('bioauthorizedID', identifier);
   }
 }

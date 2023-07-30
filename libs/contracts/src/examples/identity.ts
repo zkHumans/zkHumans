@@ -374,14 +374,12 @@ numEvents = await processEvents(numEvents);
 // Identity Consumer contract
 ////////////////////////////////////////////////////////////////////////
 hr();
-log('ExampleIdentityConsumer.somethingRequiringAuth...');
+log('ExampleIdentityConsumer.requireAuth...');
 {
   // successful auth
   const tx = await Mina.transaction(feePayer, () => {
-    zkappIDConsumer.somethingRequiringAuth(
+    zkappIDConsumer.requireAuth(
       new IdentityAssertion({
-        // authenticate Identity ownership using its Operator Key
-        authNF: opKeyBob,
         // provide the identity with current commitment
         identity: Bob.setCommitment(
           storage.maps[Bob.identifier.toString()].getRoot()
@@ -394,7 +392,9 @@ log('ExampleIdentityConsumer.somethingRequiringAuth...');
         witnessManager: storage.maps[zkappIdentifier.toString()].getWitness(
           Bob.identifier
         ),
-      })
+      }),
+      // authenticate Identity ownership using its Operator Key
+      opKeyBob
     );
   });
   await tx.prove();
@@ -409,9 +409,8 @@ log('ExampleIdentityConsumer.somethingRequiringAuth...');
 try {
   // failed auth
   const tx = await Mina.transaction(feePayer, () => {
-    zkappIDConsumer.somethingRequiringAuth(
+    zkappIDConsumer.requireAuth(
       new IdentityAssertion({
-        authNF: opKeyBob,
         identity: Alice, // <-- Bob can't auth Alice's identity, will fail!
         witnessIdentity: storage.maps[Bob.identifier.toString()].getWitness(
           opKeyBob.getKey()
@@ -419,7 +418,8 @@ try {
         witnessManager: storage.maps[zkappIdentifier.toString()].getWitness(
           Bob.identifier
         ),
-      })
+      }),
+      opKeyBob
     );
   });
   await tx.prove();
@@ -427,7 +427,7 @@ try {
 } catch (err: any) {
   console.log('Expected Failed ID Auth:', err.message);
 }
-log('...ExampleIdentityConsumer.somethingRequiringAuth');
+log('...ExampleIdentityConsumer.requireAuth');
 
 ////////////////////////////////////////////////////////////////////////
 // commit pending transformations and confirm storage sync

@@ -248,14 +248,19 @@ export class Identity extends Struct({
 }
 
 /**
- * All the parts to prove ownership of an Identity.
+ * Components to prove ownership of an Identity.
  * A convienence for managing the components as a unit.
+ *
+ * Additionally, one or more AuthNFactors are used to prove ownership.
  */
 export class IdentityAssertion extends Struct({
-  authNF: AuthNFactor,
   identity: Identity,
   witnessIdentity: MerkleMapWitness,
   witnessManager: MerkleMapWitness,
+
+  // authNF: AuthNFactor, // 2023-07 including this fails :
+  // Error: Stack_overflow at caml_fatal_uncaught_exception
+  // (.../snarkyjs/src/bindings/ocaml/overrides.js:60:32)
 }) {}
 
 export class IdentityManager extends SmartContract {
@@ -307,12 +312,16 @@ export class IdentityManager extends SmartContract {
   }
 
   /**
-   * Assert ownership of an Identity
+   * Check proof of ownership of an Identity
    *
-   * @param {IdentityAssertion} assertion Assertion proving Identity ownership.
+   * @param {IdentityAssertion} assertion Assertion for proving Identity ownership.
+   * @param {AuthNFactor} authNF An Authentication Factor for proving Identity ownership.
    */
-  @method isIdentityOwner(assertion: IdentityAssertion): Bool {
-    const { authNF, identity, witnessIdentity, witnessManager } = assertion;
+  @method isIdentityOwner(
+    assertion: IdentityAssertion,
+    authNF: AuthNFactor
+  ): Bool {
+    const { identity, witnessIdentity, witnessManager } = assertion;
 
     const mgrCommitment = this.commitment.getAndAssertEquals();
 
