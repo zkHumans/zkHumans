@@ -413,6 +413,30 @@ export class IdentityManager extends SmartContract {
     for (const { type, event } of events) this.emitEvent(type, event);
   }
 
+  /*
+  @method delIdentity(idAssertion: IdentityAssertion, opKey: AuthNFactor) {
+    const { identity, witnessManager } = idAssertion;
+    const mgrIdentifier = this.identifier.getAndAssertEquals();
+    const mgrCommitment = this.commitment.getAndAssertEquals();
+
+    // assert Operator Key is valid and within the identity
+    opKey.isOperatorKey().assertTrue();
+    const [r] = idAssertion.witnessIdentity.computeRootAndKey(opKey.getValue());
+    r.assertEquals(idAssertion.identity.commitment);
+
+    const events = ZKKV.delStore({
+      store: identity.toUnitOfStore(),
+      storeManager: UnitOfStore.init({
+        key: mgrIdentifier,
+        value: mgrCommitment,
+      }),
+      witnessManager,
+    });
+
+    for (const { type, event } of events) this.emitEvent(type, event);
+  }
+  */
+
   /**
    * Add an Authentication Factor to an Identity.
    *
@@ -445,24 +469,23 @@ export class IdentityManager extends SmartContract {
     const [r] = idAssertion.witnessIdentity.computeRootAndKey(opKey.getValue());
     r.assertEquals(idAssertion.identity.commitment);
 
-    // if adding BioAuth authentication factor
-    Provable.if(
-      authNF.isBioAuth(),
-      // 2: // check validity of bioauthenticated message
-      // 2: oracleMsg.signature
-      // 2:   .verify(oraclePublicKey, [
-      // 2:     oracleMsg.payload,
-      // 2:     oracleMsg.timestamp,
-      // 2:     oracleMsg.bioAuthId,
-      // 2:   ])
-      // 2:   .and(
-      // 2:     // and ensure bioauthorization and authentication factor match
-      // 2:     // TODO: oracleMsg.bioAuthId.equals(authNFactor.data.secret)
-      // 2:     Bool(true)
-      // 2:   ),
-      Bool(true),
-      Bool(true)
-    ).assertTrue();
+    // 2: // if adding BioAuth authentication factor
+    // 2: Provable.if(
+    // 2:   authNF.isBioAuth(),
+    // 2:   // check validity of bioauthenticated message
+    // 2:   oracleMsg.signature
+    // 2:     .verify(oraclePublicKey, [
+    // 2:       oracleMsg.payload,
+    // 2:       oracleMsg.timestamp,
+    // 2:       oracleMsg.bioAuthId,
+    // 2:     ])
+    // 2:     .and(
+    // 2:       // and ensure bioauthorization and authentication factor match
+    // 2:       // TODO: oracleMsg.bioAuthId.equals(authNFactor.data.secret)
+    // 2:       Bool(true)
+    // 2:     ),
+    // 2:   Bool(true)
+    // 2: ).assertTrue();
 
     // Note: ZKKV asserts identity within manager
     const events = ZKKV.setStoreData({
@@ -486,70 +509,78 @@ export class IdentityManager extends SmartContract {
   /**
    * Remove an Authentication Factor from an Identity.
    *
-   * @param {AuthNFactor} authNFactor The AuthNFactor with current value to remove.
-   * @param {Identity} identity The Identity (Store) to remove the AuthNFactor (data) from.
-   * @param {MerkleMapWitness} witnessKeyring Witness for AuthNFactor (data) within Identity (Store).
-   * @param {MerkleMapWitness} witnessManager Witness for Identity (Store) within Manager.
+   * @param {IdentityAssertion} idAssertion Assertion to prove Identity ownership with the Operator Key.
+   * @param {AuthNFactor} opKey The Operator Key attesting ownership of the Identity.
+   * @param {AuthNFactor} authNF The AuthNFactor to remove from the Identity.
+   * @param {MerkleMapWitness} witnessAuthNF Witness for current AuthNFactor within Identity.
    */
-  /*
   @method delAuthNFactor(
-    authNFactor: AuthNFactor,
-    identity: Identity,
-    witnessKeyring: MerkleMapWitness,
-    witnessManager: MerkleMapWitness
+    idAssertion: IdentityAssertion,
+    opKey: AuthNFactor,
+    authNF: AuthNFactor,
+    witnessAuthNF: MerkleMapWitness
   ) {
     const mgrIdentifier = this.identifier.getAndAssertEquals();
     const mgrCommitment = this.commitment.getAndAssertEquals();
 
+    // assert Operator Key is valid and within the identity
+    opKey.isOperatorKey().assertTrue();
+    const [r] = idAssertion.witnessIdentity.computeRootAndKey(opKey.getValue());
+    r.assertEquals(idAssertion.identity.commitment);
+
     const events = ZKKV.setStoreData({
-      data0: authNFactor.toUnitOfStore(),
+      data0: authNF.toUnitOfStore(),
       data1: UnitOfStore.init({
-        key: authNFactor.toUnitOfStore().getKey(),
+        key: authNF.toUnitOfStore().getKey(),
         value: EMPTY, // Delete
       }),
-      store: identity.toUnitOfStore(),
+      store: idAssertion.identity.toUnitOfStore(),
       storeManager: UnitOfStore.init({
         key: mgrIdentifier,
         value: mgrCommitment,
       }),
-      witnessStore: witnessKeyring,
-      witnessManager,
+      witnessStore: witnessAuthNF,
+      witnessManager: idAssertion.witnessManager,
     });
 
     for (const { type, event } of events) this.emitEvent(type, event);
   }
-  */
 
   /**
    * Set an Authentication Factor within an Identity.
    *
+   * @param {IdentityAssertion} idAssertion Assertion to prove Identity ownership with the Operator Key.
+   * @param {AuthNFactor} opKey The Operator Key attesting ownership of the Identity.
    * @param {AuthNFactor} authNFactor0 The current AuthNFactor.
    * @param {AuthNFactor} authNFactor1 The new AuthNFactor.
-   * @param {Identity} identity The Identity (Store) to update the AuthNFactor (data) within.
-   * @param {MerkleMapWitness} witnessKeyring Witness for AuthNFactor (data) within Identity (Store).
-   * @param {MerkleMapWitness} witnessManager Witness for Identity (Store) within Manager.
+   * @param {MerkleMapWitness} witnessAuthNF Witness for current AuthNFactor within Identity.
    */
   /*
   @method setAuthNFactor(
+    idAssertion: IdentityAssertion,
+    opKey: AuthNFactor,
     authNFactor0: AuthNFactor,
     authNFactor1: AuthNFactor,
-    identity: Identity,
-    witnessKeyring: MerkleMapWitness,
-    witnessManager: MerkleMapWitness
+    witnessAuthNF: MerkleMapWitness
   ) {
     const mgrIdentifier = this.identifier.getAndAssertEquals();
     const mgrCommitment = this.commitment.getAndAssertEquals();
 
+    // assert Operator Key is valid and within the identity
+    opKey.isOperatorKey().assertTrue();
+    const [r] = idAssertion.witnessIdentity.computeRootAndKey(opKey.getValue());
+    r.assertEquals(idAssertion.identity.commitment);
+
     const events = ZKKV.setStoreData({
       data0: authNFactor0.toUnitOfStore(),
       data1: authNFactor1.toUnitOfStore(),
-      store: identity.toUnitOfStore(),
+      store: idAssertion.identity.toUnitOfStore(),
       storeManager: UnitOfStore.init({
         key: mgrIdentifier,
         value: mgrCommitment,
       }),
-      witnessStore: witnessKeyring,
-      witnessManager,
+      witnessStore: witnessAuthNF,
+      witnessManager: idAssertion.witnessManager,
     });
 
     for (const { type, event } of events) this.emitEvent(type, event);
@@ -615,12 +646,13 @@ export class IdentityManager extends SmartContract {
 
 /*
  * [1] 2023-07-10 Note: commitPendingTransformations with recursive proof
- * disabled due to undocumented behavior fron snarkyjs.
+ * disabled due to performance navigtations and undocumented snarkyjs behavior.
  * Even when the method is not called... just included within the code,
  * proofsenabled fails on some, but not all, methods:
  * Error: curve point must not be the point at infinity
  *
  * [2] 2023-07-25: Error: "Field.Inv: zero" on signature.verify
  * Only occurs on Berkeley deployment when generaring proof in ui.
+ * Used to work fine...
  * https://github.com/o1-labs/snarky/blob/master/src/base/backend_extended.ml#L118
  */
