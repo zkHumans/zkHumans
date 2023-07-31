@@ -294,9 +294,13 @@ export default function Identity() {
       ////////////////////////////////////////////////////////////////////////
       // dynamically load libs for in-browser only, avoid ERR_REQUIRE_ESM
       ////////////////////////////////////////////////////////////////////////
-      const { AuthNFactor, AuthNType, AuthNProvider, Identity } = await import(
-        '@zkhumans/contracts'
-      );
+      const {
+        AuthNFactor,
+        AuthNProvider,
+        AuthNType,
+        Identity,
+        IdentityAssertion,
+      } = await import('@zkhumans/contracts');
       const { BioAuthorizedMessage } = await import('@zkhumans/snarky-bioauth');
       const { Identifier } = await import('@zkhumans/utils');
       const { IDUtils } = await import('@zkhumans/utils-client');
@@ -315,11 +319,11 @@ export default function Identity() {
       // prove Identity ownership by proving inclusion of operator key (secret)
       // within Identity Merkle Tree
       ////////////////////////////////////////////////////////////////////////
-      cnsl.tic('> Creating Identity ownership Merkle Proof...');
+      cnsl.tic('> Creating Identity ownership proof...');
       const secret = IDUtils.getOperatorKeySecret(identifier, signature);
       if (!secret || secret === '') throw new Error('op key secret failed');
 
-      const afOperatorKey = AuthNFactor.init({
+      const opKey = AuthNFactor.init({
         protocol: {
           type: AuthNType.operator,
           provider: AuthNProvider.zkhumans,
@@ -328,12 +332,20 @@ export default function Identity() {
         data: { salt: IDUtils.IDENTITY_MGR_SALT, secret },
       });
 
-      const witnessOpKey = mmIdentity.getWitness(afOperatorKey.getKey());
+      const idAssertion = new IdentityAssertion({
+        identity,
+        // prove Identity ownership by proving inclusion of operator key (secret)
+        witnessIdentity: mmIdentity.getWitness(opKey.getKey()),
+        // prove identifier IS in the Identity Manager MT, thus can be updated
+        witnessManager: (
+          await IDUtils.getManagerMM(zkApp.identityManager.address)
+        ).getWitness(identity.identifier),
+      });
       cnsl.toc('success');
 
       // default to AFType password (for cheap types)
       let oracleMsg = BioAuthorizedMessage.dummy();
-      let af = AuthNFactor.init({
+      let authNF = AuthNFactor.init({
         protocol: {
           type: AuthNType.password,
           provider: AuthNProvider.self,
@@ -362,7 +374,7 @@ export default function Identity() {
           oracleMsg = BioAuthorizedMessage.fromJSON(
             JSON.parse(bioAuthState.auth)
           );
-          af = AuthNFactor.init({
+          authNF = AuthNFactor.init({
             protocol: {
               type: AuthNType.proofOfPerson,
               provider: AuthNProvider.humanode,
@@ -381,15 +393,7 @@ export default function Identity() {
       }
 
       // prove the AuthNFactor IS NOT (yet) in the Identity Keyring MT
-      const witnessKeyring = mmIdentity.getWitness(af.getKey());
-
-      ////////////////////////////////////////////////////////////////////////
-      // prove identifier IS in the Identity Manager MT, thus can be updated
-      ////////////////////////////////////////////////////////////////////////
-      cnsl.tic('> Creating Identity update Merkle Proof...');
-      const mmMgr = await IDUtils.getManagerMM(zkApp.identityManager.address);
-      const witnessManager = mmMgr.getWitness(identity.identifier);
-      cnsl.toc('success');
+      const witnessAuthNF = mmIdentity.getWitness(authNF.getKey());
 
       ////////////////////////////////////////////////////////////////////////
       // prepare transaction
@@ -397,12 +401,10 @@ export default function Identity() {
       cnsl.tic('> Preparing transaction...');
       const tx = await snarkyjs.Mina.transaction(() => {
         zkApp.identityManager.addAuthNFactor(
-          af,
-          afOperatorKey,
-          identity,
-          witnessOpKey,
-          witnessKeyring,
-          witnessManager,
+          idAssertion,
+          opKey,
+          authNF,
+          witnessAuthNF,
           oracleMsg
         );
       });
@@ -418,7 +420,7 @@ export default function Identity() {
       console.log('Transaction:', tx.toPretty());
 
       setTransaction(() => tx.toJSON());
-      setNewAFKey(() => af.getKey().toString());
+      setNewAFKey(() => authNF.getKey().toString());
     } catch (
       err: any // eslint-disable-line @typescript-eslint/no-explicit-any
     ) {
