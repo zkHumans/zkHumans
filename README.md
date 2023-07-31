@@ -17,6 +17,35 @@ Collective Association, and Access Control Platform.
 - [Traefik](https://github.com/traefik/traefik): The Cloud Native Application
   Proxy
 
+## How it Works
+
+- An Identity consists of:
+  - one or more Authentication Factors within a Merkle Map
+  - a static unique identifier (UUID) and a Merkle Map root commitment. (ie its
+    current hash representing the Authentication Factors within it) .
+- Each Identity's identifier:commitment is added as key:value data to a Manager
+  MerkleMap
+  - A Manager also has a static identifier (zkApp address) and root commitment
+- A SnarkyJS SmartContract manages authenticated state transformations of the
+  Manager Merkle Tree including:
+  - addition of new Identities
+  - addition/removal of Authentication Factors from Identities
+  - authentication of Identity ownership by other composing SmartContracts
+- Proving ownership of an Identity consists of proving:
+  - an Authentication Factor (as key:value data) is within the Identity's
+    MerkleMap
+  - The Identity's key:value is within the Manager's MerkleMap
+  - depending on the authenticating context, one or more Authentication Factors
+    of specific types may be required to prove ownership
+- Off-chain Merkle data is stored within a database powered by ZK:KV; zkHumans
+  custom-build but generally useful zk-data storage solution with the following
+  features:
+  - data is public but secret, only the owner of an Identity may access their,
+    and only their, data (ZK!), otherwise it is only random numbers to others
+  - facilitates decentralized and distribted node data
+  - database agnostic, refrence implemtation uses prisma for high-availability
+    and local performance of SQL (using Postgres, for example)
+
 ## Contributing
 
 [![Commitizen friendly](https://img.shields.io/badge/commitizen-friendly-brightgreen.svg)](http://commitizen.github.io/cz-cli/)
