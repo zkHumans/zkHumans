@@ -330,6 +330,38 @@ export class ZKKV {
     ];
   }
 
+  /*
+  static delStore({
+    store,
+    storeManager,
+    witnessManager,
+  }: {
+    store: UnitOfStore;
+    storeManager: UnitOfStore;
+    witnessManager: MerkleMapWitness;
+  }): ZKKVEventEmission {
+    // prove the store has been added
+    const [root0] = witnessManager.computeRootAndKey(store.getValue());
+    root0.assertEquals(storeManager.getValue(), 'Store already added!');
+
+    return [
+      {
+        type: 'storage:pending',
+        event: new EventStoragePending({
+          commitmentPending: storeManager.getValue(),
+          settlementChecksum: store.getChecksum(),
+          id: storeManager.getKey(),
+          data0: store,
+          data1: UnitOfStore.init({
+            key: store.getKey(),
+            value: EMPTY, // Delete
+          }),
+        }),
+      },
+    ];
+  }
+  */
+
   /**
    * Set data in a Store that has been added to the Manager.
    *
