@@ -1,4 +1,5 @@
 import { CheckCircleIcon } from '@heroicons/react/24/outline';
+import { Spinner } from './spinner';
 
 export function IconNotPending() {
   return (
@@ -11,7 +12,7 @@ export function IconNotPending() {
 export function IconPending() {
   return (
     <span className="tooltip" data-tip="pending">
-      <span className="loading loading-ring loading-sm" />
+      <Spinner />
     </span>
   );
 }
