@@ -345,6 +345,7 @@ logRoots();
 // add a new Identity
 ////////////////////////////////////////////////////////////////////////
 
+/*
 hr();
 log('addIdentity Charlie...');
 const Charlie = Identity.init({
@@ -369,6 +370,7 @@ await addIdentity(
 );
 log('...addIdentity Charlie');
 numEvents = await processEvents(numEvents);
+*/
 
 ////////////////////////////////////////////////////////////////////////
 // Identity Consumer contract
@@ -433,10 +435,12 @@ log('...ExampleIdentityConsumer.requireAuth');
 // commit pending transformations and confirm storage sync
 ////////////////////////////////////////////////////////////////////////
 
+/*
 hr();
 await commitPendingTransformations();
 numEvents = await processEvents(numEvents);
 logRoots();
+*/
 
 hr();
 storageRunner.logMapKeys('storageRunner');
@@ -570,6 +574,8 @@ async function addAuthNFactor(
 }
 
 async function commitPendingTransformations() {
+  if (!storage.pending.length) return;
+
   // 1: return recursionEnabled
   // 1:   ? await commitPendingTransformationsWithProof()
   // 1:   : await commitPendingTransformationsWithAuthToken();
