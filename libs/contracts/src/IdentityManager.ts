@@ -416,35 +416,38 @@ export class IdentityManager extends SmartContract {
   /**
    * Add an Authentication Factor to an Identity.
    *
-   * @param {AuthNFactor} authNFactor The new Authentication Factor to add to the Identity.
+   * @param {IdentityAssertion} idAssertion Assertion to prove Identity ownership with the Operator Key.
    * @param {AuthNFactor} opKey The Operator Key attesting ownership of the Identity.
-   * @param {Identity} identity The Identity (Store) to add the AuthNFactor (data) to.
-   * @param {MerkleMapWitness} witnessOpKey Witness proving opKey is within Identity.
-   * @param {MerkleMapWitness} witnessKeyring Witness for AuthNFactor (data) within Identity (Store).
-   * @param {MerkleMapWitness} witnessManager Witness for Identity (Store) within Manager.
+   * @param {AuthNFactor} authNF The new Authentication Factor to add to the Identity.
+   * @param {MerkleMapWitness} witnessAuthNF Witness for new AuthNFactor within Identity.
    * @param {BioAuthorizedMessage} oracleMsg signed message from zkOracle providing AuthN Factor secret.
    */
   @method addAuthNFactor(
-    authNFactor: AuthNFactor,
+    idAssertion: IdentityAssertion,
     opKey: AuthNFactor,
-    identity: Identity,
-    witnessOpKey: MerkleMapWitness,
-    witnessKeyring: MerkleMapWitness,
-    witnessManager: MerkleMapWitness,
+    authNF: AuthNFactor,
+    witnessAuthNF: MerkleMapWitness,
     oracleMsg: BioAuthorizedMessage
   ) {
     const mgrIdentifier = this.identifier.getAndAssertEquals();
     const mgrCommitment = this.commitment.getAndAssertEquals();
     const oraclePublicKey = this.oraclePublicKey.getAndAssertEquals();
 
+    // This fails in strange ways with "RangeError: offset is out of bounds"
+    // X: this.isIdentityOwner(assertion, opKey).assertTrue();
+
+    // This works but is slower... (there's a duplicate merkle proof)
+    // X: idAssertion.auth(opKey, mgrCommitment).assertTrue();
+    // X: opKey.isOperatorKey().assertTrue();
+
     // assert Operator Key is valid and within the identity
     opKey.isOperatorKey().assertTrue();
-    const [rootOpKey] = witnessOpKey.computeRootAndKey(opKey.getValue());
-    rootOpKey.assertEquals(identity.commitment);
+    const [r] = idAssertion.witnessIdentity.computeRootAndKey(opKey.getValue());
+    r.assertEquals(idAssertion.identity.commitment);
 
     // if adding BioAuth authentication factor
     Provable.if(
-      authNFactor.isBioAuth(),
+      authNF.isBioAuth(),
       // 2: // check validity of bioauthenticated message
       // 2: oracleMsg.signature
       // 2:   .verify(oraclePublicKey, [
@@ -464,17 +467,17 @@ export class IdentityManager extends SmartContract {
     // Note: ZKKV asserts identity within manager
     const events = ZKKV.setStoreData({
       data0: UnitOfStore.init({
-        key: authNFactor.toUnitOfStore().getKey(),
+        key: authNF.toUnitOfStore().getKey(),
         value: EMPTY, // Add
       }),
-      data1: authNFactor.toUnitOfStore(),
-      store: identity.toUnitOfStore(),
+      data1: authNF.toUnitOfStore(),
+      store: idAssertion.identity.toUnitOfStore(),
       storeManager: UnitOfStore.init({
         key: mgrIdentifier,
         value: mgrCommitment,
       }),
-      witnessStore: witnessKeyring,
-      witnessManager,
+      witnessStore: witnessAuthNF,
+      witnessManager: idAssertion.witnessManager,
     });
 
     for (const { type, event } of events) this.emitEvent(type, event);

@@ -293,42 +293,76 @@ logRoots();
 ////////////////////////////////////////////////////////////////////////
 
 hr();
+
+// Bob's Identity MerkleMap
+const storageBob = storage.maps[Bob.identifier.toString()];
+
+// Bob's proof of Identity ownership with Operator Key
+// valid for both addAuthNFactor operations here because txn concurrency
+const idAssertionBob = new IdentityAssertion({
+  // provide the identity with current commitment
+  identity: Bob.setCommitment(storageBob.getRoot()),
+  // prove the Authentication Factor is within the Identity Keyring
+  witnessIdentity: storageBob.getWitness(opKeyBob.getKey()),
+  // prove the Identity is within the Manager
+  witnessManager: storage.maps[zkappIdentifier.toString()].getWitness(
+    Bob.identifier
+  ),
+});
+
 log('Bob: addAuthNFactor password...');
-await addAuthNFactor(
-  AuthNFactor.init({
+{
+  const newAuthNF = AuthNFactor.init({
     protocol: {
       type: AuthNType.password,
       provider: AuthNProvider.self,
       revision: 0,
     },
     data: { salt, secret: 'password' },
-  }),
-  opKeyBob,
-  Bob,
-  storageRunner.maps[Bob.identifier.toString()],
-  storageRunner.maps[zkappIdentifier.toString()]
-);
+  });
+  const tx = await Mina.transaction(feePayer, () => {
+    zkapp.addAuthNFactor(
+      idAssertionBob,
+      opKeyBob, // Bob's Operator Key to prove Identity ownership
+      newAuthNF, // the new AF
+      // prove the new Authentication Factor is NOT within the Identity Keyring
+      storageBob.getWitness(newAuthNF.getKey()),
+      // oracleMsg, unused in this case
+      BioAuthorizedMessage.dummy()
+    );
+  });
+  await tx.prove();
+  await tx.sign([feePayerKey]).send();
+}
 log('...Bob: addAuthNFactor password');
 numEvents = await processEvents(numEvents);
 
 hr();
 log('Bob: addAuthNFactor bioauth...');
-const bioAuthMsg = bioAuthSimulator('simulatedPayload');
-await addAuthNFactor(
-  AuthNFactor.init({
+{
+  const bioAuthMsg = bioAuthSimulator('simulatedPayload');
+
+  const newAuthNF = AuthNFactor.init({
     protocol: {
       type: AuthNType.proofOfPerson,
       provider: AuthNProvider.humanode,
       revision: 0,
     },
     data: { salt, secret: bioAuthMsg.bioAuthId.toString() },
-  }),
-  opKeyBob,
-  Bob,
-  storageRunner.maps[Bob.identifier.toString()],
-  storageRunner.maps[zkappIdentifier.toString()],
-  bioAuthMsg
-);
+  });
+
+  const tx = await Mina.transaction(feePayer, () => {
+    zkapp.addAuthNFactor(
+      idAssertionBob,
+      opKeyBob,
+      newAuthNF,
+      storageBob.getWitness(newAuthNF.getKey()),
+      bioAuthMsg
+    );
+  });
+  await tx.prove();
+  await tx.sign([feePayerKey]).send();
+}
 log('...Bob: addAuthNFactor bioauth');
 numEvents = await processEvents(numEvents);
 
@@ -530,43 +564,6 @@ async function addIdentity(
   log('  tx: prove() sign() send()...');
   const tx = await Mina.transaction(feePayer, () => {
     zkapp.NEW_addIdentity(opKey, identity, witnessManager);
-  });
-  await tx.prove();
-  await tx.sign([feePayerKey]).send();
-  log('  ...tx: prove() sign() send()');
-}
-
-async function addAuthNFactor(
-  af: AuthNFactor,
-  afOperatorKey: AuthNFactor,
-  identity: Identity,
-  idKeyringMM: MerkleMap,
-  idManagerMM: MerkleMap,
-  oracleMsg = BioAuthorizedMessage.dummy()
-) {
-  // ensure identity matches storage
-  identity = identity.setCommitment(idKeyringMM.getRoot());
-
-  // prove the Operator Key is in the Identity Keyring
-  const witnessOpKey = idKeyringMM.getWitness(afOperatorKey.getKey());
-
-  // prove the AuthNFactor IS NOT in the Identity Keyring MT
-  const witnessKeyring = idKeyringMM.getWitness(af.getKey());
-
-  // prove the identifier IS in the Identity Manager MT
-  const witnessManager = idManagerMM.getWitness(identity.identifier);
-
-  log('  tx: prove() sign() send()...');
-  const tx = await Mina.transaction(feePayer, () => {
-    zkapp.addAuthNFactor(
-      af,
-      afOperatorKey,
-      identity,
-      witnessOpKey,
-      witnessKeyring,
-      witnessManager,
-      oracleMsg
-    );
   });
   await tx.prove();
   await tx.sign([feePayerKey]).send();
