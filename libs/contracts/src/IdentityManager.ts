@@ -250,18 +250,43 @@ export class Identity extends Struct({
 /**
  * Components to prove ownership of an Identity.
  * A convienence for managing the components as a unit.
- *
- * Additionally, one or more AuthNFactors are used to prove ownership.
+ * Additionally, an AuthNFactor is used to prove ownership.
  */
 export class IdentityAssertion extends Struct({
+  /**
+   * The Identity to prove ownership of.
+   */
   identity: Identity,
+
+  /**
+   * Merkle Witness for proving an AuthNFactor within Identity.
+   */
   witnessIdentity: MerkleMapWitness,
+
+  /**
+   * Merkle Witness for proving Identity within Manager.
+   */
   witnessManager: MerkleMapWitness,
 
   // authNF: AuthNFactor, // 2023-07 including this fails :
   // Error: Stack_overflow at caml_fatal_uncaught_exception
   // (.../snarkyjs/src/bindings/ocaml/overrides.js:60:32)
-}) {}
+}) {
+  /**
+   * @param {AuthNFactor} authNF The Authentication Factor used to create this assertion
+   * @param {Field} commitmentManager The Identity Manager's commitment (root)
+   */
+  auth(authNF: AuthNFactor, commitmentManager: Field): Bool {
+    // compute roots for Authentication Factor within Identity within Manager
+    const [root0] = this.witnessIdentity.computeRootAndKey(authNF.getValue());
+    const [root1] = this.witnessManager.computeRootAndKey(root0);
+
+    // check if roots match Identity and Manager commitments
+    const matchID = root0.equals(this.identity.commitment);
+    const matchMgr = root1.equals(commitmentManager);
+    return matchID.and(matchMgr);
+  }
+}
 
 export class IdentityManager extends SmartContract {
   /**
@@ -321,18 +346,8 @@ export class IdentityManager extends SmartContract {
     assertion: IdentityAssertion,
     authNF: AuthNFactor
   ): Bool {
-    const { identity, witnessIdentity, witnessManager } = assertion;
-
     const mgrCommitment = this.commitment.getAndAssertEquals();
-
-    // compute roots for Authentication Factor within Identity within Manager
-    const [root0] = witnessIdentity.computeRootAndKey(authNF.getValue());
-    const [root1] = witnessManager.computeRootAndKey(root0);
-
-    // check if roots match Identity and Manager commitments
-    const matchID = root0.equals(identity.commitment);
-    const matchMgr = root1.equals(mgrCommitment);
-    return matchID.and(matchMgr);
+    return assertion.auth(authNF, mgrCommitment);
   }
 
   /**
