@@ -60,11 +60,11 @@ Decentralized Identity, Collective Association, and Access Control.
 
 ## Code Examples
 
-Refer to
+Refer to the
 [ExampleIdentityConsumer](libs/contracts/src/ExampleIdentityConsumer.ts)
-SmartContract for an example of zkHumans-compatible Identity within a zkApp. It
-is offered as a minimal complexity abstraction for ease of implementation, but
-does not represent the full facilitations of the zkHumans Identity protocol.
+SmartContract for example usage of zkHumans Identity within a zkApp. It is
+offered as a minimal complexity abstraction for ease of implementation, but does
+not represent the full facilitations of the zkHumans Identity protocol.
 
 Require authentication of Identity Ownership before conducting other functions:
 
@@ -110,12 +110,31 @@ example, require ZK-CryptoBiometric authentication to prove Identity Ownership
 ### Identity Manager
 
 The above examples assert ownership of zkHuman Identities registered with an
-IdentityManager. See the official zkHumans app deployment for the zkApp's
-address that may be used for identities registered there.
+[IdentityManager](libs/contracts/src/IdentityManager.ts) SmartContract. See the
+official zkHumans app deployment for the zkApp address that may be used for
+identities registered there.
 
 Similar to other zkOracle implementations or zkApp compositions, the
 IdentityManager's PublicKey may be registered as zkApp state upon deployment or
 hardcoded (from Base58 format) to spare state consumption.
+
+#### Identity Manager Demo Script
+
+Refer to the [identity demo script](libs/contracts/src/examples/identity.ts) for
+full demonstration of the
+[IdentityManager](libs/contracts/src/IdentityManager.ts) SmartContract
+facilitations including off-chain storage simulation, event processing, and
+state transformation proving.
+
+Run the demo script:
+
+```sh
+# with proofs disabled
+ZK_PROOFS_ENABLED=0 ./bin/run.sh libs/contracts/src/examples/identity.ts
+
+# with proofs enabled
+ZK_PROOFS_ENABLED=1 ./bin/run.sh libs/contracts/src/examples/identity.ts
+```
 
 ## Developmental Status
 
