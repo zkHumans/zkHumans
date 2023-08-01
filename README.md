@@ -58,6 +58,10 @@ Decentralized Identity, Collective Association, and Access Control.
     another MerkleMap is recursive thus enabling very large amounts of verified
     storage with minimal state information
 
+## Video: Tech Preview Explainer
+
+[![zkHumans Tech Preview - 2023-08-01](http://img.youtube.com/vi/Ermn7guSIJA/0.jpg)](http://www.youtube.com/watch?v=Ermn7guSIJA 'zkHumans Tech Preview - 2023-08-01')
+
 ## Code Examples
 
 Refer to the
