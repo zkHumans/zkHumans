@@ -4,6 +4,7 @@ import { Link, useLoaderData } from '@remix-run/react';
 import { displayAccount, transactionLink } from '@zkhumans/utils';
 import { ApiOutputStorageByKeyWithEvents, trpc } from '@zkhumans/trpc-client';
 import { useAppContext } from '../root';
+import { Spinner } from '../components';
 
 export const loader = async ({ params }: LoaderArgs) => {
   const identifier = params.identityId;
@@ -13,6 +14,7 @@ export const loader = async ({ params }: LoaderArgs) => {
 
 export default function TODO() {
   const appContext = useAppContext();
+  const { cnsl, zk } = appContext;
   const { identifier, authNFactorKey } = useLoaderData<typeof loader>();
   const [storage, setStorage] = useState(
     undefined as undefined | ApiOutputStorageByKeyWithEvents
@@ -29,6 +31,99 @@ export default function TODO() {
   }, [authNFactorKey]);
 
   if (!storage) return <></>;
+
+  function handleDelAF_close() {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    (window as any).modal_3.close();
+  }
+
+  function handleDelAF_open() {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    (window as any).modal_3.showModal();
+  }
+
+  const handleNothing = () => {
+    return false;
+  };
+
+  // TODO: placeholders, these should be extracted to useZKApp hook
+  const handleSignature = () => {
+    return false;
+  };
+  const handleCompileZkApp = () => {
+    return false;
+  };
+  const handleSendTransaction = () => {
+    return false;
+  };
+  const handleDelAF_prepareProof = () => {
+    return false;
+  };
+  const hasSignature = false;
+  const hasZKApp = false;
+  const hasTransaction = false;
+  const hasNotPendingAF = false;
+
+  // const hasNotPendingAF = storage && !storage.isPending;
+
+  const btnDisabled = 'btn btn-disabled normal-case';
+  const btnSuccess = 'btn btn-success normal-case';
+  const btnTodo = 'btn btn-primary normal-case';
+  const btnWarning = 'btn btn-warning normal-case';
+
+  const modalDelAF = (
+    <dialog id="modal_3" className="modal">
+      <form method="dialog" className="modal-box w-full max-w-xs">
+        <h3 className="text-center text-lg font-bold">
+          Remove Authentication Factor
+        </h3>
+        <div className="my-4 flex flex-col space-y-4">
+          {/* Note: <button> within <form> closes modal, so use <div> */}
+          <>
+            <div
+              className={hasSignature ? btnSuccess : btnTodo}
+              onClick={hasSignature ? handleNothing : handleSignature}
+            >
+              {zk.is.signing && <Spinner />}
+              Sign with Operator Key
+            </div>
+            <div
+              className={hasZKApp ? btnSuccess : btnTodo}
+              onClick={hasZKApp ? handleNothing : handleCompileZkApp}
+            >
+              {zk.is.compiling && <Spinner />}
+              Compile zkApp
+            </div>
+            <div
+              className={
+                hasTransaction
+                  ? btnSuccess
+                  : hasZKApp && hasSignature
+                  ? btnTodo
+                  : btnDisabled
+              }
+              onClick={handleDelAF_prepareProof}
+            >
+              {zk.is.proving && <Spinner />}
+              Prepare Proof
+            </div>
+            <div
+              className={hasTransaction ? btnTodo : btnDisabled}
+              onClick={handleSendTransaction}
+            >
+              {zk.is.sending && <Spinner />}
+              Send Transaction
+            </div>
+          </>
+        </div>
+        <div className="modal-action">
+          <div className="btn normal-case" onClick={handleDelAF_close}>
+            Cancel
+          </div>
+        </div>
+      </form>
+    </dialog>
+  );
 
   const tableEvents = (
     <table className="table">
@@ -86,6 +181,19 @@ export default function TODO() {
           </tr>
         </tbody>
       </table>
+
+      {/* Buttons */}
+      <div className="flex flex-row justify-center space-x-4">
+        <button
+          className={hasNotPendingAF ? btnWarning : btnDisabled}
+          onClick={handleDelAF_open}
+        >
+          Remove Authentication Factor
+        </button>
+      </div>
+
+      {/* Modal to remove AuthNFactor */}
+      {modalDelAF}
     </div>
   );
 }
