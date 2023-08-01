@@ -1,7 +1,7 @@
 # zkHumans
 
-Zero-Knowledge Self-Sovereign Crypto-Biometric Decentralized Identity,
-Collective Association, and Access Control Platform.
+A protocol and platform for Zero-Knowledge Self-Sovereign Crypto-Biometric
+Decentralized Identity, Collective Association, and Access Control.
 
 ## The Stack
 
@@ -19,32 +19,44 @@ Collective Association, and Access Control Platform.
 
 ## How it Works
 
-- An Identity consists of:
+- A zkHumans Identity consists of:
   - one or more Authentication Factors within a Merkle Map
-  - a static unique identifier (UUID) and a Merkle Map root commitment. (ie its
-    current hash representing the Authentication Factors within it) .
-- Each Identity's identifier:commitment is added as key:value data to a Manager
-  MerkleMap
+  - a static unique identifier (UUID) and a Merkle Map commitment (its current
+    root hash representing the Authentication Factors within it) .
+- Each Identity's `identifier:commitment` is added as key:value data to a
+  Identity Manager's MerkleMap
   - A Manager also has a static identifier (zkApp address) and root commitment
-- A SnarkyJS SmartContract manages authenticated state transformations of the
-  Manager Merkle Tree including:
+- A SmartContract manages authenticated state transformations of the Manager
+  Merkle Tree including:
   - addition of new Identities
   - addition/removal of Authentication Factors from Identities
   - authentication of Identity ownership by other composing SmartContracts
 - Proving ownership of an Identity consists of proving:
-  - an Authentication Factor (as key:value data) is within the Identity's
-    MerkleMap
-  - The Identity's key:value is within the Manager's MerkleMap
+  - 1. An Authentication Factor (as key:value data) is within the Identity's
+       MerkleMap
+  - 2. The Identity's `key:value` is within the Manager's MerkleMap
   - depending on the authenticating context, one or more Authentication Factors
     of specific types may be required to prove ownership
-- Off-chain Merkle data is stored within a database powered by ZK:KV; zkHumans
-  custom-build but generally useful zk-data storage solution with the following
-  features:
-  - data is public but secret, only the owner of an Identity may access their,
-    and only their, data (ZK!), otherwise it is only random numbers to others
-  - facilitates decentralized and distribted node data
-  - database agnostic, refrence implemtation uses prisma for high-availability
-    and local performance of SQL (using Postgres, for example)
+- Off-chain Merkle data is stored within a database powered by ZK:KV; zkHumans'
+  purpose-built, but generally useful, ZK-data storage solution with the
+  following features:
+  - data is public but secret, only the owner of an Identity may access the
+    secrets of their data (ZK!), otherwise it is random numbers to others
+  - optional storage meta data is public and facilitates protocol and/or
+    connectivity to other database references
+  - facilitates decentralized and distributed node data
+  - database agnostic; the reference implementation uses Prisma for
+    high-availability, scalability, and local performance of SQL (using
+    Postgres, for example)
+  - many and multiple nodes may independently verify and distribute storage data
+  - all writes to storage are manged by the contract and updated locally by an
+    indexer service, other services have read-only data access
+  - transaction concurrency; multiple concurrent writes to storage are
+    facilitated by first recording stroage state transformations as pending then
+    comitting pending storage with a prover process
+  - the pattern of MerkleMap identifier:commitment as key:value data within
+    another MerkleMap is recursive thus enabling very large amounts of verified
+    storage with minimal state information
 
 ## Contributing
 
