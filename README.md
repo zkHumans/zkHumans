@@ -58,6 +58,74 @@ Decentralized Identity, Collective Association, and Access Control.
     another MerkleMap is recursive thus enabling very large amounts of verified
     storage with minimal state information
 
+## Code Examples
+
+Refer to
+[ExampleIdentityConsumer](libs/contracts/src/ExampleIdentityConsumer.ts)
+SmartContract for an example of zkHumans-compatible Identity within a zkApp. It
+is offered as a minimal complexity abstraction for ease of implementation, but
+does not represent the full facilitations of the zkHumans Identity protocol.
+
+Require authentication of Identity Ownership before conducting other functions:
+
+```typescript
+  @method requireAuth(assertion: IdentityAssertion, authNF: AuthNFactor) {
+    const idMgrPubKey = this.IDManagerPublicKey.getAndAssertEquals();
+    const identityManager = new IdentityManager(idMgrPubKey);
+
+    // assert Identity ownership
+    identityManager.isIdentityOwner(assertion, authNF).assertTrue();
+
+    // do something after Identity ownership has been proven
+
+    // the Identity's unique identifier is useful
+    const identifier = assertion.identity.identifier;
+
+    this.emitEvent('authorizedID', identifier);
+  }
+```
+
+Authenticating resources may require specific Authentication Factor types. For
+example, require ZK-CryptoBiometric authentication to prove Identity Ownership
+(using the zkHumans BioAuth zkOracle):
+
+```typescript
+  @method requireBioAuth(assertion: IdentityAssertion, authNF: AuthNFactor) {
+    const idMgrPubKey = this.IDManagerPublicKey.getAndAssertEquals();
+    const identityManager = new IdentityManager(idMgrPubKey);
+
+    // assert Identity ownership
+    identityManager.isIdentityOwner(assertion, authNF).assertTrue();
+
+    // assert Authentication Factor is a BioAuth
+    authNF.isBioAuth().assertTrue();
+
+    // do something after Identity ownership has been proven with BioAuth
+
+    const identifier = assertion.identity.identifier;
+    this.emitEvent('bioauthorizedID', identifier);
+  }
+```
+
+### Identity Manager
+
+The above examples assert ownership of zkHuman Identities registered with an
+IdentityManager. See the official zkHumans app deployment for the zkApp's
+address that may be used for identities registered there.
+
+Similar to other zkOracle implementations or zkApp compositions, the
+IdentityManager's PublicKey may be registered as zkApp state upon deployment or
+hardcoded (from Base58 format) to spare state consumption.
+
+## Developmental Status
+
+The zkHumans protocol has an extensive roadmap covering ZK-powered decentralized
+digital identity and its use in nearly every context. The protocol is flexible
+for future-forward expansion covering a multitude of authentication methods and
+providers. The current implementation represents Decentralized Identity
+management with an initial limited set of authentication factor types and
+providers as the protocol and its governance is further established.
+
 ## Contributing
 
 [![Commitizen friendly](https://img.shields.io/badge/commitizen-friendly-brightgreen.svg)](http://commitizen.github.io/cz-cli/)
