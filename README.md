@@ -126,15 +126,6 @@ ZK_PROOFS_ENABLED=0 ./bin/run.sh libs/contracts/src/examples/identity.ts
 ZK_PROOFS_ENABLED=1 ./bin/run.sh libs/contracts/src/examples/identity.ts
 ```
 
-## Developmental Status
-
-The zkHumans protocol has an extensive roadmap covering ZK-powered decentralized
-digital identity and its use in nearly every context. The protocol is flexible
-for future-forward expansion covering a multitude of authentication methods and
-providers. The current implementation represents Decentralized Identity
-management with an initial limited set of authentication factor types and
-providers as the protocol and its governance is further established.
-
 ## The Stack
 
 Refer to the zkHumans'
@@ -159,10 +150,10 @@ Then, more specfic to this project:
 ├──┐ apps
 │  ├── api               # API server; Express ↔ tRPC ↔ Prisma
 │  ├── api-e2e           # E2E API tests
-│  ├── cli               # command-line-interface scripts (int typescript)
+│  ├── cli               # command-line-interface scripts (typescript)
 │  ├── indexer           # process incoming off-chain strorage events
-│  ├── oracle-auth       # BioAuth zkOracle (Humanode <-> MINA bridge)
-│  ├── oracle-auth-test  # simulator of BioAuth zkOracle for dev
+│  ├── oracle-auth       # BioAuth zkOracle (Humanode <•> MINA bridge)
+│  ├── oracle-auth-test  # simulator of BioAuth zkOracle for local dev
 │  ├── prover            # commit pending zkApp state transformations
 │  ├── zkapp-example     # (zkapp-cli generated Next.js app for reference)
 │  └── zkapp-zkhumans    # zkApp frontend (UI)
@@ -180,7 +171,8 @@ Then, more specfic to this project:
 
 ### Example Commands
 
-See `nx --help` and scripts in [package.json](package.json).
+See [zkApp Stack Commands](https://github.com/zkHumans/zk-kv#example-commands),
+`nx --help`, and scripts in [package.json](package.json).
 
 ```sh
 # lint/typecheck/build all projects (except for ui), use nx cache
