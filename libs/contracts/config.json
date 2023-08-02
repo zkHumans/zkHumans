@@ -1,6 +1,14 @@
 {
   "version": 1,
   "deployAliases": {
+    "berkeley-consumer": {
+      "url": "https://proxy.berkeley.minaexplorer.com/graphql",
+      "keyPath": "keys/berkeley-consumer.json",
+      "feepayerKeyPath": "keys/berkeley-feepayer.json",
+      "feepayerAlias": "berkeley-feepayer",
+      "fee": "0.1",
+      "smartContract": "ExampleIdentityConsumer"
+    },
     "berkeley-identity": {
       "url": "https://proxy.berkeley.minaexplorer.com/graphql",
       "keyPath": "keys/berkeley-identity.json",
