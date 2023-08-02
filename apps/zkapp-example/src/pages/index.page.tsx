@@ -2,24 +2,27 @@ import Head from 'next/head';
 import Image from 'next/image';
 // X: import styles from '../styles/Home.module.css';
 import { useEffect, useState } from 'react';
-import type { Add } from '../../../../libs/contracts-example/src/';
-import { Mina, isReady, PublicKey, fetchAccount } from 'snarkyjs';
+import type { ExampleIdentityConsumer } from '@zkhumans/contracts';
+import { Mina, PublicKey, fetchAccount } from 'snarkyjs';
 
 export default function Home() {
   useEffect(() => {
     (async () => {
-      await isReady;
-      const { Add } = await import(
-        '../../../../libs/contracts-example/build/src/'
-      );
+      const { ExampleIdentityConsumer } = await import('@zkhumans/contracts');
+      const { createTRPCClient } = await import('@zkhumans/trpc-client');
+
+      const API_URL = 'https://api.dev.zkhumans.io/api';
+      const trpc = createTRPCClient(API_URL);
 
       // Update this to use the address (public key) for your zkApp account
       // To try it out, you can try this address for an example "Add" smart contract that we've deployed to
       // Berkeley Testnet B62qisn669bZqsh8yMWkNyCA7RvjrL6gfdr3TQxymDHNhTc97xE5kNV
       const zkAppAddress =
-        'B62qisn669bZqsh8yMWkNyCA7RvjrL6gfdr3TQxymDHNhTc97xE5kNV';
+        'B62qnc8215LqAFm4ZebdhZqSwppFWgitXsgRM2PEZW7fuMjdjNMXW3i';
 
-      const zkApp = new Add(PublicKey.fromBase58(zkAppAddress));
+      const zkApp = new ExampleIdentityConsumer(
+        PublicKey.fromBase58(zkAppAddress)
+      );
     })();
   }, []);
 
